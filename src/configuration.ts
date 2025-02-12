@@ -1,1 +1,1 @@
-export const resolution = 256;
+export const resolution = 32;

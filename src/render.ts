@@ -40,7 +40,7 @@ export const createRenderPipeline = async ({
       ],
     },
     primitive: {
-      topology: "triangle-list",
+      topology: "line-list",
     },
   });
 
@@ -66,15 +66,17 @@ export const createRenderPipeline = async ({
         new Array(resolution - 1).fill(0).flatMap((_, y) => {
           const i = y * resolution + x;
           return [
-            [i, i + 1, i + resolution],
-            [i + 1, i + resolution + 1, i + resolution],
+            [i, i + 1],
+            [i + 1, i + resolution + 1],
+            [i + resolution + 1, i + resolution],
+            [i + resolution, i],
           ].flat();
         }),
       ),
     ),
   );
 
-  const z = 4;
+  const z = 1;
   const tiles = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
@@ -131,7 +133,7 @@ export const createRenderPipeline = async ({
     pass.setVertexBuffer(0, vertices);
     pass.setIndexBuffer(indices, "uint32");
     pass.setBindGroup(0, bindGroup);
-    pass.drawIndexed((resolution - 1) ** 2 * 2 * 3, 4 ** z);
+    pass.drawIndexed((resolution - 1) ** 2 * 2 * 2 * 2, 4 ** z);
   };
 
   return {
