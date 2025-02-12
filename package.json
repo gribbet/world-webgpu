@@ -1,0 +1,20 @@
+{
+  "name": "webgpu-world",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint --max-warnings 0 --cache --cache-strategy content ."
+  },
+  "devDependencies": {
+    "@gribbet/eslint-config": "github:gribbet/eslint-config",
+    "@webgpu/types": "^0.1.44",
+    "eslint": "^8.56.0",
+    "vite": "^5.0.3"
+  },
+  "dependencies": {
+    "wgpu-matrix": "^3.3.0"
+  }
+}

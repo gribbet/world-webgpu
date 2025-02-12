@@ -1,0 +1,140 @@
+import { mat4, vec3 } from "wgpu-matrix";
+
+import { resolution } from "./configuration";
+import { createBuffer } from "./device";
+
+export const createRenderPipeline = async ({
+  device,
+  format,
+}: {
+  device: GPUDevice;
+  format: GPUTextureFormat;
+}) => {
+  const module = device.createShaderModule({
+    code: await (await fetch(new URL("./render.wgsl", import.meta.url))).text(),
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: "auto",
+    vertex: {
+      module,
+      entryPoint: "vertex",
+      buffers: [
+        {
+          arrayStride: 2 * 4,
+          attributes: [{ shaderLocation: 0, format: "float32x2", offset: 0 }],
+        },
+      ],
+    },
+    fragment: {
+      module,
+      entryPoint: "fragment",
+      targets: [
+        {
+          format,
+          blend: {
+            alpha: { operation: "max", srcFactor: "one", dstFactor: "one" },
+            color: { operation: "add", srcFactor: "src", dstFactor: "dst" },
+          },
+        },
+      ],
+    },
+    primitive: {
+      topology: "triangle-list",
+    },
+  });
+
+  const vertices = createBuffer(
+    device,
+    GPUBufferUsage.VERTEX,
+    new Float32Array(
+      new Array(resolution)
+        .fill(0)
+        .flatMap((_, x) =>
+          new Array(resolution)
+            .fill(0)
+            .flatMap((_, y) => [x / (resolution - 1), y / (resolution - 1)]),
+        ),
+    ),
+  );
+
+  const indices = createBuffer(
+    device,
+    GPUBufferUsage.INDEX,
+    new Uint32Array(
+      new Array(resolution - 1).fill(0).flatMap((_, x) =>
+        new Array(resolution - 1).fill(0).flatMap((_, y) => {
+          const i = y * resolution + x;
+          return [
+            [i, i + 1, i + resolution],
+            [i + 1, i + resolution + 1, i + resolution],
+          ].flat();
+        }),
+      ),
+    ),
+  );
+
+  const z = 4;
+  const tiles = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(
+      new Array(2 ** z)
+        .fill(0)
+        .flatMap((_, x) =>
+          new Array(2 ** z).fill(0).flatMap((_, y) => [x, y, z, 0]),
+        ),
+    ),
+  );
+
+  const d = 2;
+  const p = [0, 0, d];
+  const camera = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM,
+    new Int32Array(p.map(_ => (_ / 2) * (2 ** 31 - 1))),
+  );
+
+  const projection = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM,
+    new Float32Array(mat4.perspective(1, 1, 1, 1)),
+  );
+
+  const bindGroup = device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: tiles } },
+      { binding: 1, resource: { buffer: camera } },
+      { binding: 2, resource: { buffer: projection } },
+    ],
+  });
+
+  const encode = (pass: GPURenderPassEncoder) => {
+    device.queue.writeBuffer(
+      projection,
+      0,
+      new Float32Array(
+        mat4.translate(
+          mat4.rotateX(
+            mat4.translate(
+              mat4.perspective((60 / 180) * Math.PI, 1, 1e-9, 10),
+              vec3.create(0, 0, -d),
+            ),
+            performance.now() / 1e3,
+          ),
+          vec3.create(0, 0, d),
+        ),
+      ),
+    );
+    pass.setPipeline(pipeline);
+    pass.setVertexBuffer(0, vertices);
+    pass.setIndexBuffer(indices, "uint32");
+    pass.setBindGroup(0, bindGroup);
+    pass.drawIndexed((resolution - 1) ** 2 * 2 * 3, 4 ** z);
+  };
+
+  return {
+    encode,
+  };
+};
