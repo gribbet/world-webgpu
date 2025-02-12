@@ -26,13 +26,13 @@ fn mercatorToGeographic(mercator: vec3<f32>) -> vec3<f32> {
     );
 }
 
-fn geographicToCentered(geographic: vec3<f32>) -> vec3<f32> {
+fn geographicToCartesian(geographic: vec3<f32>) -> vec3<f32> {
     let lng = radians(geographic.x);
     let lat = radians(geographic.y);
-    let N = 1.0 / sqrt(1.0 - (ECCENTRICITY * ECCENTRICITY * sin(lat) * sin(lat)));
-    let x = (N) * cos(lat) * cos(lng);
-    let y = (N) * cos(lat) * sin(lng);
-    let z = (N * (1.0 - ECCENTRICITY * ECCENTRICITY)) * sin(lat);
+    let n = 1.0 / sqrt(1.0 - (ECCENTRICITY * ECCENTRICITY * sin(lat) * sin(lat)));
+    let x = n * cos(lat) * cos(lng);
+    let y = n * cos(lat) * sin(lng);
+    let z = n * (1.0 - ECCENTRICITY * ECCENTRICITY) * sin(lat);
     return vec3<f32>(x, y, z);
 }
 
@@ -42,8 +42,8 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let tile = tiles[input.instance];
     let mercator = tileToMercator(tile) + vec3<f32>(input.uv / f32(1 << tile.z), 0.0);
     let geographic = mercatorToGeographic(mercator);
-    let centered = geographicToCentered(geographic);
-    let relative = centered - vec3<f32>(camera) / f32((1 << 31) - 1) * 2.0;
+    let cartesian = geographicToCartesian(geographic);
+    let relative = cartesian - vec3<f32>(camera) / f32((1 << 31) - 1) * 2.0;
     output.position = projection * vec4<f32>(relative, 1.0);
     return output;
 }
