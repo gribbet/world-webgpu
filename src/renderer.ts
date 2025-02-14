@@ -1,17 +1,25 @@
+import type { Position } from "./model";
 import { createRenderPipeline } from "./render";
+import type { Signal } from "./signal";
 
 export const createRenderer = async ({
   device,
   context,
   format,
+  aspect,
+  center,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
   context: GPUCanvasContext;
+  aspect: Signal<number>;
+  center: Signal<Position>;
 }) => {
   const pipeline = await createRenderPipeline({
     device,
     format,
+    aspect,
+    center,
   });
 
   const render = () => {

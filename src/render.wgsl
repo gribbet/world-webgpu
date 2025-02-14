@@ -8,8 +8,14 @@ struct f64 {
 }
 
 fn f64_value(a: f64) -> f32 {
-    return a.hi + a.lo;
+    return a.hi;
 } 
+
+fn f64_(a: f32) -> f64 {
+    let hi = a;
+    let lo = a - hi;
+    return f64(hi, lo);
+}
 
 fn f64_add(a: f64, b: f64) -> f64 {
     let hi = a.hi + b.hi;
@@ -83,7 +89,7 @@ struct VertexOutput {
     @builtin(position) position: vec4<f32>,
 };
 
-fn fixed_to_mercator(x: vec3<u32>) -> vec3f64 {
+fn unfixed(x: vec3<u32>) -> vec3f64 {
     let h = vec3<f32>(x) / f32(ONE);
     let l = vec3<f32>(x - vec3<u32>(h * f32(ONE))) / f32(ONE);
     return vec3f64(f64(h.x, l.x), f64(h.y, l.y), f64(h.z, l.z));
@@ -91,17 +97,17 @@ fn fixed_to_mercator(x: vec3<u32>) -> vec3f64 {
 
 fn mercator_to_geographic(mercator: vec3f64) -> vec3f64 {
     return vec3f64(
-        f64_mul(f64_add(mercator.x, f64(-0.5, 0)), f64(2. * PI, 0)),
-        f64_atan(f64_sinh(f64_mul(f64_add(mercator.y, f64(-0.5, 0)), f64(-2. * PI, 0)))),
-        mercator.z
+        f64_mul(f64_add(mercator.x, f64_(-0.5)), f64_(2. * PI)),
+        f64_atan(f64_sinh(f64_mul(f64_add(mercator.y, f64_(-0.5)), f64_(-2. * PI)))),
+        f64_sub(f64_mul(mercator.z, f64_(2.)), f64_(1.))
     );
 }
 
 fn geographic_to_cartesian(geographic: vec3f64) -> vec3f64 {
-    let n = f64(1., 0);
-    let x = f64_mul(f64_mul(f64_add(n, geographic.z), f64_cos(geographic.y)), f64_cos(geographic.x));
-    let y = f64_mul(f64_mul(f64_add(n, geographic.z), f64_cos(geographic.y)), f64_sin(geographic.x));
-    let z = f64_mul(f64_add(n, geographic.z), f64_sin(geographic.y));
+    let n = f64_add(geographic.z, f64_(1.));
+    let x = f64_mul(f64_mul(n, f64_cos(geographic.y)), f64_cos(geographic.x));
+    let y = f64_mul(f64_mul(n, f64_cos(geographic.y)), f64_sin(geographic.x));
+    let z = f64_mul(n, f64_sin(geographic.y));
     return vec3f64(x, y, z);
 }
 
@@ -110,9 +116,10 @@ fn vertex(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     let tile = tiles[input.instance];
     let k = 1u << tile.z;
-    let vertex = vec3<u32>(vec3<f32>(input.uv, 0.) * f32(ONE / k)) + vec3<u32>(tile.xy * (ONE / k), 0u);
-    let c = geographic_to_cartesian(mercator_to_geographic(fixed_to_mercator(center)));
-    let v = geographic_to_cartesian(mercator_to_geographic(fixed_to_mercator(vertex)));
+    let vertex = vec3<u32>(vec3<f32>(input.uv, 0.) * f32(ONE / k)) + vec3<u32>(tile.xy * (ONE / k), ONE >> 1u);
+
+    let c = geographic_to_cartesian(mercator_to_geographic(unfixed(center)));
+    let v = geographic_to_cartesian(mercator_to_geographic(unfixed(vertex)));
 
     let z = normalize(vec3f64_value(c));
     let x = normalize(cross(vec3<f32>(0., 0., 1.), z));

@@ -1,35 +1,29 @@
+import { createCanvas } from "./canvas";
+import { earthRadius } from "./math";
+import type { Position } from "./model";
 import { createRenderer } from "./renderer";
+import { createSignal } from "./signal";
 
 export const createApp = async () => {
-  const { gpu } = navigator;
-  const adapter = await gpu.requestAdapter();
-  if (!adapter) throw new Error();
+  const center = createSignal<Position>([0, 0, 0]);
 
-  const device = await adapter.requestDevice();
-
-  const canvas = document.createElement("canvas");
-  document.body.appendChild(canvas);
-
-  new ResizeObserver(([{ contentRect: { width, height } = {} } = {}]) => {
-    if (width === undefined || height === undefined) return;
-    canvas.width = width;
-    canvas.height = height;
-  }).observe(canvas);
-
-  const context = canvas.getContext("webgpu");
-  if (!context) throw new Error();
-
-  const format = gpu.getPreferredCanvasFormat();
-  context.configure({ device, format });
+  const { device, context, format, aspect } = await createCanvas();
 
   const renderer = await createRenderer({
     device,
     context,
     format,
+    aspect,
+    center,
   });
 
   const frame = () => {
     requestAnimationFrame(frame);
+    center.set([
+      ((performance.now() / 1e2) % 360) - 180,
+      Math.sin(performance.now() / 1.1e4) * 85,
+      (0.5 + 0.1 * Math.sin(performance.now() / 1e3)) * earthRadius,
+    ]);
     renderer.render();
   };
 
