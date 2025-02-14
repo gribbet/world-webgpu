@@ -1,4 +1,4 @@
-import { mat4, vec3 } from "wgpu-matrix";
+import { mat4 } from "wgpu-matrix";
 
 import { resolution } from "./configuration";
 import { createBuffer } from "./device";
@@ -89,46 +89,44 @@ export const createRenderPipeline = async ({
     ),
   );
 
-  const d = 2;
-  const p = [0, 0, d];
-  const camera = createBuffer(
+  const center = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
-    new Int32Array(p.map(_ => (_ / 2) * (2 ** 31 - 1))),
+    new Uint32Array([0, 0, 0]),
   );
 
   const projection = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
-    new Float32Array(mat4.perspective(1, 1, 1, 1)),
+    new Float32Array(mat4.perspective((60 / 180) * Math.PI, 1, 1e-9, 10)),
   );
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
       { binding: 0, resource: { buffer: tiles } },
-      { binding: 1, resource: { buffer: camera } },
+      { binding: 1, resource: { buffer: center } },
       { binding: 2, resource: { buffer: projection } },
     ],
   });
 
-  const encode = (pass: GPURenderPassEncoder) => {
+  const frame = () => {
     device.queue.writeBuffer(
-      projection,
+      center,
       0,
-      new Float32Array(
-        mat4.translate(
-          mat4.rotateX(
-            mat4.translate(
-              mat4.perspective((60 / 180) * Math.PI, 1, 1e-9, 10),
-              vec3.create(0, 0, -d),
-            ),
-            performance.now() / 1e3,
-          ),
-          vec3.create(0, 0, d),
-        ),
+      new Uint32Array(
+        [
+          performance.now() / 1e3,
+          0.5 + 0.25 * Math.sin(performance.now() / 1e3),
+          1,
+        ].map(_ => _ * (2 ** 32 - 1)),
       ),
     );
+    requestAnimationFrame(frame);
+  };
+  frame();
+
+  const encode = (pass: GPURenderPassEncoder) => {
     pass.setPipeline(pipeline);
     pass.setVertexBuffer(0, vertices);
     pass.setIndexBuffer(indices, "uint32");
