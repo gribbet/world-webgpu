@@ -151,27 +151,25 @@ fn geographic_from_fixed(a: vec3<u32>) -> vec3f64 {
     return cartesian_from_geographic(geographic_from_mercator(vec3f64_from_vecu32_fixed(a)));
 }
 
-@vertex
-fn vertex(input: VertexInput) -> VertexOutput {
-    var output: VertexOutput;
-    let tile = tiles[input.instance];
-    let k = 1u << tile.z;
-    let vertex = vec3<u32>(vec3<f32>(input.uv, 0.) * f32(ONE / k)) + vec3<u32>(tile.xy * (ONE / k), ONE >> 1u);
-
+fn project(vertex: vec3<u32>, center: vec3<u32>) -> vec3<f32> {
     let c = geographic_from_fixed(center);
     let v = geographic_from_fixed(vertex);
 
     let z = normalize(vec3f64_value(c));
     let x = normalize(cross(vec3<f32>(0., 0., 1.), z));
     let y = cross(x, z);
-    let rotation = transpose(mat4x4<f32>(
-        vec4<f32>(x, 0.), 
-        vec4<f32>(y, 0.), 
-        vec4<f32>(z, 0.), 
-        vec4<f32>(0., 0., 0., 1.)));
+    let rotation = transpose(mat3x3<f32>(x, y, z));
 
-    let position = vec3f64_value(vec3f64_sub(v, c));
-    output.position = projection * rotation * vec4<f32>(position, 1.);
+    return rotation * vec3f64_value(vec3f64_sub(v, c));
+}
+
+@vertex
+fn vertex(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    let tile = tiles[input.instance];
+    let k = 1u << tile.z;
+    let vertex = vec3<u32>(vec3<f32>(input.uv, 0.) * f32(ONE / k)) + vec3<u32>(tile.xy * (ONE / k), ONE >> 1u);
+    output.position = projection * vec4<f32>(project(vertex, center), 1.);
     return output;
 }
 
