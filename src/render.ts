@@ -1,26 +1,23 @@
-import { mat4 } from "wgpu-matrix";
-
 import { resolution, z } from "./configuration";
 import { createBuffer } from "./device";
-import { fixed, mercator } from "./math";
-import type { Position } from "./model";
-import type { Signal } from "./signal";
 
 export const createRenderPipeline = async ({
   device,
   format,
-  aspect,
-  center,
   tilesBuffer,
+  centerBuffer,
+  projectionBuffer,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
-  aspect: Signal<number>;
-  center: Signal<Position>;
   tilesBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
+  projectionBuffer: GPUBuffer;
 }) => {
   const module = device.createShaderModule({
-    code: await (await fetch(new URL("./render.wgsl", import.meta.url))).text(),
+    code:
+      (await (await fetch(new URL("./common.wgsl", import.meta.url))).text()) +
+      (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
   });
 
   const pipeline = device.createRenderPipeline({
@@ -83,18 +80,6 @@ export const createRenderPipeline = async ({
     new Uint32Array(indices),
   );
 
-  const centerBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Uint32Array([0, 0, 0]),
-  );
-
-  const projectionBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Float32Array(mat4.identity()),
-  );
-
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
@@ -103,27 +88,6 @@ export const createRenderPipeline = async ({
       { binding: 2, resource: { buffer: projectionBuffer } },
     ],
   });
-
-  aspect.use(aspect => {
-    const fov = 60;
-    const near = 1e-9;
-    const far = 10;
-    const projection = mat4.perspective(
-      (fov / 180) * Math.PI,
-      aspect,
-      near,
-      far,
-    );
-    device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-  });
-
-  center.use(center =>
-    device.queue.writeBuffer(
-      centerBuffer,
-      0,
-      new Uint32Array(fixed(mercator(center))),
-    ),
-  );
 
   const encode = (pass: GPURenderPassEncoder) => {
     pass.setPipeline(pipeline);

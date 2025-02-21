@@ -3,13 +3,19 @@ import { createComputePipeline } from "./compute";
 export const createComputer = async ({
   device,
   tilesBuffer,
+  centerBuffer,
+  projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
+  projectionBuffer: GPUBuffer;
 }) => {
   const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
+    centerBuffer,
+    projectionBuffer,
   });
 
   const compute = async () => {

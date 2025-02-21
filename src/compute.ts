@@ -3,14 +3,18 @@ import { createBuffer } from "./device";
 export const createComputePipeline = async ({
   device,
   tilesBuffer,
+  centerBuffer,
+  projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
+  projectionBuffer: GPUBuffer;
 }) => {
   const module = device.createShaderModule({
-    code: await (
-      await fetch(new URL("./compute.wgsl", import.meta.url))
-    ).text(),
+    code:
+      (await (await fetch(new URL("./common.wgsl", import.meta.url))).text()) +
+      (await (await fetch(new URL("./compute.wgsl", import.meta.url))).text()),
   });
 
   const pipeline = device.createComputePipeline({
@@ -36,7 +40,9 @@ export const createComputePipeline = async ({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
       { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: areasBuffer } },
+      { binding: 1, resource: { buffer: centerBuffer } },
+      { binding: 2, resource: { buffer: projectionBuffer } },
+      { binding: 3, resource: { buffer: areasBuffer } },
     ],
   });
 
