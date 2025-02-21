@@ -32,7 +32,7 @@ fn f64_sub(a: f64, b: f64) -> f64 {
 fn f64_mul(a: f64, b: f64) -> f64 {
     let p = a.hi * b.hi;
     let e = fma(a.hi, b.hi, -p);
-    let f = fma(a.hi, b.lo, 0.0) + fma(a.lo, b.hi, 0.0);
+    let f = fma(a.hi, b.lo, 0.) + fma(a.lo, b.hi, 0.);
     let hi = p + f;
     let c = hi - p;
     let lo = (p - (hi - c)) + (f - c) + e + (a.lo * b.lo);
@@ -41,18 +41,18 @@ fn f64_mul(a: f64, b: f64) -> f64 {
 
 fn f64_div(a: f64, b: f64) -> f64 {
     let q = a.hi / b.hi;
-    let p = f64_mul(f64(q, 0.0), b);
+    let p = f64_mul(f64(q, 0.), b);
     let r = f64_sub(a, p);
     let c = r.hi / b.hi;
-    return f64_add(f64(q, 0.0), f64(c, 0.0));
+    return f64_add(f64(q, 0.), f64(c, 0.));
 }
 
 
 fn f64_sqrt(a: f64) -> f64 {
-    var x = f64(1.0 / sqrt(a.hi), 0.0);
+    var x = f64(1./ sqrt(a.hi), 0.);
     for(var i = 0; i < 2; i = i + 1) {
         let t = f64_sub(f64_mul(x, x), a);
-        let d = f64_mul(f64(2.0, 0.0), x);
+        let d = f64_mul(f64(2.0, 0.), x);
         let r = f64_div(t, d);
         x = f64_sub(x, r);
     }
@@ -62,30 +62,30 @@ fn f64_sqrt(a: f64) -> f64 {
 fn f64_sin(a: f64) -> f64 {
     let x = a.hi + a.lo;
     let hi = sin(x);
-    return f64(hi, 0.0);
+    return f64(hi, 0.);
 }
 
 fn f64_cos(a: f64) -> f64 {
     let x = a.hi + a.lo;
     let hi = cos(x);
-    return f64(hi, 0.0);
+    return f64(hi, 0.);
 }
 
 fn f64_sinh(a: f64) -> f64 {
     let x = a.hi + a.lo;
     let hi = sinh(x);
-    return f64(hi, 0.0);
+    return f64(hi, 0.);
 }
 
 fn f64_atan(a: f64) -> f64 {
     let x = a.hi + a.lo;
     let hi = atan(x);
-    return f64(hi, 0.0);
+    return f64(hi, 0.);
 }
 
 fn f64_from_u32(a: u32) -> f64 {
-    let hi_f = f32(a >> 8) * 256.0;
-    let lo_f = f32(a & 0xFF);
+    let hi_f = f32(a >> 8) * 256.;
+    let lo_f = f32(a & 0xff);
     let s = hi_f + lo_f;
     let v = s - hi_f;
     let t = (hi_f - (s - v)) + (lo_f - v);
@@ -164,10 +164,14 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let z = normalize(vec3f64_value(c));
     let x = normalize(cross(vec3<f32>(0., 0., 1.), z));
     let y = cross(x, z);
-    let rotation = transpose(mat3x3<f32>(x, y, z));
+    let rotation = transpose(mat4x4<f32>(
+        vec4<f32>(x, 0.), 
+        vec4<f32>(y, 0.), 
+        vec4<f32>(z, 0.), 
+        vec4<f32>(0., 0., 0., 1.)));
 
-    let position = rotation * vec3f64_value(vec3f64_sub(v, c));
-    output.position = projection * vec4<f32>(position, 1.);
+    let position = vec3f64_value(vec3f64_sub(v, c));
+    output.position = projection * rotation * vec4<f32>(position, 1.);
     return output;
 }
 
