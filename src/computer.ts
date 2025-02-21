@@ -16,6 +16,7 @@ export const createComputer = async ({
     const encoder = device.createCommandEncoder();
     computePipeline.encode(encoder);
     device.queue.submit([encoder.finish()]);
+    await device.queue.onSubmittedWorkDone();
     console.log(await computePipeline.read());
   };
 

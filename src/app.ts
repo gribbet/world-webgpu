@@ -34,8 +34,11 @@ export const createApp = async () => {
 
   const computer = await createComputer({ device, tilesBuffer });
 
+  let running = false;
   const frame = async () => {
     requestAnimationFrame(frame);
+    if (running) return;
+    running = true;
     center.set([
       ((performance.now() / 1e3) % 360) - 180,
       Math.sin(performance.now() / 1.1e5) * 85,
@@ -43,6 +46,7 @@ export const createApp = async () => {
     ]);
     renderer.render();
     await computer.compute();
+    running = false;
   };
 
   requestAnimationFrame(frame);
