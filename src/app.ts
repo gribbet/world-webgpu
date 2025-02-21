@@ -20,9 +20,9 @@ export const createApp = async () => {
   const frame = () => {
     requestAnimationFrame(frame);
     center.set([
-      ((performance.now() / 1e2) % 360) - 180,
-      Math.sin(performance.now() / 1.1e4) * 85,
-      (0.5 + 0.1 * Math.sin(performance.now() / 1e3)) * earthRadius,
+      ((performance.now() / 1e3) % 360) - 180,
+      Math.sin(performance.now() / 1.1e5) * 85,
+      (0.5 + 0.1 * Math.sin(performance.now() / 1e5)) * earthRadius,
     ]);
     renderer.render();
   };
