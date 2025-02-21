@@ -8,18 +8,21 @@ export const createRenderer = async ({
   format,
   aspect,
   center,
+  tilesBuffer,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
   context: GPUCanvasContext;
   aspect: Signal<number>;
   center: Signal<Position>;
+  tilesBuffer: GPUBuffer;
 }) => {
   const pipeline = await createRenderPipeline({
     device,
     format,
     aspect,
     center,
+    tilesBuffer,
   });
 
   const render = () => {

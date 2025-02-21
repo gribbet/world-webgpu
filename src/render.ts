@@ -11,11 +11,13 @@ export const createRenderPipeline = async ({
   format,
   aspect,
   center,
+  tilesBuffer,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
   aspect: Signal<number>;
   center: Signal<Position>;
+  tilesBuffer: GPUBuffer;
 }) => {
   const module = device.createShaderModule({
     code: await (await fetch(new URL("./render.wgsl", import.meta.url))).text(),
@@ -79,17 +81,6 @@ export const createRenderPipeline = async ({
     device,
     GPUBufferUsage.INDEX,
     new Uint32Array(indices),
-  );
-
-  const tiles = new Array(2 ** z)
-    .fill(0)
-    .flatMap((_, x) =>
-      new Array(2 ** z).fill(0).flatMap((_, y) => [x, y, z, 0]),
-    );
-  const tilesBuffer = createBuffer(
-    device,
-    GPUBufferUsage.STORAGE,
-    new Uint32Array(tiles),
   );
 
   const centerBuffer = createBuffer(
