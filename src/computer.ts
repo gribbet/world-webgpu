@@ -23,7 +23,8 @@ export const createComputer = async ({
     computePipeline.encode(encoder);
     device.queue.submit([encoder.finish()]);
     await device.queue.onSubmittedWorkDone();
-    console.log(await computePipeline.read());
+    const tiles = await computePipeline.read();
+    console.log(JSON.stringify(tiles));
   };
 
   return { compute };
