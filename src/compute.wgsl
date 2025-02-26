@@ -23,12 +23,9 @@ fn area(points: array<vec2<f32>, 4>) -> f32 {
 @compute @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var stack: array<vec3<u32>, 1024>;
-    var index = 4u;
+    var index = 1u;
 
-    stack[0] = vec3<u32>(0, 0, 1);
-    stack[1] = vec3<u32>(1, 0, 1);
-    stack[2] = vec3<u32>(1, 1, 1);
-    stack[3] = vec3<u32>(0, 1, 1);
+    stack[0] = vec3<u32>(0, 0, 0);
 
     while (index > 0u) {
         index -= 1u;
@@ -52,7 +49,15 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        if (area(array(screen(a), screen(b), screen(c), screen(d))) > 0.1) {
+        let v0 = transform(tile_fixed(tile), center);
+        let v1 = transform(tile_fixed(vec3<u32>(tile.x + 1, tile.yz)), center);
+        let v2 = transform(tile_fixed(vec3<u32>(tile.x, tile.y + 1, tile.z)), center);
+
+        if (z > 1 && dot(vec3<f32>(0, 0, -1), normalize(cross(v1 - v0, v2 - v0))) > 0.0) {
+            continue;
+        }
+
+        if (z < 2 || area(array(screen(a), screen(b), screen(c), screen(d))) > 0.1) {
             stack[index] = vec3<u32>(2 * x, 2 * y, z + 1);
             index++;
             stack[index] = vec3<u32>(2 * x + 1, 2 * y, z + 1);
