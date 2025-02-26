@@ -21,8 +21,14 @@ export const createApp = async () => {
     );
   const tilesBuffer = createBuffer(
     device,
-    GPUBufferUsage.STORAGE,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
     new Uint32Array(tiles),
+  );
+
+  const countBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    new Uint32Array([0]),
   );
 
   const centerBuffer = createBuffer(
@@ -63,6 +69,7 @@ export const createApp = async () => {
     context,
     format,
     tilesBuffer,
+    countBuffer,
     centerBuffer,
     projectionBuffer,
   });
@@ -70,6 +77,7 @@ export const createApp = async () => {
   const computer = await createComputer({
     device,
     tilesBuffer,
+    countBuffer,
     centerBuffer,
     projectionBuffer,
   });
@@ -81,8 +89,8 @@ export const createApp = async () => {
     running = true;
     center.set([
       ((performance.now() / 1e2) % 360) - 180,
-      Math.sin(performance.now() / 1.1e4) * 85,
-      (-0.2 + 0.1 * Math.sin(performance.now() / 1e4)) * earthRadius,
+      Math.sin(performance.now() / 1.1e4) * 30,
+      (0.25 + 0.25 * Math.sin(performance.now() / 1e3)) * earthRadius,
     ]);
     renderer.render();
     await computer.compute();

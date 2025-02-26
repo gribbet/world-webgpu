@@ -1,11 +1,10 @@
-@group(0) @binding(0) var<storage, read> tiles: array<vec3<u32>>;
-@group(0) @binding(1) var<uniform> center: vec3<u32>;
-@group(0) @binding(2) var<uniform> projection: mat4x4<f32>;
-@group(0) @binding(3) var<storage, read_write> result: array<vec3<u32>>;
-@group(0) @binding(4) var<storage, read_write> count: atomic<u32>;
+@group(0) @binding(0) var<uniform> center: vec3<u32>;
+@group(0) @binding(1) var<uniform> projection: mat4x4<f32>;
+@group(0) @binding(2) var<storage, read_write> tiles: array<vec3<u32>>;
+@group(0) @binding(3) var<storage, read_write> count: atomic<u32>;
 
 fn clip(tile: vec3<u32>) -> vec4<f32> {
-    return projection * vec4<f32>(project(tile_fixed(tile), center), 1.); 
+    return projection * vec4<f32>(transform(tile_fixed(tile), center), 1.); 
 }
 
 fn screen(clip: vec4<f32>) -> vec2<f32> {
@@ -21,30 +20,50 @@ fn area(points: array<vec2<f32>, 4>) -> f32 {
     return 0.5 * abs(area);
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let id = global_id.x;
+    var stack: array<vec3<u32>, 1024>;
+    var index = 4u;
 
-    if (id > arrayLength(&tiles)) {
-        return;
+    stack[0] = vec3<u32>(0, 0, 1);
+    stack[1] = vec3<u32>(1, 0, 1);
+    stack[2] = vec3<u32>(1, 1, 1);
+    stack[3] = vec3<u32>(0, 1, 1);
+
+    while (index > 0u) {
+        index -= 1u;
+        let tile = stack[index];
+        let x = tile[0];
+        let y = tile[1];
+        let z = tile[2];
+
+
+        let a = clip(tile);
+        let b = clip(vec3<u32>(tile.x + 1, tile.yz));
+        let c = clip(vec3<u32>(tile.x + 1, tile.y + 1, tile.z));
+        let d = clip(vec3<u32>(tile.x, tile.y + 1, tile.z));
+
+        if ((a.x > a.w && b.x > b.w && c.x > c.w && d.x > d.w)
+            || (a.x < -a.w && b.x < -b.w && c.x < -c.w && d.x < -d.w)
+            || (a.y > a.w && b.y > b.w && c.y > c.w && d.y > d.w)
+            || (a.y < -a.w && b.y < -b.w && c.y < -c.w && d.y < -d.w)
+            || (a.z > a.w && b.z > b.w && c.z > c.w && d.z > d.w)
+            || (a.z < -a.w && b.z < -b.w && c.z < -c.w && d.z < -d.w)) {
+            continue;
+        }
+
+        if (area(array(screen(a), screen(b), screen(c), screen(d))) > 0.1) {
+            stack[index] = vec3<u32>(2 * x, 2 * y, z + 1);
+            index++;
+            stack[index] = vec3<u32>(2 * x + 1, 2 * y, z + 1);
+            index++;
+            stack[index] = vec3<u32>(2 * x + 1, 2 * y + 1, z + 1);
+            index++;
+            stack[index] = vec3<u32>(2 * x, 2 * y + 1, z + 1);
+            index++;
+            continue;
+        }
+
+        tiles[atomicAdd(&count, 1u)] = tile;
     }
-
-    let tile = tiles[id];
-
-    let a = clip(tile);
-    let b = clip(vec3<u32>(tile.x + 1, tile.yz));
-    let c = clip(vec3<u32>(tile.x + 1, tile.y + 1, tile.z));
-    let d = clip(vec3<u32>(tile.x, tile.y+1, tile.z));
-
-    if ((a.x > a.w && b.x > b.w && c.x > c.w && d.x > d.w)
-     || (a.x < -a.w && b.x < -b.w && c.x < -c.w && d.x < -d.w)
-     || (a.y > a.w && b.y > b.w && c.y > c.w && d.y > d.w)
-     || (a.y < -a.w && b.y < -b.w && c.y < -c.w && d.y < -d.w)
-     || (a.z > a.w && b.z > b.w && c.z > c.w && d.z > d.w)
-     || (a.z < -a.w && b.z < -b.w && c.z < -c.w && d.z < -d.w)) {
-        return;
-     } else {
-        let i = atomicAdd(&count, 1);
-        result[i] = tile;
-     }
 }

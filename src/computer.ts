@@ -3,17 +3,20 @@ import { createComputePipeline } from "./compute";
 export const createComputer = async ({
   device,
   tilesBuffer,
+  countBuffer,
   centerBuffer,
   projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
+  countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
   const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
+    countBuffer,
     centerBuffer,
     projectionBuffer,
   });
@@ -23,8 +26,7 @@ export const createComputer = async ({
     computePipeline.encode(encoder);
     device.queue.submit([encoder.finish()]);
     await device.queue.onSubmittedWorkDone();
-    const tiles = await computePipeline.read();
-    console.log(JSON.stringify(tiles));
+    await computePipeline.read();
   };
 
   return { compute };

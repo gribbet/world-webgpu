@@ -5,6 +5,7 @@ export const createRenderer = async ({
   context,
   format,
   tilesBuffer,
+  countBuffer,
   centerBuffer,
   projectionBuffer,
 }: {
@@ -12,6 +13,7 @@ export const createRenderer = async ({
   format: GPUTextureFormat;
   context: GPUCanvasContext;
   tilesBuffer: GPUBuffer;
+  countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
@@ -19,6 +21,7 @@ export const createRenderer = async ({
     device,
     format,
     tilesBuffer,
+    countBuffer,
     centerBuffer,
     projectionBuffer,
   });

@@ -151,7 +151,7 @@ fn tile_fixed(tile: vec3<u32>) -> vec3<u32> {
     return vec3<u32>(tile.xy * (ONE / (1u << tile.z)), ONE >> 1u);
 }
 
-fn project(vertex: vec3<u32>, center: vec3<u32>) -> vec3<f32> {
+fn transform(vertex: vec3<u32>, center: vec3<u32>) -> vec3<f32> {
     let c = geographic_from_fixed(center);
     let v = geographic_from_fixed(vertex);
 

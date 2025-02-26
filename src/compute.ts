@@ -3,11 +3,13 @@ import { createBuffer } from "./device";
 export const createComputePipeline = async ({
   device,
   tilesBuffer,
+  countBuffer,
   centerBuffer,
   projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
+  countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
@@ -25,18 +27,6 @@ export const createComputePipeline = async ({
     },
   });
 
-  const resultBuffer = createBuffer(
-    device,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array(1024 * 4),
-  );
-
-  const countBuffer = createBuffer(
-    device,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array([0]),
-  );
-
   const countReadBuffer = createBuffer(
     device,
     GPUBufferUsage.MAP_READ,
@@ -44,18 +34,17 @@ export const createComputePipeline = async ({
   );
 
   const buffer = device.createBuffer({
-    size: resultBuffer.size,
+    size: tilesBuffer.size,
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: centerBuffer } },
-      { binding: 2, resource: { buffer: projectionBuffer } },
-      { binding: 3, resource: { buffer: resultBuffer } },
-      { binding: 4, resource: { buffer: countBuffer } },
+      { binding: 0, resource: { buffer: centerBuffer } },
+      { binding: 1, resource: { buffer: projectionBuffer } },
+      { binding: 2, resource: { buffer: tilesBuffer } },
+      { binding: 3, resource: { buffer: countBuffer } },
     ],
   });
 
@@ -64,9 +53,9 @@ export const createComputePipeline = async ({
     const pass = encoder.beginComputePass();
     pass.setBindGroup(0, bindGroup);
     pass.setPipeline(pipeline);
-    pass.dispatchWorkgroups(64);
+    pass.dispatchWorkgroups(1);
     pass.end();
-    encoder.copyBufferToBuffer(resultBuffer, 0, buffer, 0, buffer.size);
+    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
     encoder.copyBufferToBuffer(
       countBuffer,
       0,

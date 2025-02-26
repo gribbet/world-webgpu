@@ -5,12 +5,14 @@ export const createRenderPipeline = async ({
   device,
   format,
   tilesBuffer,
+  countBuffer,
   centerBuffer,
   projectionBuffer,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
   tilesBuffer: GPUBuffer;
+  countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
@@ -84,8 +86,9 @@ export const createRenderPipeline = async ({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
       { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: centerBuffer } },
-      { binding: 2, resource: { buffer: projectionBuffer } },
+      { binding: 1, resource: { buffer: countBuffer } },
+      { binding: 2, resource: { buffer: centerBuffer } },
+      { binding: 3, resource: { buffer: projectionBuffer } },
     ],
   });
 
