@@ -7,17 +7,12 @@ fn clip(tile: vec3<u32>) -> vec4<f32> {
     return projection * vec4<f32>(transform(tile_fixed(tile), center), 1.); 
 }
 
-fn screen(clip: vec4<f32>) -> vec2<f32> {
-    return clip.xy / clip.w;
+fn screen(clip: vec4<f32>) -> vec3<f32> {
+    return clip.xyz / clip.w;
 }
 
-fn area(points: array<vec2<f32>, 4>) -> f32 {
-    var area = 0.0;
-    for (var i = 0; i < 4; i = i + 1) {
-        let j = (i + 1) % 4;
-        area += points[i].x * points[j].y - points[j].x * points[i].y;
-    }
-    return 0.5 * abs(area);
+fn area(points: array<vec3<f32>, 4>) -> f32 {
+    return length(cross(points[1] - points[0], points[2] - points[0]));
 }
 
 @compute @workgroup_size(1)
