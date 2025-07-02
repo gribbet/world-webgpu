@@ -76,9 +76,9 @@ export const createApp = async () => {
     if (running) return;
     running = true;
     center.set([
-      ((performance.now() / 1e4) % 360) - 180,
-      Math.sin(performance.now() / 1.1e5) * 85,
-      (0.5 - 0.4 * Math.sin(performance.now() / 1.2e3)) * earthRadius,
+      ((performance.now() / 1e3) % 360) - 180,
+      Math.sin(performance.now() / 1.1e4) * 85,
+      (0.5 - 0.3 * Math.sin(performance.now() / 1.2e3)) * earthRadius,
     ]);
     renderer.render();
     await computer.compute();

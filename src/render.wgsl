@@ -14,11 +14,17 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let tile = tiles[input.instance];
     let vertex = to_fixed(vec3<f32>(input.uv, 0.) / f32(1u << tile.z)) + tile_fixed(tile);
     output.position = projection * vec4<f32>(transform(vertex, center), 1.);
+    output.instance = input.instance;
     output.uv = input.uv;
     return output;
 }
 
+
 @fragment
 fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(textures, sample, input.uv, 0);
+    let tile = tiles[input.instance];
+    let downsample = tile.z;
+    let k = u32(pow(2., f32(downsample)));
+    let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
+    return textureSample(textures, sample, uv, 0);
 }

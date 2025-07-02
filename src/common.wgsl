@@ -17,7 +17,8 @@ struct VertexInput {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
+    @location(0) @interpolate(flat) instance: u32,
+    @location(1) uv: vec2<f32>,
 };
 
 fn geographic_from_mercator(v: vec3<f32>) -> vec3<f32> {
