@@ -4,6 +4,7 @@ import { createBuffer } from "./device";
 export const createRenderPipeline = async ({
   device,
   format,
+  sampleCount,
   tilesBuffer,
   countBuffer,
   centerBuffer,
@@ -11,6 +12,7 @@ export const createRenderPipeline = async ({
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
+  sampleCount: number;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
@@ -43,6 +45,9 @@ export const createRenderPipeline = async ({
       format: "depth24plus",
       depthWriteEnabled: true,
       depthCompare: "less",
+    },
+    multisample: {
+      count: sampleCount,
     },
     primitive: {
       topology: "triangle-strip",

@@ -22,25 +22,40 @@ export const createRenderer = async ({
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
+  const sampleCount = 4;
+
   const pipeline = await createRenderPipeline({
     device,
     format,
+    sampleCount,
     tilesBuffer,
     countBuffer,
     centerBuffer,
     projectionBuffer,
   });
 
-  const createDepth = (size: [number, number]) =>
+  const createRenderTexture = (size: [number, number]) =>
+    device.createTexture({
+      size,
+      sampleCount,
+      format,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+  let renderTexture = createRenderTexture([1, 1]);
+
+  const createDepthTexture = (size: [number, number]) =>
     device.createTexture({
       size,
       format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      sampleCount,
     });
 
-  let depth = createDepth([1, 1]);
+  let depthTexture = createDepthTexture([1, 1]);
 
-  size.use(([width, height]) => {
+  size.use(size => {
+    const [width, height] = size;
     const aspect = width / height;
     const fov = 60;
     const near = 1e-4;
@@ -52,26 +67,29 @@ export const createRenderer = async ({
       far,
     );
     device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-    depth = createDepth([width, height]);
+
+    renderTexture = createRenderTexture(size);
+    depthTexture = createDepthTexture(size);
   });
 
   const render = () => {
     const encoder = device.createCommandEncoder();
 
-    const view = context.getCurrentTexture().createView();
     const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view,
+          view: renderTexture.createView(),
+          resolveTarget: context.getCurrentTexture().createView(),
           loadOp: "clear",
           storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
         },
       ],
       depthStencilAttachment: {
-        view: depth.createView(),
+        view: depthTexture.createView(),
         depthLoadOp: "clear",
-        depthClearValue: 1.0,
         depthStoreOp: "store",
+        depthClearValue: 1.0,
       },
     });
     pipeline.encode(pass);
