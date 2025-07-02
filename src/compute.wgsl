@@ -52,7 +52,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        if (z < 2 || area(array(screen(a), screen(b), screen(c), screen(d))) > 0.1) {
+        if (z < 5 || (area(array(screen(a), screen(b), screen(c), screen(d))) > 0.2 && z < 12)) {
             stack[index] = vec3<u32>(2 * x, 2 * y, z + 1);
             index++;
             stack[index] = vec3<u32>(2 * x + 1, 2 * y, z + 1);
