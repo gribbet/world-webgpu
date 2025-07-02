@@ -12,7 +12,7 @@ import { createSignal } from "./signal";
 export const createApp = async () => {
   const center = createSignal<Position>([0, 0, 0]);
 
-  const { device, context, format, aspect } = await createCanvas();
+  const { device, context, format, size } = await createCanvas();
 
   const tiles = new Array(2 ** z)
     .fill(0)
@@ -51,23 +51,11 @@ export const createApp = async () => {
     ),
   );
 
-  aspect.use(aspect => {
-    const fov = 60;
-    const near = 1e-12;
-    const far = 1e-1;
-    const projection = mat4.perspective(
-      (fov / 180) * Math.PI,
-      aspect,
-      near,
-      far,
-    );
-    device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-  });
-
   const renderer = await createRenderer({
     device,
     context,
     format,
+    size,
     tilesBuffer,
     countBuffer,
     centerBuffer,
@@ -87,7 +75,6 @@ export const createApp = async () => {
     requestAnimationFrame(frame);
     if (running) return;
     running = true;
-    const z = 0.002;
     center.set([
       ((performance.now() / 1e4) % 360) - 180,
       Math.sin(performance.now() / 1.1e5) * 85,

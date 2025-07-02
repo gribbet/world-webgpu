@@ -1,17 +1,23 @@
 const PI = radians(180.);
 const ONE = 0xffffffff;
+const ONEF = 4294967295.;
 
 fn from_fixed(a: vec3<u32>) -> vec3<f32> {
-    return vec3<f32>(a) * (1.0 / 4294967295.0);
+    return vec3<f32>(a) * (1.0 / ONEF);
+} 
+
+fn to_fixed(a: vec3<f32>) -> vec3<u32> {
+    return vec3<u32>(a * ONEF);
 } 
 
 struct VertexInput {
-    @location(0) uv: vec2<f32>,
     @builtin(instance_index) instance: u32,
+    @location(0) uv: vec2<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
 };
 
 fn geographic_from_mercator(v: vec3<f32>) -> vec3<f32> {

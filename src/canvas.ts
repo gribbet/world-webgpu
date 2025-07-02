@@ -10,12 +10,12 @@ export const createCanvas = async () => {
   const canvas = document.createElement("canvas");
   document.body.appendChild(canvas);
 
-  const aspect = createSignal<number>(1);
+  const size = createSignal<[number, number]>([1, 1]);
   new ResizeObserver(([{ contentRect: { width, height } = {} } = {}]) => {
     if (width === undefined || height === undefined) return;
     canvas.width = width;
     canvas.height = height;
-    aspect.set(width / height);
+    size.set([width, height]);
   }).observe(canvas);
 
   const context = canvas.getContext("webgpu");
@@ -24,5 +24,5 @@ export const createCanvas = async () => {
   const format = gpu.getPreferredCanvasFormat();
   context.configure({ device, format });
 
-  return { device, context, format, aspect };
+  return { device, context, format, size };
 };

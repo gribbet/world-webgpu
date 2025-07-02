@@ -37,27 +37,25 @@ export const createRenderPipeline = async ({
     fragment: {
       module,
       entryPoint: "fragment",
-      targets: [
-        {
-          format,
-          blend: {
-            alpha: { operation: "max", srcFactor: "one", dstFactor: "one" },
-            color: { operation: "add", srcFactor: "src", dstFactor: "dst" },
-          },
-        },
-      ],
+      targets: [{ format }],
+    },
+    depthStencil: {
+      format: "depth24plus",
+      depthWriteEnabled: true,
+      depthCompare: "less",
     },
     primitive: {
-      topology: "line-list",
+      topology: "triangle-strip",
+      stripIndexFormat: "uint32",
     },
   });
 
-  const vertices = new Array(resolution)
+  const vertices = new Array(resolution + 1)
     .fill(0)
     .flatMap((_, x) =>
-      new Array(resolution)
+      new Array(resolution + 1)
         .fill(0)
-        .flatMap((_, y) => [x / (resolution - 1), y / (resolution - 1)]),
+        .flatMap((_, y) => [x / resolution, y / resolution]),
     );
   const verticesBuffer = createBuffer(
     device,
@@ -65,15 +63,17 @@ export const createRenderPipeline = async ({
     new Float32Array(vertices),
   );
 
-  const indices = new Array(resolution - 1).fill(0).flatMap((_, x) =>
-    new Array(resolution - 1).fill(0).flatMap((_, y) => {
-      const i = y * resolution + x;
+  const indices = new Array(resolution).fill(0).flatMap((_, x) =>
+    new Array(resolution).fill(0).flatMap((_, y) => {
+      const i = y * (resolution + 1) + x;
       return [
-        [i, i + 1],
-        [i + 1, i + resolution + 1],
-        [i + resolution + 1, i + resolution],
-        [i + resolution, i],
-      ].flat();
+        i,
+        i + (resolution + 1),
+        i + (resolution + 2),
+        i,
+        i + (resolution + 2),
+        i + 1,
+      ];
     }),
   );
   const indicesBuffer = createBuffer(
@@ -82,6 +82,38 @@ export const createRenderPipeline = async ({
     new Uint32Array(indices),
   );
 
+  const texturesArray = device.createTexture({
+    size: [256, 256, 256],
+    format: "rgba8unorm",
+    usage:
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
+  const textures = texturesArray.createView({
+    dimension: "2d-array",
+    arrayLayerCount: 256,
+  });
+
+  const response = await fetch(new URL("./0.jpg", import.meta.url).toString());
+  const blob = await response.blob();
+  const bitmap = await createImageBitmap(blob);
+
+  device.queue.copyExternalImageToTexture(
+    { source: bitmap, flipY: true },
+    {
+      texture: texturesArray,
+      origin: { x: 0, y: 0, z: 0 },
+    },
+    { width: 256, height: 256 },
+  );
+
+  const sampler = device.createSampler({
+    magFilter: "linear",
+    minFilter: "linear",
+  });
+
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
@@ -89,6 +121,8 @@ export const createRenderPipeline = async ({
       { binding: 1, resource: { buffer: countBuffer } },
       { binding: 2, resource: { buffer: centerBuffer } },
       { binding: 3, resource: { buffer: projectionBuffer } },
+      { binding: 4, resource: textures },
+      { binding: 5, resource: sampler },
     ],
   });
 
@@ -97,7 +131,7 @@ export const createRenderPipeline = async ({
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
     pass.setBindGroup(0, bindGroup);
-    pass.drawIndexed((resolution - 1) ** 2 * 2 * 2 * 2, 4 ** z);
+    pass.drawIndexed(resolution ** 2 * 6, 4 ** z);
   };
 
   return {
