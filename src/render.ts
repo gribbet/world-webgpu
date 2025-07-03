@@ -1,4 +1,4 @@
-import { resolution, z } from "./configuration";
+import { resolution } from "./configuration";
 import { createBuffer } from "./device";
 
 export const createRenderPipeline = async ({
@@ -50,8 +50,7 @@ export const createRenderPipeline = async ({
       count: sampleCount,
     },
     primitive: {
-      topology: "triangle-strip",
-      stripIndexFormat: "uint32",
+      topology: "line-list",
     },
   });
 
@@ -131,12 +130,12 @@ export const createRenderPipeline = async ({
     ],
   });
 
-  const encode = (pass: GPURenderPassEncoder) => {
+  const encode = (pass: GPURenderPassEncoder, count: number) => {
     pass.setPipeline(pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
     pass.setBindGroup(0, bindGroup);
-    pass.drawIndexed(resolution ** 2 * 6, 4 ** z);
+    pass.drawIndexed(resolution ** 2 * 6, count);
   };
 
   return {

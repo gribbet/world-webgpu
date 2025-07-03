@@ -72,7 +72,8 @@ export const createRenderer = async ({
     depthTexture = createDepthTexture(size);
   });
 
-  const render = () => {
+  const render = (count: number) => {
+    if (count === 0) return;
     const encoder = device.createCommandEncoder();
 
     const pass = encoder.beginRenderPass({
@@ -92,7 +93,7 @@ export const createRenderer = async ({
         depthClearValue: 1.0,
       },
     });
-    pipeline.encode(pass);
+    pipeline.encode(pass, count);
     pass.end();
 
     device.queue.submit([encoder.finish()]);

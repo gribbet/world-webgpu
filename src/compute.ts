@@ -82,7 +82,7 @@ export const createComputePipeline = async ({
             result[i * 4] ?? 0,
             result[i * 4 + 1] ?? 0,
             result[i * 4 + 2] ?? 0,
-          ] as const,
+          ] satisfies [number, number, number],
       );
     return tiles;
   };

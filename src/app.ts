@@ -2,7 +2,6 @@ import { mat4 } from "wgpu-matrix";
 
 import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
-import { z } from "./configuration";
 import { createBuffer } from "./device";
 import { earthRadius, fixed, mercator } from "./math";
 import type { Position } from "./model";
@@ -14,15 +13,11 @@ export const createApp = async () => {
 
   const { device, context, format, size } = await createCanvas();
 
-  const tiles = new Array(2 ** z)
-    .fill(0)
-    .flatMap((_, x) =>
-      new Array(2 ** z).fill(0).flatMap((_, y) => [x, y, z, 0]),
-    );
+  let tiles: [number, number, number][] = [[0, 0, 0]];
   const tilesBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array(tiles),
+    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0, 0, 0])),
   );
 
   const countBuffer = createBuffer(
@@ -78,10 +73,10 @@ export const createApp = async () => {
     center.set([
       (performance.now() / 1e2) % 360,
       -Math.sin(performance.now() / 1.1e4) * 85,
-      (0.8 - 0.3 * Math.sin(performance.now() / 1.2e4)) * earthRadius,
+      (0.5 - 0.4 * Math.sin(performance.now() / 1.2e3)) * earthRadius,
     ]);
-    renderer.render();
-    await computer.compute();
+    renderer.render(tiles.length);
+    tiles = await computer.compute();
     running = false;
   };
 
