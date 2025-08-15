@@ -114,6 +114,7 @@ export const createRenderPipeline = async ({
   });
 
   const encode = (pass: GPURenderPassEncoder, count: number) => {
+    if (count === 0) return;
     pass.setPipeline(pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");

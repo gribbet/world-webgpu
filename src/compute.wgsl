@@ -43,7 +43,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             (c1.x < -c1.w && c2.x < -c2.w && c3.x < -c3.w && c4.x < -c4.w) || //
             (c1.y > c1.w && c2.y > c2.w && c3.y > c3.w && c4.y > c4.w) || //
             (c1.y < -c1.w && c2.y < -c2.w && c3.y < -c3.w && c4.y < -c4.w) || //
-            (c1.z > c1.w && c2.z > c2.w && c3.z > c3.w && c4.z > c4.w) || //
             (c1.z < -c1.w && c2.z < -c2.w && c3.z < -c3.w && c4.z < -c4.w);
 
         if outside_frustum {

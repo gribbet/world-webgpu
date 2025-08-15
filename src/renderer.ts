@@ -2,7 +2,7 @@ import { mat4 } from "wgpu-matrix";
 
 import type { Vec3 } from "./model";
 import { createRenderPipeline } from "./render";
-import type { Signal } from "./signal";
+import { type Signal, useAll } from "./signal";
 
 export const createRenderer = async ({
   device,
@@ -63,12 +63,12 @@ export const createRenderer = async ({
 
   let depthTexture = createDepthTexture([1, 1]);
 
-  size.use(size => {
+  useAll([size, camera], (size, [, , z]) => {
     const [width, height] = size;
     const aspect = width / height;
     const fov = 60;
-    const near = 1e-4;
-    const far = 100;
+    const near = (z - 1) / 10;
+    const far = (z - 1) * 10;
     const projection = mat4.multiply(
       mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
       mat4.scaling([1, -1, 1]),
@@ -84,7 +84,6 @@ export const createRenderer = async ({
   );
 
   const render = async (count: number) => {
-    if (count === 0) return;
     const encoder = device.createCommandEncoder();
 
     const pass = encoder.beginRenderPass({
