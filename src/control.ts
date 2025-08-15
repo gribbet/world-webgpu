@@ -33,7 +33,7 @@ export const createControl = (element: HTMLElement, camera: Signal<Vec3>) => {
       const dy = y - lastY;
       dragging = [x, y];
 
-      const scale = 0.0005 * (cz - 1);
+      const scale = 0.0002 * (cz - 1);
       camera.set([cx - dx * scale, clamp(cy - dy * scale, -1, 1), cz]);
     },
     { signal },

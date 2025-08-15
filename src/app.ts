@@ -8,7 +8,7 @@ import { createSignal } from "./signal";
 import { createTileTextures } from "./tile-textures";
 
 export const createApp = async () => {
-  const camera = createSignal<Vec3>([0.25, 0.375, 2]);
+  const camera = createSignal<Vec3>([0.25, 0.5, 10]);
 
   const { canvas, device, context, format, size } = await createCanvas();
 
@@ -45,7 +45,8 @@ export const createApp = async () => {
     projectionBuffer,
   });
 
-  const textures = createTileTextures({
+  const tileTextures = createTileTextures({
+    urlPattern: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
     device,
     textureIndicesBuffer,
     texturesTexture,
@@ -58,7 +59,7 @@ export const createApp = async () => {
     running = true;
 
     const tiles = await computer.compute();
-    await textures.update(tiles);
+    await tileTextures.update(tiles);
     await renderer.render(tiles.length);
 
     running = false;

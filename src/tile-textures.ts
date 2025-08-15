@@ -1,23 +1,24 @@
 import QuickLRU from "quick-lru";
 
-import type { Texture } from "./texture";
 import { createTileCache } from "./tile-cache";
 import { createTileDownsampler } from "./tile-downsampler";
+import type { TileTexture } from "./tile-texture";
 
 export const createTileTextures = ({
+  urlPattern,
   device,
   textureIndicesBuffer,
   texturesTexture,
 }: {
+  urlPattern: string;
   device: GPUDevice;
   textureIndicesBuffer: GPUBuffer;
   texturesTexture: GPUTexture;
 }) => {
-  const urlPattern = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
   const tileCache = createTileCache({ device, urlPattern });
   const downsampler = createTileDownsampler(tileCache);
   const open = new Array(256).fill(0).map((_, i) => i);
-  const mapping = new QuickLRU<Texture, number>({
+  const mapping = new QuickLRU<TileTexture, number>({
     maxSize: 256,
     maxAge: 1000,
     onEviction: (_, index) => open.push(index),

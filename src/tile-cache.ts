@@ -1,7 +1,7 @@
 import type { Vec3 } from "./model";
-import type { Texture } from "./texture";
-import { createTexture } from "./texture";
 import { createTileIndexCache } from "./tile-index-cache";
+import type { TileTexture } from "./tile-texture";
+import { createTileTexture } from "./tile-texture";
 
 export type TileCache = ReturnType<typeof createTileCache>;
 
@@ -12,7 +12,7 @@ export const createTileCache = ({
   device: GPUDevice;
   urlPattern: string;
 }) => {
-  const tiles = createTileIndexCache<Texture>({
+  const tiles = createTileIndexCache<TileTexture>({
     maxSize: 2000,
     onEviction: (_, tile) => tile.destroy(),
   });
@@ -25,7 +25,7 @@ export const createTileCache = ({
     },
   });
 
-  const get: (xyz: Vec3) => Texture | undefined = xyz => {
+  const get: (xyz: Vec3) => TileTexture | undefined = xyz => {
     const cached = tiles.get(xyz);
     if (cached) {
       if (cached.loaded) {
@@ -39,7 +39,7 @@ export const createTileCache = ({
         .replace("{x}", `${x}`)
         .replace("{y}", `${y}`)
         .replace("{z}", `${z}`);
-      const texture = createTexture({
+      const texture = createTileTexture({
         device,
         url,
         onLoad: () => loading.delete(xyz),

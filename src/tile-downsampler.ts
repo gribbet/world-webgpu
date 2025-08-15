@@ -1,9 +1,9 @@
 import type { Vec3 } from "./model";
-import type { Texture } from "./texture";
 import type { TileCache } from "./tile-cache";
+import type { TileTexture } from "./tile-texture";
 
 export type DownsampledTile = {
-  texture: Texture;
+  texture: TileTexture;
   downsample: number;
 };
 

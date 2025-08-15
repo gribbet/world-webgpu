@@ -1,8 +1,8 @@
 import { createImageLoad } from "./image-load";
 
-export type Texture = ReturnType<typeof createTexture>;
+export type TileTexture = ReturnType<typeof createTileTexture>;
 
-export const createTexture = ({
+export const createTileTexture = ({
   device,
   url,
   onLoad,
