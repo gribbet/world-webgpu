@@ -1,5 +1,6 @@
 import { mat4 } from "wgpu-matrix";
 
+import type { Vec3 } from "./model";
 import { createRenderPipeline } from "./render";
 import type { Signal } from "./signal";
 
@@ -8,6 +9,7 @@ export const createRenderer = async ({
   context,
   format,
   size,
+  camera,
   tilesBuffer,
   countBuffer,
   cameraBuffer,
@@ -19,6 +21,7 @@ export const createRenderer = async ({
   format: GPUTextureFormat;
   context: GPUCanvasContext;
   size: Signal<[number, number]>;
+  camera: Signal<Vec3>;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
   cameraBuffer: GPUBuffer;
@@ -75,6 +78,10 @@ export const createRenderer = async ({
     renderTexture = createRenderTexture(size);
     depthTexture = createDepthTexture(size);
   });
+
+  camera.use(camera =>
+    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera)),
+  );
 
   const render = async (count: number) => {
     if (count === 0) return;
