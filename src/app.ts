@@ -54,24 +54,20 @@ export const createApp = async () => {
     texturesTexture,
   });
 
-  let destroyed = false;
-  let running = false;
+  let running = true;
   const frame = async () => {
-    if (destroyed) return;
-    requestAnimationFrame(frame);
-    if (running) return;
-    running = true;
+    if (!running) return;
 
     const tiles = await computer.compute();
     await tileTextures.update(tiles);
     await renderer.render(tiles.length);
 
-    running = false;
+    requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
 
   const destroy = () => {
-    destroyed = true;
+    running = false;
     tileTextures.destroy();
     computer.destroy();
     renderer.destroy();
