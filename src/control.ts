@@ -51,11 +51,7 @@ export const createControl = (element: HTMLElement, camera: Signal<Vec3>) => {
     "wheel",
     event => {
       event.preventDefault();
-      camera.set([
-        cx,
-        cy,
-        1 + clamp((cz - 1) * Math.exp(event.deltaY * 0.001), 0.0001, 5),
-      ]);
+      camera.set([cx, cy, 1 + (cz - 1) * Math.exp(event.deltaY * 0.001)]);
     },
     { passive: false, signal },
   );

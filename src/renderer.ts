@@ -65,7 +65,7 @@ export const createRenderer = async ({
     const aspect = width / height;
     const fov = 60;
     const near = 1e-4;
-    const far = 10;
+    const far = 100;
     const projection = mat4.multiply(
       mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
       mat4.scaling([1, -1, 1]),
