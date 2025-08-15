@@ -4,20 +4,20 @@ export const createComputer = async ({
   device,
   tilesBuffer,
   countBuffer,
-  centerBuffer,
+  cameraBuffer,
   projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  centerBuffer: GPUBuffer;
+  cameraBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
   const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
+    cameraBuffer,
     projectionBuffer,
   });
 

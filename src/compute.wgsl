@@ -1,4 +1,4 @@
-@group(0) @binding(0) var<uniform> center: vec3<f32>;
+@group(0) @binding(0) var<uniform> camera: vec3<f32>;
 @group(0) @binding(1) var<uniform> projection: mat4x4<f32>;
 @group(0) @binding(2) var<storage, read_write> tiles: array<vec3<u32>>;
 @group(0) @binding(3) var<storage, read_write> count: atomic<u32>;
@@ -8,7 +8,7 @@ fn clip(v: vec3<f32>) -> vec4<f32> {
 }
 
 fn world(v: vec3<f32>) -> vec3<f32> {
-    return transform(v, center);
+    return transform(v, camera);
 }
 
 fn screen(v: vec4<f32>) -> vec3<f32> {

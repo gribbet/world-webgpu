@@ -1,10 +1,10 @@
 import type { Vec3 } from "./model";
 import type { Signal } from "./signal";
 
-export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
+export const createControl = (element: HTMLElement, camera: Signal<Vec3>) => {
   let [cx, cy, cz] = [0, 0, 0];
 
-  center.use(_ => {
+  camera.use(_ => {
     [cx, cy, cz] = _;
   });
 
@@ -34,7 +34,7 @@ export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
       dragging = [x, y];
 
       const scale = 0.0005 * (cz - 1);
-      center.set([cx - dx * scale, clamp(cy - dy * scale, -1, 1), cz]);
+      camera.set([cx - dx * scale, clamp(cy - dy * scale, -1, 1), cz]);
     },
     { signal },
   );
@@ -51,7 +51,7 @@ export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
     "wheel",
     event => {
       event.preventDefault();
-      center.set([
+      camera.set([
         cx,
         cy,
         1 + clamp((cz - 1) * Math.exp(event.deltaY * 0.001), 0.0001, 5),

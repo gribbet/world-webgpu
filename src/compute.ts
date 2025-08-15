@@ -4,13 +4,13 @@ export const createComputePipeline = async ({
   device,
   tilesBuffer,
   countBuffer,
-  centerBuffer,
+  cameraBuffer,
   projectionBuffer,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  centerBuffer: GPUBuffer;
+  cameraBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
 }) => {
   const module = device.createShaderModule({
@@ -41,7 +41,7 @@ export const createComputePipeline = async ({
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: centerBuffer } },
+      { binding: 0, resource: { buffer: cameraBuffer } },
       { binding: 1, resource: { buffer: projectionBuffer } },
       { binding: 2, resource: { buffer: tilesBuffer } },
       { binding: 3, resource: { buffer: countBuffer } },

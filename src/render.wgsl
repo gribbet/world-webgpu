@@ -1,6 +1,6 @@
 @group(0) @binding(0) var<storage, read> tiles: array<vec3<u32>>;
 @group(0) @binding(1) var<storage, read> count: u32;
-@group(0) @binding(2) var<uniform> center: vec3<f32>;
+@group(0) @binding(2) var<uniform> camera: vec3<f32>;
 @group(0) @binding(3) var<uniform> projection: mat4x4<f32>;
 @group(0) @binding(4) var<storage, read> texture_indices: array<vec2<u32>>;
 @group(0) @binding(5) var textures: texture_2d_array<f32>;
@@ -14,7 +14,7 @@ fn vertex(input: VertexInput) -> VertexOutput {
     }
     let tile = tiles[input.instance];
     let vertex = vec3<f32>(input.uv, 0.) / f32(1u << tile.z) + tile_vertex(tile);
-    output.position = projection * vec4<f32>(transform(vertex, center), 1.);
+    output.position = projection * vec4<f32>(transform(vertex, camera), 1.);
     output.instance = input.instance;
     output.uv = input.uv;
     return output;

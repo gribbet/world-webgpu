@@ -10,7 +10,7 @@ export const createRenderer = async ({
   size,
   tilesBuffer,
   countBuffer,
-  centerBuffer,
+  cameraBuffer,
   projectionBuffer,
   textureIndicesBuffer,
   texturesTexture,
@@ -21,7 +21,7 @@ export const createRenderer = async ({
   size: Signal<[number, number]>;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  centerBuffer: GPUBuffer;
+  cameraBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   textureIndicesBuffer: GPUBuffer;
   texturesTexture: GPUTexture;
@@ -34,7 +34,7 @@ export const createRenderer = async ({
     sampleCount,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
+    cameraBuffer,
     projectionBuffer,
     textureIndicesBuffer,
     texturesTexture,

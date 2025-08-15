@@ -10,11 +10,11 @@ import { createSignal } from "./signal";
 import { createTileTextures } from "./tile-textures";
 
 export const createApp = async () => {
-  const center = createSignal<Position>([0.25, 0.375, 2]);
+  const camera = createSignal<Position>([0.25, 0.375, 2]);
 
   const { canvas, device, context, format, size } = await createCanvas();
 
-  createControl(canvas, center);
+  createControl(canvas, camera);
 
   let tiles: [number, number, number][] = [[0, 0, 0]];
   const tilesBuffer = createBuffer(
@@ -29,7 +29,7 @@ export const createApp = async () => {
     new Uint32Array([0]),
   );
 
-  const centerBuffer = createBuffer(
+  const cameraBuffer = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
     new Float32Array([0, 0, 0]),
@@ -56,8 +56,8 @@ export const createApp = async () => {
       GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
-  center.use(center =>
-    device.queue.writeBuffer(centerBuffer, 0, new Float32Array(center)),
+  camera.use(camera =>
+    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera)),
   );
 
   const renderer = await createRenderer({
@@ -67,7 +67,7 @@ export const createApp = async () => {
     size,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
+    cameraBuffer,
     projectionBuffer,
     textureIndicesBuffer,
     texturesTexture,
@@ -77,7 +77,7 @@ export const createApp = async () => {
     device,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
+    cameraBuffer,
     projectionBuffer,
   });
 

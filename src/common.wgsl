@@ -36,9 +36,9 @@ fn cartesian_from_mercator(v: vec3<f32>) -> vec3<f32> {
     return cartesian_from_geographic(geographic_from_mercator(v));
 }
 
-fn transform(vertex: vec3<f32>, center: vec3<f32>) -> vec3<f32> {
+fn transform(vertex: vec3<f32>, camera: vec3<f32>) -> vec3<f32> {
     let v = cartesian_from_mercator(vertex);
-    let c = cartesian_from_mercator(center);
+    let c = cartesian_from_mercator(camera);
 
     let z = normalize(c);
     let x = normalize(cross(vec3<f32>(0., 0., 1.), z));
