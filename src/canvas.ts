@@ -24,5 +24,5 @@ export const createCanvas = async () => {
   const format = gpu.getPreferredCanvasFormat();
   context.configure({ device, format });
 
-  return { device, context, format, size };
+  return { canvas, device, context, format, size };
 };

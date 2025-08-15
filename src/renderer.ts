@@ -12,6 +12,8 @@ export const createRenderer = async ({
   countBuffer,
   centerBuffer,
   projectionBuffer,
+  textureIndicesBuffer,
+  texturesTexture,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
@@ -21,6 +23,8 @@ export const createRenderer = async ({
   countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
+  textureIndicesBuffer: GPUBuffer;
+  texturesTexture: GPUTexture;
 }) => {
   const sampleCount = 4;
 
@@ -32,6 +36,8 @@ export const createRenderer = async ({
     countBuffer,
     centerBuffer,
     projectionBuffer,
+    textureIndicesBuffer,
+    texturesTexture,
   });
 
   const createRenderTexture = (size: [number, number]) =>
@@ -60,11 +66,9 @@ export const createRenderer = async ({
     const fov = 60;
     const near = 1e-4;
     const far = 10;
-    const projection = mat4.perspective(
-      (fov / 180) * Math.PI,
-      aspect,
-      near,
-      far,
+    const projection = mat4.multiply(
+      mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
+      mat4.scaling([1, -1, 1]),
     );
     device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
 
@@ -72,7 +76,7 @@ export const createRenderer = async ({
     depthTexture = createDepthTexture(size);
   });
 
-  const render = (count: number) => {
+  const render = async (count: number) => {
     if (count === 0) return;
     const encoder = device.createCommandEncoder();
 
@@ -96,7 +100,9 @@ export const createRenderer = async ({
     pipeline.encode(pass, count);
     pass.end();
 
-    device.queue.submit([encoder.finish()]);
+    const { queue } = device;
+    queue.submit([encoder.finish()]);
+    await queue.onSubmittedWorkDone();
   };
 
   return { render };

@@ -2,16 +2,20 @@ import { mat4 } from "wgpu-matrix";
 
 import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
+import { createControl } from "./control";
 import { createBuffer } from "./device";
 import { earthRadius, fixed, mercator } from "./math";
 import type { Position } from "./model";
 import { createRenderer } from "./renderer";
 import { createSignal } from "./signal";
+import { createTileTextures } from "./tile-textures";
 
 export const createApp = async () => {
-  const center = createSignal<Position>([0, 0, 0]);
+  const center = createSignal<Position>([0, 0, earthRadius]);
 
-  const { device, context, format, size } = await createCanvas();
+  const { canvas, device, context, format, size } = await createCanvas();
+
+  createControl(canvas, center);
 
   let tiles: [number, number, number][] = [[0, 0, 0]];
   const tilesBuffer = createBuffer(
@@ -38,6 +42,21 @@ export const createApp = async () => {
     new Float32Array(mat4.identity()),
   );
 
+  const textureIndicesBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
+  );
+
+  const texturesTexture = device.createTexture({
+    size: [256, 256, 256],
+    format: "rgba8unorm",
+    usage:
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
   center.use(center =>
     device.queue.writeBuffer(
       centerBuffer,
@@ -55,6 +74,8 @@ export const createApp = async () => {
     countBuffer,
     centerBuffer,
     projectionBuffer,
+    textureIndicesBuffer,
+    texturesTexture,
   });
 
   const computer = await createComputer({
@@ -65,20 +86,23 @@ export const createApp = async () => {
     projectionBuffer,
   });
 
+  const textures = createTileTextures({
+    device,
+    textureIndicesBuffer,
+    texturesTexture,
+  });
+
   let running = false;
   const frame = async () => {
     requestAnimationFrame(frame);
     if (running) return;
     running = true;
-    center.set([
-      (performance.now() / 1e2) % 360,
-      -Math.sin(performance.now() / 1.1e4) * 85,
-      (0.5 - 0.4 * Math.sin(performance.now() / 1.2e3)) * earthRadius,
-    ]);
-    renderer.render(tiles.length);
+
     tiles = await computer.compute();
+    await textures.update(tiles);
+    await renderer.render(tiles.length);
+
     running = false;
   };
-
   requestAnimationFrame(frame);
 };

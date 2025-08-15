@@ -2,8 +2,9 @@
 @group(0) @binding(1) var<storage, read> count: u32;
 @group(0) @binding(2) var<uniform> center: vec3<u32>;
 @group(0) @binding(3) var<uniform> projection: mat4x4<f32>;
-@group(0) @binding(4) var textures: texture_2d_array<f32>;
-@group(0) @binding(5) var sample: sampler;
+@group(0) @binding(4) var<storage, read> texture_indices: array<vec2<u32>>;
+@group(0) @binding(5) var textures: texture_2d_array<f32>;
+@group(0) @binding(6) var sample: sampler;
 
 @vertex
 fn vertex(input: VertexInput) -> VertexOutput {
@@ -22,9 +23,11 @@ fn vertex(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
-    let tile = tiles[input.instance];
-    let downsample = tile.z;
+    let i = input.instance;
+    let tile = tiles[i];
+    let index = texture_indices[i].x;
+    let downsample = texture_indices[i].y;
     let k = u32(pow(2., f32(downsample)));
     let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
-    return textureSample(textures, sample, uv, 0);
+    return textureSample(textures, sample, uv, index);
 }

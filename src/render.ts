@@ -9,6 +9,8 @@ export const createRenderPipeline = async ({
   countBuffer,
   centerBuffer,
   projectionBuffer,
+  textureIndicesBuffer,
+  texturesTexture,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
@@ -17,6 +19,8 @@ export const createRenderPipeline = async ({
   countBuffer: GPUBuffer;
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
+  textureIndicesBuffer: GPUBuffer;
+  texturesTexture: GPUTexture;
 }) => {
   const module = device.createShaderModule({
     code:
@@ -50,7 +54,7 @@ export const createRenderPipeline = async ({
       count: sampleCount,
     },
     primitive: {
-      topology: "line-list",
+      topology: "triangle-list",
     },
   });
 
@@ -86,32 +90,10 @@ export const createRenderPipeline = async ({
     new Uint32Array(indices),
   );
 
-  const texturesArray = device.createTexture({
-    size: [256, 256, 256],
-    format: "rgba8unorm",
-    usage:
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST |
-      GPUTextureUsage.RENDER_ATTACHMENT,
-  });
-
-  const textures = texturesArray.createView({
+  const textures = texturesTexture.createView({
     dimension: "2d-array",
     arrayLayerCount: 256,
   });
-
-  const response = await fetch(new URL("./0.jpg", import.meta.url).toString());
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
-
-  device.queue.copyExternalImageToTexture(
-    { source: bitmap, flipY: true },
-    {
-      texture: texturesArray,
-      origin: { x: 0, y: 0, z: 0 },
-    },
-    { width: 256, height: 256 },
-  );
 
   const sampler = device.createSampler({
     magFilter: "linear",
@@ -125,8 +107,9 @@ export const createRenderPipeline = async ({
       { binding: 1, resource: { buffer: countBuffer } },
       { binding: 2, resource: { buffer: centerBuffer } },
       { binding: 3, resource: { buffer: projectionBuffer } },
-      { binding: 4, resource: textures },
-      { binding: 5, resource: sampler },
+      { binding: 4, resource: { buffer: textureIndicesBuffer } },
+      { binding: 5, resource: textures },
+      { binding: 6, resource: sampler },
     ],
   });
 

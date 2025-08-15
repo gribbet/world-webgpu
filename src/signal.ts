@@ -1,7 +1,4 @@
-export type Signal<T> = {
-  set: (_: T) => void;
-  use: (_: (_: T) => void) => void;
-};
+export type Signal<T> = ReturnType<typeof createSignal<T>>;
 
 export const createSignal = <T>(value: T) => {
   type Handler = (_: T) => void;
@@ -25,5 +22,5 @@ export const createSignal = <T>(value: T) => {
   return {
     set,
     use,
-  } satisfies Signal<T>;
+  };
 };
