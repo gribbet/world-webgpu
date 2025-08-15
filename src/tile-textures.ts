@@ -50,5 +50,10 @@ export const createTileTextures = ({
     await queue.onSubmittedWorkDone();
   };
 
-  return { update };
+  const destroy = () => {
+    tileCache.destroy();
+    mapping.clear();
+  };
+
+  return { update, destroy };
 };

@@ -29,5 +29,7 @@ export const createComputer = async ({
     return await computePipeline.read();
   };
 
-  return { compute };
+  const { destroy } = computePipeline;
+
+  return { compute, destroy };
 };

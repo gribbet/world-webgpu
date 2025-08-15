@@ -2,17 +2,19 @@ import { createBuffers } from "./buffers";
 import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
 import { createControl } from "./control";
-import type { Vec3 } from "./model";
 import { createRenderer } from "./renderer";
-import { createSignal } from "./signal";
 import { createTileTextures } from "./tile-textures";
 
+const urlPattern = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
+
 export const createApp = async () => {
-  const camera = createSignal<Vec3>([0.25, 0.5, 10]);
+  const canvas = await createCanvas();
 
-  const { canvas, device, context, format, size } = await createCanvas();
+  const { element, device, context, format, size } = canvas;
 
-  createControl(canvas, camera);
+  const control = createControl(element);
+
+  const { camera } = control;
 
   const {
     cameraBuffer,
@@ -46,14 +48,16 @@ export const createApp = async () => {
   });
 
   const tileTextures = createTileTextures({
-    urlPattern: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
+    urlPattern,
     device,
     textureIndicesBuffer,
     texturesTexture,
   });
 
+  let destroyed = false;
   let running = false;
   const frame = async () => {
+    if (destroyed) return;
     requestAnimationFrame(frame);
     if (running) return;
     running = true;
@@ -65,4 +69,15 @@ export const createApp = async () => {
     running = false;
   };
   requestAnimationFrame(frame);
+
+  const destroy = () => {
+    destroyed = true;
+    tileTextures.destroy();
+    computer.destroy();
+    renderer.destroy();
+    control.destroy();
+    canvas.destroy();
+  };
+
+  return { destroy };
 };

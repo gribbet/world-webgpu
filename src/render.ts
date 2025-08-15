@@ -122,7 +122,13 @@ export const createRenderPipeline = async ({
     pass.drawIndexed(resolution ** 2 * 6, count);
   };
 
+  const destroy = () => {
+    verticesBuffer.destroy();
+    indicesBuffer.destroy();
+  };
+
   return {
     encode,
+    destroy,
   };
 };

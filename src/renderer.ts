@@ -63,7 +63,8 @@ export const createRenderer = async ({
 
   let depthTexture = createDepthTexture([1, 1]);
 
-  useAll([size, camera], (size, [, , z]) => {
+  const unsubscribe = useAll([size, camera], (size, camera) => {
+    const [, , z] = camera;
     const [width, height] = size;
     const aspect = width / height;
     const fov = 45;
@@ -74,14 +75,10 @@ export const createRenderer = async ({
       mat4.scaling([1, -1, 1]),
     );
     device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-
-    renderTexture = createRenderTexture(size);
+    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera)),
+      (renderTexture = createRenderTexture(size));
     depthTexture = createDepthTexture(size);
   });
-
-  camera.use(camera =>
-    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera)),
-  );
 
   const render = async (count: number) => {
     const encoder = device.createCommandEncoder();
@@ -111,5 +108,12 @@ export const createRenderer = async ({
     await queue.onSubmittedWorkDone();
   };
 
-  return { render };
+  const destroy = () => {
+    unsubscribe();
+    pipeline.destroy();
+    renderTexture.destroy();
+    depthTexture.destroy();
+  };
+
+  return { render, destroy };
 };

@@ -87,8 +87,14 @@ export const createComputePipeline = async ({
     return tiles;
   };
 
+  const destroy = () => {
+    countReadBuffer.destroy();
+    buffer.destroy();
+  };
+
   return {
     encode,
     read,
+    destroy,
   };
 };

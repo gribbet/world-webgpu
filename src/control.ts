@@ -1,7 +1,9 @@
 import type { Vec3 } from "./model";
-import type { Signal } from "./signal";
+import { createSignal } from "./signal";
 
-export const createControl = (element: HTMLElement, camera: Signal<Vec3>) => {
+export const createControl = (element: HTMLElement) => {
+  const camera = createSignal<Vec3>([0.25, 0.5, 10]);
+
   let [cx, cy, cz] = [0, 0, 0];
 
   camera.use(_ => {
@@ -58,5 +60,5 @@ export const createControl = (element: HTMLElement, camera: Signal<Vec3>) => {
 
   const destroy = () => abortController.abort();
 
-  return { destroy };
+  return { camera, destroy };
 };
