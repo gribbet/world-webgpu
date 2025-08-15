@@ -13,7 +13,7 @@ struct VertexOutput {
 
 
 fn tile_vertex(tile: vec3<u32>) -> vec3<f32> {
-    return vec3<f32>(vec2<f32>(tile.xy) / f32(1u << tile.z), 0.5);
+    return vec3<f32>(vec2<f32>(tile.xy) / f32(1u << tile.z), 1.);
 }
 
 fn geographic_from_mercator(v: vec3<f32>) -> vec3<f32> {

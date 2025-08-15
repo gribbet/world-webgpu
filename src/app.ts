@@ -4,14 +4,13 @@ import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
 import { createControl } from "./control";
 import { createBuffer } from "./device";
-import { earthRadius, mercator } from "./math";
 import type { Position } from "./model";
 import { createRenderer } from "./renderer";
 import { createSignal } from "./signal";
 import { createTileTextures } from "./tile-textures";
 
 export const createApp = async () => {
-  const center = createSignal<Position>([0, 0, earthRadius]);
+  const center = createSignal<Position>([0.25, 0.375, 2]);
 
   const { canvas, device, context, format, size } = await createCanvas();
 
@@ -58,11 +57,7 @@ export const createApp = async () => {
   });
 
   center.use(center =>
-    device.queue.writeBuffer(
-      centerBuffer,
-      0,
-      new Float32Array(mercator(center)),
-    ),
+    device.queue.writeBuffer(centerBuffer, 0, new Float32Array(center)),
   );
 
   const renderer = await createRenderer({

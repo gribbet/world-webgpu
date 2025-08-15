@@ -1,11 +1,7 @@
-import { earthRadius } from "./math";
 import type { Vec3 } from "./model";
 import type { Signal } from "./signal";
 
 export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
-  const maxZ = 0.0001 * earthRadius;
-  const minZ = 5 * earthRadius;
-
   let [cx, cy, cz] = [0, 0, 0];
 
   center.use(_ => {
@@ -37,11 +33,8 @@ export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
       const dy = y - lastY;
       dragging = [x, y];
 
-      center.set([
-        cx - dx * 0.1 * (cz / earthRadius),
-        clamp(cy + dy * 0.1 * (cz / earthRadius), -85, 85),
-        cz,
-      ]);
+      const scale = 0.0005 * (cz - 1);
+      center.set([cx - dx * scale, clamp(cy - dy * scale, -1, 1), cz]);
     },
     { signal },
   );
@@ -61,7 +54,7 @@ export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
       center.set([
         cx,
         cy,
-        clamp(cz * Math.exp(event.deltaY * 0.001), maxZ, minZ),
+        1 + clamp((cz - 1) * Math.exp(event.deltaY * 0.001), 0.0001, 5),
       ]);
     },
     { passive: false, signal },
