@@ -1,0 +1,40 @@
+import createImageLoadWorker from "./image-load-worker?worker&inline";
+
+const worker = createImageLoadWorker();
+
+export type ImageLoad = ReturnType<typeof createImageLoad>;
+
+export const createImageLoad = ({
+  url,
+  onLoad,
+}: {
+  url: string;
+  onLoad: (image: ImageBitmap | undefined) => void;
+}) => {
+  let loaded = false;
+
+  const handler = ({ data }: MessageEvent) => {
+    if (canceled || url !== data.url) return;
+    worker.removeEventListener("message", handler);
+    if (!data.image) return;
+    loaded = true;
+    onLoad(data.image);
+  };
+  worker.addEventListener("message", handler);
+
+  let canceled = false;
+  const cancel = () => {
+    if (loaded) return;
+    canceled = true;
+    worker.postMessage(["cancel", url]);
+  };
+
+  worker.postMessage(["load", url]);
+
+  return {
+    get loaded() {
+      return loaded;
+    },
+    cancel,
+  };
+};
