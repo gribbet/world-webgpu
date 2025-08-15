@@ -3,8 +3,8 @@ import type { Vec3 } from "./model";
 import type { Signal } from "./signal";
 
 export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
-  const Z_MIN = 0.001 * earthRadius;
-  const Z_MAX = earthRadius;
+  const maxZ = 0.0001 * earthRadius;
+  const minZ = 5 * earthRadius;
 
   let [cx, cy, cz] = [0, 0, 0];
 
@@ -61,7 +61,7 @@ export const createControl = (element: HTMLElement, center: Signal<Vec3>) => {
       center.set([
         cx,
         cy,
-        clamp(cz * Math.exp(event.deltaY * 0.001), Z_MIN, Z_MAX),
+        clamp(cz * Math.exp(event.deltaY * 0.001), maxZ, minZ),
       ]);
     },
     { passive: false, signal },

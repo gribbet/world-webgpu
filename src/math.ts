@@ -9,7 +9,3 @@ export const mercator = ([longitude, latitude, altitude]: Position) => {
   const z = (altitude + earthRadius) / (2 * earthRadius);
   return [x, y, z] satisfies Vec3;
 };
-
-const one = 2 ** 32 - 1;
-export const fixed = ([x, y, z]: Vec3) =>
-  [x * one, y * one, z * one] satisfies Vec3;

@@ -4,7 +4,7 @@ import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
 import { createControl } from "./control";
 import { createBuffer } from "./device";
-import { earthRadius, fixed, mercator } from "./math";
+import { earthRadius, mercator } from "./math";
 import type { Position } from "./model";
 import { createRenderer } from "./renderer";
 import { createSignal } from "./signal";
@@ -33,7 +33,7 @@ export const createApp = async () => {
   const centerBuffer = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
-    new Uint32Array([0, 0, 0]),
+    new Float32Array([0, 0, 0]),
   );
 
   const projectionBuffer = createBuffer(
@@ -61,7 +61,7 @@ export const createApp = async () => {
     device.queue.writeBuffer(
       centerBuffer,
       0,
-      new Uint32Array(fixed(mercator(center))),
+      new Float32Array(mercator(center)),
     ),
   );
 
