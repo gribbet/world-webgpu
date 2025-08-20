@@ -11,18 +11,17 @@ export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
   const queue = (texture: GPUTexture, source: ImageBitmap) =>
     new Promise<void>(resolve => queued.push({ texture, source, resolve }));
 
-  const process = async ({ texture, source, resolve }: Entry) => {
+  const process = ({ texture, source, resolve }: Entry) => {
     const { width, height } = source;
     device.queue.copyExternalImageToTexture(
       { source },
       { texture },
       { width, height },
     );
-    await device.queue.onSubmittedWorkDone();
-    resolve();
+    void device.queue.onSubmittedWorkDone().then(resolve);
   };
 
-  const load = () => Promise.all(queued.splice(0, 8).map(process));
+  const load = () => queued.splice(0, 8).map(process);
 
   return {
     queue,

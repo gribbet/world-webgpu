@@ -3,6 +3,8 @@ import type { TextureLoader } from "./texture-loader";
 import { createTextureMap } from "./texture-map";
 import { createTileCache } from "./tile-cache";
 
+export type TileTextures = ReturnType<typeof createTileTextures>;
+
 export const createTileTextures = ({
   urlPattern,
   device,
@@ -37,11 +39,10 @@ export const createTileTextures = ({
     }
   };
 
-  const update = async (tiles: [number, number, number][]) => {
+  const update = (tiles: [number, number, number][]) => {
     const data = tiles.flatMap(_ => get(_) ?? [0, 0]);
     const { queue } = device;
     queue.writeBuffer(textureIndicesBuffer, 0, new Uint32Array(data));
-    await queue.onSubmittedWorkDone();
   };
 
   const destroy = () => {

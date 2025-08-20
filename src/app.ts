@@ -1,83 +1,33 @@
-import { createBuffers } from "./buffers";
-import { createCanvas } from "./canvas";
-import { createComputer } from "./computer";
+import { createContext } from "./context";
 import { createControl } from "./control";
-import { createRenderer } from "./renderer";
-import { createTextureLoader } from "./texture-loader";
-import { createTileTextures } from "./tile-textures";
-
-const urlPattern = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
+import { createTerrain } from "./terrain";
+import { createWorld } from "./world";
 
 export const createApp = async () => {
-  const canvas = await createCanvas();
+  const element = document.createElement("canvas");
+  document.body.appendChild(element);
 
-  const { element, device, context, format, size } = canvas;
+  const context = await createContext(element);
 
   const control = createControl(element);
 
   const { camera } = control;
 
-  const {
-    cameraBuffer,
-    projectionBuffer,
-    tilesBuffer,
-    countBuffer,
-    textureIndicesBuffer,
-    textures,
-  } = createBuffers(device);
-
-  const renderer = await createRenderer({
-    device,
-    context,
-    format,
-    size,
+  const urlPattern = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
+  const terrain = await createTerrain(context, {
     camera,
-    tilesBuffer,
-    countBuffer,
-    cameraBuffer,
-    projectionBuffer,
-    textureIndicesBuffer,
-    textures,
-  });
-
-  const computer = await createComputer({
-    device,
-    tilesBuffer,
-    countBuffer,
-    cameraBuffer,
-    projectionBuffer,
-  });
-
-  const textureLoader = createTextureLoader({ device });
-
-  const tileTextures = createTileTextures({
     urlPattern,
-    device,
-    textureLoader,
-    textureIndicesBuffer,
-    textures,
   });
 
-  let running = true;
-  const frame = async () => {
-    if (!running) return;
-
-    const tiles = await computer.compute();
-    await tileTextures.update(tiles);
-    await renderer.render(tiles.length);
-    await textureLoader.load();
-
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
+  const renderer = createWorld(context, {
+    layers: [terrain],
+  });
 
   const destroy = () => {
-    running = false;
-    tileTextures.destroy();
-    computer.destroy();
     renderer.destroy();
+    terrain.destroy();
     control.destroy();
-    canvas.destroy();
+    context.destroy();
   };
 
   return { destroy };

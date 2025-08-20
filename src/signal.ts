@@ -1,5 +1,7 @@
 export type Signal<T> = ReturnType<typeof createSignal<T>>;
 
+export const signalSymbol = Symbol("signal");
+
 export const createSignal = <T>(value: T) => {
   type Handler = (_: T) => void;
   const handlers: Handler[] = [];
@@ -20,6 +22,7 @@ export const createSignal = <T>(value: T) => {
   };
 
   return {
+    [signalSymbol]: true,
     set,
     use,
   };

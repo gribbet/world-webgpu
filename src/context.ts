@@ -1,14 +1,15 @@
 import { createSignal } from "./signal";
 
-export const createCanvas = async () => {
+export type Context = Awaited<ReturnType<typeof createContext>>;
+
+export const createContext = async (element: HTMLCanvasElement) => {
+  const sampleCount = 4;
+
   const { gpu } = navigator;
   const adapter = await gpu.requestAdapter();
   if (!adapter) throw new Error();
 
   const device = await adapter.requestDevice();
-
-  const element = document.createElement("canvas");
-  document.body.appendChild(element);
 
   const size = createSignal<[number, number]>([1, 1]);
   new ResizeObserver(([{ contentRect: { width, height } = {} } = {}]) => {
@@ -24,10 +25,7 @@ export const createCanvas = async () => {
   const format = gpu.getPreferredCanvasFormat();
   context.configure({ device, format });
 
-  const destroy = () => {
-    device.destroy();
-    element.remove();
-  };
+  const { destroy } = device;
 
-  return { element, device, context, format, size, destroy };
+  return { element, device, context, format, size, sampleCount, destroy };
 };
