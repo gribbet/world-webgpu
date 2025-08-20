@@ -1,15 +1,15 @@
 import { mat4 } from "wgpu-matrix";
 
+import type { Context } from "../context";
+import { createBuffer } from "../device";
+import type { Vec3 } from "../model";
+import { useAll } from "../signal";
+import { resolve, type Value } from "../value";
 import { createComputer } from "./computer";
-import type { Context } from "./context";
-import { createBuffer } from "./device";
-import type { Vec3 } from "./model";
 import { createRenderPipeline } from "./render";
-import { useAll } from "./signal";
 import { createTextureLoader } from "./texture-loader";
 import type { TileTextures } from "./tile-textures";
 import { createTileTextures } from "./tile-textures";
-import { resolve, type Value } from "./value";
 
 export const createTerrain = async (
   { device, format, size, sampleCount }: Context,

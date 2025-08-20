@@ -1,4 +1,4 @@
-import { createBuffer } from "./device";
+import { createBuffer } from "../device";
 
 export const createComputePipeline = async ({
   device,
@@ -15,7 +15,7 @@ export const createComputePipeline = async ({
 }) => {
   const module = device.createShaderModule({
     code:
-      (await (await fetch(new URL("./common.wgsl", import.meta.url))).text()) +
+      (await (await fetch(new URL("../common.wgsl", import.meta.url))).text()) +
       (await (await fetch(new URL("./compute.wgsl", import.meta.url))).text()),
   });
 

@@ -1,4 +1,4 @@
-import type { Vec3 } from "./model";
+import type { Vec3 } from "../model";
 import type { TextureLoader } from "./texture-loader";
 import { createTileIndexCache } from "./tile-index-cache";
 import type { TileTexture } from "./tile-texture";

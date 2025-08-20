@@ -1,5 +1,5 @@
-import { resolution } from "./configuration";
-import { createBuffer } from "./device";
+import { resolution } from "../configuration";
+import { createBuffer } from "../device";
 
 export const createRenderPipeline = async ({
   device,
@@ -24,7 +24,7 @@ export const createRenderPipeline = async ({
 }) => {
   const module = device.createShaderModule({
     code:
-      (await (await fetch(new URL("./common.wgsl", import.meta.url))).text()) +
+      (await (await fetch(new URL("../common.wgsl", import.meta.url))).text()) +
       (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
   });
 

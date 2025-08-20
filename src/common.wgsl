@@ -1,20 +1,9 @@
 const PI = radians(180.);
 
-struct VertexInput {
-    @builtin(instance_index) instance: u32,
-    @location(0) uv: vec2<f32>,
-};
-
-struct VertexOutput {
-    @builtin(position) position: vec4<f32>,
-    @location(0) @interpolate(flat) instance: u32,
-    @location(1) uv: vec2<f32>,
-};
 
 
-fn tile_vertex(tile: vec3<u32>) -> vec3<f32> {
-    return vec3<f32>(vec2<f32>(tile.xy) / f32(1u << tile.z), 1.);
-}
+
+
 
 fn geographic_from_mercator(v: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(

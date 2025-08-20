@@ -6,6 +6,21 @@
 @group(0) @binding(5) var textures: texture_2d_array<f32>;
 @group(0) @binding(6) var sample: sampler;
 
+struct VertexInput {
+    @builtin(instance_index) instance: u32,
+    @location(0) uv: vec2<f32>,
+};
+
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) instance: u32,
+    @location(1) uv: vec2<f32>,
+};
+
+fn tile_vertex(tile: vec3<u32>) -> vec3<f32> {
+    return vec3<f32>(vec2<f32>(tile.xy) / f32(1u << tile.z), 1.);
+}
+
 @vertex
 fn vertex(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;

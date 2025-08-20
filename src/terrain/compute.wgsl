@@ -15,6 +15,10 @@ fn screen(v: vec4<f32>) -> vec3<f32> {
     return v.xyz / v.w;
 }
 
+fn tile_vertex(tile: vec3<u32>) -> vec3<f32> {
+    return vec3<f32>(vec2<f32>(tile.xy) / f32(1u << tile.z), 1.);
+}
+
 @compute @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var stack: array<vec3<u32>, 1024>;

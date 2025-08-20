@@ -1,6 +1,6 @@
 import QuickLRU from "quick-lru";
 
-import type { Vec3 } from "./model";
+import type { Vec3 } from "../model";
 
 export type TileIndexCache<T extends NonNullable<unknown>> = ReturnType<
   typeof createTileIndexCache<T>
