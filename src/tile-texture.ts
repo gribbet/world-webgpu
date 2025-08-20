@@ -1,16 +1,20 @@
 import { createImageLoad } from "./image-load";
+import type { TextureLoader } from "./texture-loader";
 
 export type TileTexture = ReturnType<typeof createTileTexture>;
 
 export const createTileTexture = ({
   device,
   url,
+  textureLoader,
   onLoad,
 }: {
   device: GPUDevice;
   url: string;
+  textureLoader: TextureLoader;
   onLoad?: () => void;
 }) => {
+  let loaded = false;
   const texture = device.createTexture({
     size: [256, 256],
     format: "rgba8unorm",
@@ -24,14 +28,10 @@ export const createTileTexture = ({
     url,
     onLoad: async image => {
       if (!image) return;
-      device.queue.copyExternalImageToTexture(
-        { source: image },
-        { texture, origin: { x: 0, y: 0, z: 0 } },
-        { width: 256, height: 256 },
-      );
-      await device.queue.onSubmittedWorkDone();
-
+      await textureLoader.queue(texture, image);
+      image.close();
       onLoad?.();
+      loaded = true;
     },
   });
 
@@ -42,7 +42,7 @@ export const createTileTexture = ({
 
   return {
     get loaded() {
-      return imageLoad.loaded;
+      return loaded;
     },
     get texture() {
       return texture;

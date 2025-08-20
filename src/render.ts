@@ -10,7 +10,7 @@ export const createRenderPipeline = async ({
   cameraBuffer,
   projectionBuffer,
   textureIndicesBuffer,
-  texturesTexture,
+  textures,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
@@ -20,7 +20,7 @@ export const createRenderPipeline = async ({
   cameraBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   textureIndicesBuffer: GPUBuffer;
-  texturesTexture: GPUTexture;
+  textures: GPUTexture;
 }) => {
   const module = device.createShaderModule({
     code:
@@ -90,7 +90,7 @@ export const createRenderPipeline = async ({
     new Uint32Array(indices),
   );
 
-  const textures = texturesTexture.createView({
+  const texturesView = textures.createView({
     dimension: "2d-array",
     arrayLayerCount: 256,
   });
@@ -108,7 +108,7 @@ export const createRenderPipeline = async ({
       { binding: 2, resource: { buffer: cameraBuffer } },
       { binding: 3, resource: { buffer: projectionBuffer } },
       { binding: 4, resource: { buffer: textureIndicesBuffer } },
-      { binding: 5, resource: textures },
+      { binding: 5, resource: texturesView },
       { binding: 6, resource: sampler },
     ],
   });

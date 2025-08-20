@@ -3,6 +3,7 @@ import { createCanvas } from "./canvas";
 import { createComputer } from "./computer";
 import { createControl } from "./control";
 import { createRenderer } from "./renderer";
+import { createTextureLoader } from "./texture-loader";
 import { createTileTextures } from "./tile-textures";
 
 const urlPattern = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
@@ -22,7 +23,7 @@ export const createApp = async () => {
     tilesBuffer,
     countBuffer,
     textureIndicesBuffer,
-    texturesTexture,
+    textures,
   } = createBuffers(device);
 
   const renderer = await createRenderer({
@@ -36,7 +37,7 @@ export const createApp = async () => {
     cameraBuffer,
     projectionBuffer,
     textureIndicesBuffer,
-    texturesTexture,
+    textures,
   });
 
   const computer = await createComputer({
@@ -47,11 +48,14 @@ export const createApp = async () => {
     projectionBuffer,
   });
 
+  const textureLoader = createTextureLoader({ device });
+
   const tileTextures = createTileTextures({
     urlPattern,
     device,
+    textureLoader,
     textureIndicesBuffer,
-    texturesTexture,
+    textures,
   });
 
   let running = true;
@@ -61,6 +65,7 @@ export const createApp = async () => {
     const tiles = await computer.compute();
     await tileTextures.update(tiles);
     await renderer.render(tiles.length);
+    await textureLoader.load();
 
     requestAnimationFrame(frame);
   };

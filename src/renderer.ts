@@ -15,7 +15,7 @@ export const createRenderer = async ({
   cameraBuffer,
   projectionBuffer,
   textureIndicesBuffer,
-  texturesTexture,
+  textures,
 }: {
   device: GPUDevice;
   format: GPUTextureFormat;
@@ -27,7 +27,7 @@ export const createRenderer = async ({
   cameraBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   textureIndicesBuffer: GPUBuffer;
-  texturesTexture: GPUTexture;
+  textures: GPUTexture;
 }) => {
   const sampleCount = 4;
 
@@ -40,7 +40,7 @@ export const createRenderer = async ({
     cameraBuffer,
     projectionBuffer,
     textureIndicesBuffer,
-    texturesTexture,
+    textures,
   });
 
   const createRenderTexture = (size: [number, number]) =>

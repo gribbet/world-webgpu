@@ -51,8 +51,8 @@ export const createComputePipeline = async ({
   const encode = (encoder: GPUCommandEncoder) => {
     encoder.clearBuffer(countBuffer, 0, countBuffer.size);
     const pass = encoder.beginComputePass();
-    pass.setBindGroup(0, bindGroup);
     pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(1);
     pass.end();
     encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);

@@ -18,7 +18,7 @@ addEventListener("message", async event => {
     }
     const blob = await response.blob();
     const image = await createImageBitmap(blob);
-    postMessage({ url, image });
+    postMessage({ url, image }, [image] as never);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     if (

@@ -1,4 +1,5 @@
 import type { Vec3 } from "./model";
+import type { TextureLoader } from "./texture-loader";
 import { createTileIndexCache } from "./tile-index-cache";
 import type { TileTexture } from "./tile-texture";
 import { createTileTexture } from "./tile-texture";
@@ -7,9 +8,11 @@ export type TileCache = ReturnType<typeof createTileCache>;
 
 export const createTileCache = ({
   device,
+  textureLoader,
   urlPattern,
 }: {
   device: GPUDevice;
+  textureLoader: TextureLoader;
   urlPattern: string;
 }) => {
   const tiles = createTileIndexCache<TileTexture>({
@@ -42,6 +45,7 @@ export const createTileCache = ({
       const texture = createTileTexture({
         device,
         url,
+        textureLoader,
         onLoad: () => loading.delete(xyz),
       });
       tiles.set(xyz, texture);

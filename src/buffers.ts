@@ -33,7 +33,7 @@ export const createBuffers = (device: GPUDevice) => {
     new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
   );
 
-  const texturesTexture = device.createTexture({
+  const textures = device.createTexture({
     size: [256, 256, 256],
     format: "rgba8unorm",
     usage:
@@ -48,6 +48,6 @@ export const createBuffers = (device: GPUDevice) => {
     cameraBuffer,
     projectionBuffer,
     textureIndicesBuffer,
-    texturesTexture,
+    textures,
   };
 };
