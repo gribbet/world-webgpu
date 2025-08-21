@@ -9,14 +9,14 @@ export const createTileTextures = ({
   urlPattern,
   device,
   textureLoader,
-  textureIndicesBuffer,
+  indicesBuffer,
   textures,
   initialDownsample = 0,
 }: {
   urlPattern: string;
   device: GPUDevice;
   textureLoader: TextureLoader;
-  textureIndicesBuffer: GPUBuffer;
+  indicesBuffer: GPUBuffer;
   textures: GPUTexture;
   initialDownsample?: number;
 }) => {
@@ -42,7 +42,7 @@ export const createTileTextures = ({
   const update = (tiles: [number, number, number][]) => {
     const data = tiles.flatMap(_ => get(_) ?? [0, 0]);
     const { queue } = device;
-    queue.writeBuffer(textureIndicesBuffer, 0, new Uint32Array(data));
+    queue.writeBuffer(indicesBuffer, 0, new Uint32Array(data));
   };
 
   const destroy = () => {

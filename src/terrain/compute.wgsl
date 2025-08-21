@@ -3,17 +3,8 @@
 @group(0) @binding(2) var<storage, read_write> tiles: array<vec3<u32>>;
 @group(0) @binding(3) var<storage, read_write> count: atomic<u32>;
 
-fn _projection() -> mat4x4<f32> {
-    var m = projection;
-    let far = 1.0;
-    let near = 1e-9;
-    m[2][2] = (far + near) / (near - far);
-    m[3][2] = (2.0 * far * near) / (near - far);
-    return m;
-}
-
 fn clip(v: vec3<f32>) -> vec4<f32> {
-    return _projection() * vec4<f32>(v, 1.);
+    return projection * vec4<f32>(v, 1.);
 }
 
 fn world(v: vec3<f32>) -> vec3<f32> {

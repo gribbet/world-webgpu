@@ -13,7 +13,15 @@ import { createTileTextures } from "./tile-textures";
 
 export const createTerrain = async (
   { device, format, size, sampleCount }: Context,
-  { camera, urlPattern }: { camera: Value<Vec3>; urlPattern: Value<string> },
+  {
+    camera,
+    imageryUrl,
+    elevationUrl,
+  }: {
+    camera: Value<Vec3>;
+    imageryUrl: Value<string>;
+    elevationUrl: Value<string>;
+  },
 ) => {
   let tiles: Vec3[] = [];
 
@@ -41,13 +49,28 @@ export const createTerrain = async (
     new Float32Array(mat4.identity()),
   );
 
-  const textureIndicesBuffer = createBuffer(
+  const imageryIndicesBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
   );
 
-  const textures = device.createTexture({
+  const elevationIndicesBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
+  );
+
+  const imageryTextures = device.createTexture({
+    size: [256, 256, 256],
+    format: "rgba8unorm",
+    usage:
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
+  const elevationTextures = device.createTexture({
     size: [256, 256, 256],
     format: "rgba8unorm",
     usage:
@@ -66,16 +89,29 @@ export const createTerrain = async (
 
   const textureLoader = createTextureLoader({ device });
 
-  let tileTextures: TileTextures | undefined;
+  let imageryTileTextures: TileTextures | undefined;
+  let elevationTileTextures: TileTextures | undefined;
 
-  resolve(urlPattern).use(urlPattern => {
-    tileTextures?.destroy();
-    tileTextures = createTileTextures({
-      urlPattern,
+  resolve(imageryUrl).use(imageryUrl => {
+    imageryTileTextures?.destroy();
+    imageryTileTextures = createTileTextures({
+      urlPattern: imageryUrl,
       device,
       textureLoader,
-      textureIndicesBuffer,
-      textures,
+      indicesBuffer: imageryIndicesBuffer,
+      textures: imageryTextures,
+    });
+    elevationTileTextures?.destroy();
+  });
+
+  resolve(elevationUrl).use(elevationUrl => {
+    elevationTileTextures?.destroy();
+    elevationTileTextures = createTileTextures({
+      urlPattern: elevationUrl,
+      device,
+      textureLoader,
+      indicesBuffer: elevationIndicesBuffer,
+      textures: elevationTextures,
     });
   });
 
@@ -87,8 +123,10 @@ export const createTerrain = async (
     countBuffer,
     cameraBuffer,
     projectionBuffer,
-    textureIndicesBuffer,
-    textures,
+    imageryIndicesBuffer,
+    elevationIndicesBuffer,
+    imageryTextures,
+    elevationTextures,
   });
 
   const unsubscribe = useAll([size, resolve(camera)], (size, camera) => {
@@ -97,7 +135,7 @@ export const createTerrain = async (
     const aspect = width / height;
     const fov = 45;
     const near = (z - 1) / 10;
-    const far = (z - 1) * 10;
+    const far = (z - 1) * 10000;
     const projection = mat4.multiply(
       mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
       mat4.scaling([1, -1, 1]),
@@ -111,22 +149,24 @@ export const createTerrain = async (
   };
 
   const encode = (pass: GPURenderPassEncoder) => {
-    tileTextures?.update(tiles);
+    imageryTileTextures?.update(tiles);
+    elevationTileTextures?.update(tiles);
     pipeline.encode(pass, tiles.length);
     textureLoader.load();
   };
 
   const destroy = () => {
     unsubscribe();
-    tileTextures?.destroy();
+    imageryTileTextures?.destroy();
+    elevationTileTextures?.destroy();
     computer.destroy();
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();
     cameraBuffer.destroy();
     projectionBuffer.destroy();
-    textureIndicesBuffer.destroy();
-    textures.destroy();
+    imageryIndicesBuffer.destroy();
+    imageryTextures.destroy();
   };
 
   return { prepare, encode, destroy };
