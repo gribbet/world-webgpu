@@ -2,7 +2,7 @@ import type { Vec3 } from "./model";
 import { createSignal } from "./signal";
 
 export const createControl = (element: HTMLElement) => {
-  const camera = createSignal<Vec3>([0.25, 0.5, 10]);
+  const camera = createSignal<Vec3>([0.23, 0.4, 4]);
 
   let [cx, cy, cz] = [0, 0, 0];
 
