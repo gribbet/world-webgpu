@@ -107,6 +107,8 @@ export const createRenderPipeline = async ({
   const sampler = device.createSampler({
     magFilter: "linear",
     minFilter: "linear",
+    mipmapFilter: "linear",
+    maxAnisotropy: 16,
   });
 
   const bindGroup = device.createBindGroup({
