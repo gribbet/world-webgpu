@@ -11,7 +11,7 @@ export const createApp = async () => {
 
   const control = createControl(element);
 
-  const { camera } = control;
+  const { view } = control;
 
   const imageryUrl = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
   const mapboxToken =
@@ -19,7 +19,7 @@ export const createApp = async () => {
   const elevationUrl = `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.png?access_token=${mapboxToken}`;
 
   const terrain = await createTerrain(context, {
-    camera,
+    view,
     imageryUrl,
     elevationUrl,
   });

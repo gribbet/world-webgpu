@@ -25,14 +25,14 @@ fn cartesian_from_mercator(v: vec3<f32>) -> vec3<f32> {
     return cartesian_from_geographic(geographic_from_mercator(v));
 }
 
-fn transform(vertex: vec3<f32>, camera: vec3<f32>) -> vec3<f32> {
+fn transform(vertex: vec3<f32>, _target: vec3<f32>) -> vec3<f32> {
     let v = cartesian_from_mercator(vertex);
-    let c = cartesian_from_mercator(camera);
+    let t = cartesian_from_mercator(_target);
 
-    let z = normalize(c);
+    let z = normalize(t);
     let x = normalize(cross(vec3<f32>(0., 0., 1.), z));
     let y = cross(x, z);
     let rotation = transpose(mat3x3<f32>(x, y, z));
 
-    return rotation * (v - c);
+    return rotation * (v - t);
 }

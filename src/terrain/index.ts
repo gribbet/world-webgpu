@@ -2,7 +2,7 @@ import { mat4 } from "wgpu-matrix";
 
 import type { Context } from "../context";
 import { createBuffer } from "../device";
-import type { Vec3 } from "../model";
+import type { Vec3, View } from "../model";
 import { useAll } from "../signal";
 import { resolve, type Value } from "../value";
 import { createComputer } from "./computer";
@@ -14,11 +14,11 @@ import { createTileTextures } from "./tile-textures";
 export const createTerrain = async (
   { device, format, size, sampleCount }: Context,
   {
-    camera,
+    view,
     imageryUrl,
     elevationUrl,
   }: {
-    camera: Value<Vec3>;
+    view: Value<View>;
     imageryUrl: Value<string>;
     elevationUrl: Value<string>;
   },
@@ -34,10 +34,10 @@ export const createTerrain = async (
   const countBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array([0]),
+    new Uint32Array([1]),
   );
 
-  const cameraBuffer = createBuffer(
+  const targetBuffer = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
     new Float32Array([0, 0, 0]),
@@ -83,7 +83,7 @@ export const createTerrain = async (
     device,
     tilesBuffer,
     countBuffer,
-    cameraBuffer,
+    targetBuffer,
     projectionBuffer,
   });
 
@@ -121,7 +121,7 @@ export const createTerrain = async (
     sampleCount,
     tilesBuffer,
     countBuffer,
-    cameraBuffer,
+    targetBuffer,
     projectionBuffer,
     imageryIndicesBuffer,
     elevationIndicesBuffer,
@@ -129,19 +129,27 @@ export const createTerrain = async (
     elevationTextures,
   });
 
-  const unsubscribe = useAll([size, resolve(camera)], (size, camera) => {
-    const [, , z] = camera;
+  const unsubscribe = useAll([size, resolve(view)], (size, view) => {
+    const {
+      target,
+      distance,
+      orientation: [pitch, yaw, roll],
+    } = view;
     const [width, height] = size;
     const aspect = width / height;
     const fov = 45;
-    const near = (z - 1) / 10;
-    const far = (z - 1) * 10000;
-    const projection = mat4.multiply(
+    const near = distance / 10;
+    const far = distance * 10000;
+    const projection = [
       mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
       mat4.scaling([1, -1, 1]),
-    );
+      mat4.translation([0, 0, -distance]),
+      mat4.rotationX(pitch),
+      mat4.rotationY(roll),
+      mat4.rotationZ(-yaw),
+    ].reduce((acc, _) => mat4.multiply(acc, _), mat4.identity());
     device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera));
+    device.queue.writeBuffer(targetBuffer, 0, new Float32Array(target));
   });
 
   const prepare = async () => {
@@ -163,7 +171,7 @@ export const createTerrain = async (
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();
-    cameraBuffer.destroy();
+    targetBuffer.destroy();
     projectionBuffer.destroy();
     imageryIndicesBuffer.destroy();
     imageryTextures.destroy();

@@ -1,4 +1,4 @@
-@group(0) @binding(0) var<uniform> camera: vec3<f32>;
+@group(0) @binding(0) var<uniform> _target: vec3<f32>;
 @group(0) @binding(1) var<uniform> projection: mat4x4<f32>;
 @group(0) @binding(2) var<storage, read_write> tiles: array<vec3<u32>>;
 @group(0) @binding(3) var<storage, read_write> count: atomic<u32>;
@@ -8,7 +8,7 @@ fn clip(v: vec3<f32>) -> vec4<f32> {
 }
 
 fn world(v: vec3<f32>) -> vec3<f32> {
-    return transform(v, camera);
+    return transform(v, _target);
 }
 
 fn screen(v: vec4<f32>) -> vec3<f32> {
@@ -23,6 +23,7 @@ fn tile_vertex(tile: vec3<u32>) -> vec3<f32> {
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var stack: array<vec3<u32>, 1024>;
     var index = 1u;
+    var total = 0u;
 
     stack[0] = vec3<u32>(0, 0, 0);
 
@@ -91,6 +92,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        tiles[atomicAdd(&count, 1u)] = tile;
+        tiles[total] = tile;
+        total++;
     }
+
+    atomicStore(&count, total);
 }

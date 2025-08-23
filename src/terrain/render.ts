@@ -7,7 +7,7 @@ export const createRenderPipeline = async ({
   sampleCount,
   tilesBuffer,
   countBuffer,
-  cameraBuffer,
+  targetBuffer,
   projectionBuffer,
   imageryIndicesBuffer,
   elevationIndicesBuffer,
@@ -19,7 +19,7 @@ export const createRenderPipeline = async ({
   sampleCount: number;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  cameraBuffer: GPUBuffer;
+  targetBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   imageryIndicesBuffer: GPUBuffer;
   elevationIndicesBuffer: GPUBuffer;
@@ -114,7 +114,7 @@ export const createRenderPipeline = async ({
     entries: [
       { binding: 0, resource: { buffer: tilesBuffer } },
       { binding: 1, resource: { buffer: countBuffer } },
-      { binding: 2, resource: { buffer: cameraBuffer } },
+      { binding: 2, resource: { buffer: targetBuffer } },
       { binding: 3, resource: { buffer: projectionBuffer } },
       { binding: 4, resource: { buffer: imageryIndicesBuffer } },
       { binding: 5, resource: { buffer: elevationIndicesBuffer } },

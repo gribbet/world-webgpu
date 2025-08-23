@@ -1,13 +1,21 @@
-import type { Vec3 } from "./model";
+import type { Vec3, View } from "./model";
 import { createSignal } from "./signal";
 
 export const createControl = (element: HTMLElement) => {
-  const camera = createSignal<Vec3>([0.23, 0.4, 4]);
+  const view = createSignal<View>({
+    target: [0.23, 0.4, 1],
+    distance: 3,
+    orientation: [0, 0, 0],
+  });
 
-  let [cx, cy, cz] = [0, 0, 0];
+  let [x, y, z] = [0, 0, 0];
+  let distance = 0;
+  let [pitch, yaw, roll] = [0, 0, 0];
 
-  camera.use(_ => {
-    [cx, cy, cz] = _;
+  view.use(view => {
+    ({ distance } = view);
+    [x, y, z] = view.target;
+    [pitch, yaw, roll] = view.orientation;
   });
 
   const clamp = (v: number, lo: number, hi: number) =>
@@ -20,23 +28,37 @@ export const createControl = (element: HTMLElement) => {
 
   element.addEventListener(
     "pointerdown",
-    ({ clientX: x, clientY: y }) => {
-      dragging = [x, y];
+    ({ clientX, clientY }) => {
+      dragging = [clientX, clientY];
     },
     { signal },
   );
 
   element.addEventListener(
     "pointermove",
-    ({ clientX: x, clientY: y }) => {
+    ({ clientX, clientY, buttons }) => {
       if (!dragging) return;
       const [lastX, lastY] = dragging;
-      const dx = x - lastX;
-      const dy = y - lastY;
-      dragging = [x, y];
+      const dx = clientX - lastX;
+      const dy = clientY - lastY;
+      dragging = [clientX, clientY];
 
-      const scale = 0.0002 * (cz - 1);
-      camera.set([cx - dx * scale, clamp(cy - dy * scale, -1, 1), cz]);
+      if (buttons === 1) {
+        const scale = 0.0002 * distance;
+        const target = [
+          x - dx * scale,
+          clamp(y - dy * scale, -1, 1),
+          z,
+        ] satisfies Vec3;
+        view.set({ target, distance, orientation: [pitch, yaw, roll] });
+      } else if (buttons === 2) {
+        const orientation = [
+          pitch - dy * 0.01,
+          yaw + dx * 0.01,
+          roll,
+        ] satisfies Vec3;
+        view.set({ target: [x, y, z], distance, orientation });
+      }
     },
     { signal },
   );
@@ -53,12 +75,20 @@ export const createControl = (element: HTMLElement) => {
     "wheel",
     event => {
       event.preventDefault();
-      camera.set([cx, cy, 1 + (cz - 1) * Math.exp(event.deltaY * 0.001)]);
+      view.set({
+        target: [x, y, z],
+        distance: distance * Math.exp(event.deltaY * 0.001),
+        orientation: [pitch, yaw, roll],
+      });
     },
     { passive: false, signal },
   );
 
+  element.addEventListener("contextmenu", event => event.preventDefault(), {
+    signal,
+  });
+
   const destroy = () => abortController.abort();
 
-  return { camera, destroy };
+  return { view, destroy };
 };
