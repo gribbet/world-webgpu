@@ -39,8 +39,10 @@ export const createControl = (element: HTMLElement) => {
     ({ clientX, clientY, buttons }) => {
       if (!dragging) return;
       const [lastX, lastY] = dragging;
-      const dx = clientX - lastX;
-      const dy = clientY - lastY;
+      const tx = clientX - lastX;
+      const ty = clientY - lastY;
+      const dx = Math.cos(-yaw) * tx + Math.sin(-yaw) * ty;
+      const dy = -Math.sin(-yaw) * tx + Math.cos(-yaw) * ty;
       dragging = [clientX, clientY];
 
       if (buttons === 1) {
