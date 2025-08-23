@@ -1,5 +1,6 @@
 import { mat4 } from "wgpu-matrix";
 
+import { terrainDownsample } from "../configuration";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
 import type { Vec3, View } from "../model";
@@ -112,6 +113,7 @@ export const createTerrain = async (
       textureLoader,
       indicesBuffer: elevationIndicesBuffer,
       textures: elevationTextures,
+      initialDownsample: terrainDownsample,
     });
   });
 

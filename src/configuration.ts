@@ -1,1 +1,1 @@
-export const resolution = 64;
+export const terrainDownsample = 3;

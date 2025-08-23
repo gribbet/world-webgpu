@@ -21,7 +21,7 @@ export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
     void device.queue.onSubmittedWorkDone().then(resolve);
   };
 
-  const load = () => queued.splice(0, 8).map(process);
+  const load = () => queued.splice(0, 4).map(process);
 
   return {
     queue,

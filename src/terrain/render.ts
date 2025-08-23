@@ -1,4 +1,4 @@
-import { resolution } from "../configuration";
+import { terrainDownsample } from "../configuration";
 import { createBuffer } from "../device";
 
 export const createRenderPipeline = async ({
@@ -62,6 +62,7 @@ export const createRenderPipeline = async ({
     },
   });
 
+  const resolution = (2 << 8) >> terrainDownsample;
   const vertices = new Array(resolution + 1)
     .fill(0)
     .flatMap((_, x) =>

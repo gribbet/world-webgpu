@@ -55,12 +55,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        let backface = dot(vec3<f32>(0, 0, -1), normalize(cross(v2 - v1, v3 - v1))) > 0.0;
-
-        if z > 3 && backface {
-            continue;
-        }
-
         let n1 = screen(c1);
         let n2 = screen(c2);
         let n3 = screen(c3);
@@ -78,7 +72,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 
         let span = n_max - n_min;
-        let subdivide = max(span.x, span.y) > 1;
+        let subdivide = max(span.x, span.y) > 1.5;
 
         if z < 2 || subdivide {
             stack[index] = vec3<u32>(2 * x, 2 * y, z + 1);
