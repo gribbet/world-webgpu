@@ -25,7 +25,10 @@ fn transform_spherical(position: Position, center: Position) -> vec3<f32> {
     let d_i = bitcast<vec2<i32>>(vec2<u32>(position.x, position.y) - vec2<u32>(center.x, center.y));
     let d_lon = f32(d_i.x) / ONE * (2.0 * PI);
 
-    let lat = atan(sinh((vec2<f32>(f32(position.y), f32(center.y)) / ONE - 0.5) * (-2.0 * PI)));
+    var lat = atan(sinh((vec2<f32>(f32(position.y), f32(center.y)) / ONE - 0.5) * (-2.0 * PI)));
+    lat = select(lat, vec2<f32>(PI / 2.0, lat.y), position.y == 0);
+    lat = select(lat, vec2<f32>(-PI / 2.0, lat.y), position.y == 1u << 31);
+
     let cos_lat = cos(lat);
     let sin_lat = sin(lat);
 
