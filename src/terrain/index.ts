@@ -171,7 +171,6 @@ export const createTerrain = async (
 
   const render = (pass: GPURenderPassEncoder) => {
     pipeline.encode(pass);
-
     void device.queue.onSubmittedWorkDone().then(updateTextures);
   };
 
