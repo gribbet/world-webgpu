@@ -107,7 +107,7 @@ export const createTerrain = async (
   let imageryTileTextures: TileTextures | undefined;
   let elevationTileTextures: TileTextures | undefined;
 
-  resolve(imageryUrl).use(imageryUrl => {
+  const unsubscribeImageryUrl = resolve(imageryUrl).use(imageryUrl => {
     imageryTileTextures?.destroy();
     imageryTileTextures = createTileTextures({
       urlPattern: imageryUrl,
@@ -118,7 +118,7 @@ export const createTerrain = async (
     });
   });
 
-  resolve(elevationUrl).use(elevationUrl => {
+  const unsubscribeElevationUrl = resolve(elevationUrl).use(elevationUrl => {
     elevationTileTextures?.destroy();
     elevationTileTextures = createTileTextures({
       urlPattern: elevationUrl,
@@ -144,7 +144,7 @@ export const createTerrain = async (
 
   const projection = mat4.identity();
   const centerData = new Uint8Array(16);
-  const unsubscribe = useAll([size, resolve(view)], (size, view) => {
+  const unsubscribeView = useAll([size, resolve(view)], (size, view) => {
     const {
       center,
       distance,
@@ -192,7 +192,9 @@ export const createTerrain = async (
 
   const destroy = () => {
     clearInterval(interval);
-    unsubscribe();
+    unsubscribeView();
+    unsubscribeImageryUrl();
+    unsubscribeElevationUrl();
     imageryTileTextures?.destroy();
     elevationTileTextures?.destroy();
     compute.destroy();
