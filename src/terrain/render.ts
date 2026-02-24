@@ -1,4 +1,4 @@
-import { terrainDownsample, tileTextureLayers } from "../configuration";
+import { tileTextureLayers } from "../configuration";
 import { createBuffer } from "../device";
 
 export const createRenderPipeline = async ({
@@ -35,8 +35,8 @@ export const createRenderPipeline = async ({
       entryPoint: "vertex",
       buffers: [
         {
-          arrayStride: 2 * 4,
-          attributes: [{ shaderLocation: 0, format: "uint32x2", offset: 0 }],
+          arrayStride: 3 * 4,
+          attributes: [{ shaderLocation: 0, format: "uint32x3", offset: 0 }],
         },
       ],
     },
@@ -59,18 +59,22 @@ export const createRenderPipeline = async ({
     },
   });
 
-  const resolution = (2 ** 8) >> terrainDownsample;
-  const vertices = new Array(resolution + 1)
+  const resolution = 21;
+  const count = resolution + 2;
+  const vertices = new Array(count + 1)
     .fill(0)
     .flatMap((_, x) =>
-      new Array(resolution + 1)
+      new Array(count + 1)
         .fill(0)
         .flatMap((_, y) => [
-          Math.floor((x / resolution) * 2 ** 31),
-          Math.floor((y / resolution) * 2 ** 31),
+          ...[x, y].map(
+            _ =>
+              (Math.min(Math.max(_ - 1, 0), resolution) / resolution) * 2 ** 31,
+          ),
+          [x, y].some(_ => _ === 0 || _ === count) ? 1 : 0,
         ]),
     );
-  const indexCount = resolution * resolution * 6;
+  const indexCount = count ** 2 * 6;
   const indirectBuffer = createBuffer(
     device,
     GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_DST,
@@ -82,17 +86,10 @@ export const createRenderPipeline = async ({
     new Uint32Array(vertices),
   );
 
-  const indices = new Array(resolution).fill(0).flatMap((_, x) =>
-    new Array(resolution).fill(0).flatMap((_, y) => {
-      const i = y * (resolution + 1) + x;
-      return [
-        i,
-        i + (resolution + 1),
-        i + (resolution + 2),
-        i,
-        i + (resolution + 2),
-        i + 1,
-      ];
+  const indices = new Array(count).fill(0).flatMap((_, x) =>
+    new Array(count).fill(0).flatMap((_, y) => {
+      const i = y * (count + 1) + x;
+      return [i, i + (count + 1), i + (count + 2), i, i + (count + 2), i + 1];
     }),
   );
   const indicesBuffer = createBuffer(
