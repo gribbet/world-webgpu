@@ -56,13 +56,13 @@ export const createTerrain = async (
   const imageryMapBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
-    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
+    new Uint32Array(new Array(4 * 4096).fill(0xffffffff)),
   );
 
   const elevationMapBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
-    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
+    new Uint32Array(new Array(4 * 4096).fill(0xffffffff)),
   );
 
   const imageryTextures = device.createTexture({
