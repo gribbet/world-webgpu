@@ -12,7 +12,7 @@ export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
     new Promise<void>(resolve => loads.push({ texture, source, resolve }));
 
   const update = () =>
-    loads.splice(0, 4).forEach(({ texture, source, resolve }) => {
+    loads.splice(0, 8).forEach(({ texture, source, resolve }) => {
       const { width, height } = source;
       device.queue.copyExternalImageToTexture(
         { source },

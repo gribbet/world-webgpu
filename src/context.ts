@@ -1,3 +1,4 @@
+import { tileTextureLayers } from "./configuration";
 import { createSignal } from "./signal";
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
@@ -9,7 +10,9 @@ export const createContext = async (element: HTMLCanvasElement) => {
   const adapter = await gpu.requestAdapter();
   if (!adapter) throw new Error("No WebGPU adapter found");
 
-  const device = await adapter.requestDevice();
+  const device = await adapter.requestDevice({
+    requiredLimits: { maxTextureArrayLayers: tileTextureLayers },
+  });
 
   const { width, height } = element;
   const size = createSignal<[number, number]>([width, height]);
