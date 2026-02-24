@@ -163,24 +163,28 @@ export const createTerrain = async (
     queue.writeBuffer(sizeBuffer, 0, new Float32Array(size));
   });
 
-  const prepare = (encoder: GPUCommandEncoder) => {
-    textureLoader.load();
+  const update = (encoder: GPUCommandEncoder) => {
+    textureLoader.update();
+    imageryTileTextures?.update(encoder);
+    elevationTileTextures?.update(encoder);
     compute.compute(encoder);
-    pipeline.prepare(encoder);
+    pipeline.update(encoder);
   };
 
   const render = (pass: GPURenderPassEncoder) => {
-    pipeline.encode(pass);
-    void device.queue.onSubmittedWorkDone().then(updateTextures);
+    pipeline.render(pass);
   };
 
   const updateTextures = async () => {
     const tiles = await compute.read();
-    imageryTileTextures?.update(tiles);
-    elevationTileTextures?.update(tiles);
+    imageryTileTextures?.load(tiles);
+    elevationTileTextures?.load(tiles);
   };
 
+  const interval = setInterval(updateTextures, 250);
+
   const destroy = () => {
+    clearInterval(interval);
     unsubscribe();
     imageryTileTextures?.destroy();
     elevationTileTextures?.destroy();
@@ -197,7 +201,7 @@ export const createTerrain = async (
     elevationTextures.destroy();
   };
 
-  return { prepare, render, destroy };
+  return { update, render, destroy };
 };
 
 const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {

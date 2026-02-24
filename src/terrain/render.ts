@@ -130,10 +130,10 @@ export const createRenderPipeline = async ({
     ],
   });
 
-  const prepare = (encoder: GPUCommandEncoder) =>
+  const update = (encoder: GPUCommandEncoder) =>
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
 
-  const encode = (pass: GPURenderPassEncoder) => {
+  const render = (pass: GPURenderPassEncoder) => {
     pass.setPipeline(pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
@@ -147,8 +147,8 @@ export const createRenderPipeline = async ({
   };
 
   return {
-    prepare,
-    encode,
+    update,
+    render,
     destroy,
   };
 };

@@ -1,6 +1,9 @@
 import type { Vec3 } from "../model";
+import { fromKey, toKey } from "./common";
+import { createLru } from "./lru";
 import type { TextureLoader } from "./texture-loader";
-import { createTileTextureMap } from "./tile-texture-map";
+import { createTileCache } from "./tile-cache";
+import { createTileMapBuffer } from "./tile-map-buffer";
 
 export type TileTextures = ReturnType<typeof createTileTextures>;
 
@@ -8,42 +11,83 @@ export const createTileTextures = ({
   urlPattern,
   device,
   textureLoader,
-  mapBuffer,
   textures,
+  mapBuffer,
   initialDownsample = 0,
 }: {
   urlPattern: string;
   device: GPUDevice;
   textureLoader: TextureLoader;
-  mapBuffer: GPUBuffer;
   textures: GPUTexture;
+  mapBuffer: GPUBuffer;
   initialDownsample?: number;
 }) => {
-  const map = createTileTextureMap({
-    urlPattern,
-    device,
-    textureLoader,
-    textures,
-    mapBuffer,
+  const cache = createTileCache({ device, textureLoader, urlPattern });
+  const open = new Array(256).fill(0).map((_, i) => i);
+
+  const tileMapBuffer = createTileMapBuffer(device, mapBuffer);
+
+  const pending: Vec3[] = [];
+
+  const mapping = createLru<number, { index?: number; texture: GPUTexture }>({
+    maxSize: 256,
+    onEviction: (key, { index }) => {
+      if (index !== undefined) open.push(index);
+      tileMapBuffer.clear(fromKey(key));
+    },
   });
 
-  const get = ([x, y, z]: Vec3) => {
-    for (
-      let downsample = Math.min(z, initialDownsample);
-      downsample <= z;
-      downsample++
-    ) {
-      const k = 2 ** downsample;
-      const xyz: Vec3 = [Math.floor(x / k), Math.floor(y / k), z - downsample];
-      map.get(xyz);
-    }
+  const load = (tiles: Vec3[]) => {
+    pending.push(
+      ...unique(
+        descendants(
+          tiles.map(_ => downsample(_, initialDownsample)).filter(_ => !!_),
+        ),
+      ),
+    );
   };
 
-  const update = (tiles: Vec3[]) => tiles.forEach(get);
+  const update = (encoder: GPUCommandEncoder) => {
+    pending.splice(0).forEach(xyz => {
+      const key = toKey(xyz);
 
-  const destroy = () => {
-    map.destroy();
+      if (mapping.get(key)) return;
+
+      const { texture, loaded } = cache.get(xyz) ?? {};
+      if (!texture || !loaded) return;
+
+      const index = open.shift();
+      mapping.set(key, { index, texture });
+      if (index === undefined) return;
+
+      encoder.copyTextureToTexture(
+        { texture },
+        { texture: textures, origin: { z: index } },
+        { width: 256, height: 256 },
+      );
+
+      tileMapBuffer.set(xyz, index);
+    });
+    tileMapBuffer.update();
   };
 
-  return { update, destroy };
+  const destroy = () => mapping.clear();
+
+  return { load, update, destroy };
 };
+
+const downsample = ([x, y, z]: Vec3, downsample: number) => {
+  if (downsample > z) return undefined;
+  const k = 2 ** downsample;
+  return [Math.floor(x / k), Math.floor(y / k), z - downsample] satisfies Vec3;
+};
+
+const unique = (tiles: Vec3[]) => [
+  ...new Map(tiles.map(tile => [toKey(tile), tile])).values(),
+];
+
+const parents = (tiles: Vec3[]) =>
+  unique(tiles.map(_ => downsample(_, 1)).filter(_ => !!_));
+
+const descendants: (tiles: Vec3[]) => Vec3[] = tiles =>
+  tiles.length > 0 ? unique([...tiles, ...descendants(parents(tiles))]) : [];

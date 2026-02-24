@@ -28,7 +28,7 @@ export const createTileTexture = ({
     url,
     onLoad: async image => {
       if (!image) return;
-      await textureLoader.queue(texture, image);
+      await textureLoader.load(texture, image);
       image.close();
       onLoad?.();
       loaded = true;

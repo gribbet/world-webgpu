@@ -23,7 +23,7 @@ export const createContext = async (element: HTMLCanvasElement) => {
   if (!context) throw new Error();
 
   const format = gpu.getPreferredCanvasFormat();
-  context.configure({ device, format });
+  context.configure({ device, format, alphaMode: "opaque" });
 
   const { destroy } = device;
 
