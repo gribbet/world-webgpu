@@ -28,7 +28,7 @@ export const createRenderPipeline = async ({
       (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
   });
 
-  const pipeline = device.createRenderPipeline({
+  const pipeline = await device.createRenderPipelineAsync({
     layout: "auto",
     vertex: {
       module,

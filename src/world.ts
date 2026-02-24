@@ -4,7 +4,7 @@ import { resolve } from "./value";
 
 export type Layer = {
   prepare: (encode: GPUCommandEncoder) => void;
-  encode: (pass: GPURenderPassEncoder) => void;
+  render: (pass: GPURenderPassEncoder) => void;
 };
 
 export const createWorld = (
@@ -66,7 +66,7 @@ export const createWorld = (
         depthClearValue: 1.0,
       },
     });
-    _layers.forEach(_ => _.encode(pass));
+    _layers.forEach(_ => _.render(pass));
     pass.end();
 
     device.queue.submit([encoder.finish()]);

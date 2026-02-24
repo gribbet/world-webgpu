@@ -169,7 +169,7 @@ export const createTerrain = async (
     pipeline.prepare(encoder);
   };
 
-  const encode = (pass: GPURenderPassEncoder) => pipeline.encode(pass);
+  const render = (pass: GPURenderPassEncoder) => pipeline.encode(pass);
 
   const updateTextures = async () => {
     const tiles = await computer.read();
@@ -197,7 +197,7 @@ export const createTerrain = async (
     elevationTextures.destroy();
   };
 
-  return { prepare, encode, destroy };
+  return { prepare, render, destroy };
 };
 
 const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {
