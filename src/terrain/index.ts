@@ -6,7 +6,7 @@ import { createBuffer } from "../device";
 import type { Vec3, View } from "../model";
 import { useAll } from "../signal";
 import { resolve, type Value } from "../value";
-import { createComputer } from "./computer";
+import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
 import { createTextureLoader } from "./texture-loader";
 import { createTileTextures, type TileTextures } from "./tile-textures";
@@ -83,15 +83,15 @@ export const createTerrain = async (
       GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
-  const computer = await createComputer({
+  const compute = await createComputePipeline({
     device,
     tilesBuffer,
     countBuffer,
     centerBuffer,
     projectionBuffer,
     sizeBuffer,
-    elevationMapBuffer,
     imageryMapBuffer,
+    elevationMapBuffer,
     elevationTextures,
   });
 
@@ -165,26 +165,27 @@ export const createTerrain = async (
 
   const prepare = (encoder: GPUCommandEncoder) => {
     textureLoader.load();
-    computer.compute(encoder);
+    compute.compute(encoder);
     pipeline.prepare(encoder);
   };
 
-  const render = (pass: GPURenderPassEncoder) => pipeline.encode(pass);
+  const render = (pass: GPURenderPassEncoder) => {
+    pipeline.encode(pass);
+
+    void device.queue.onSubmittedWorkDone().then(updateTextures);
+  };
 
   const updateTextures = async () => {
-    const tiles = await computer.read();
+    const tiles = await compute.read();
     imageryTileTextures?.update(tiles);
     elevationTileTextures?.update(tiles);
   };
 
-  const interval = setInterval(updateTextures, 100);
-
   const destroy = () => {
-    clearInterval(interval);
     unsubscribe();
     imageryTileTextures?.destroy();
     elevationTileTextures?.destroy();
-    computer.destroy();
+    compute.destroy();
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();

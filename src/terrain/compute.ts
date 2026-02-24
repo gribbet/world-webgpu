@@ -65,19 +65,17 @@ export const createComputePipeline = async ({
     ],
   });
 
-  const encode = (encoder: GPUCommandEncoder) => {
+  const compute = (encoder: GPUCommandEncoder) => {
     const pass = encoder.beginComputePass();
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(1);
     pass.end();
+    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
+    encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
   };
 
   const read = async () => {
-    const encoder = device.createCommandEncoder();
-    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
-    encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
-    device.queue.submit([encoder.finish()]);
     await Promise.all([
       countReadBuffer.mapAsync(GPUMapMode.READ),
       buffer.mapAsync(GPUMapMode.READ),
@@ -105,7 +103,7 @@ export const createComputePipeline = async ({
   };
 
   return {
-    encode,
+    compute,
     read,
     destroy,
   };
