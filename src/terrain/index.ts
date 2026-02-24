@@ -53,6 +53,12 @@ export const createTerrain = async (
     new Float32Array([1, 1]),
   );
 
+  const elevationCacheBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * 16376).fill(0xffffffff)),
+  );
+
   const imageryMapBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
@@ -90,6 +96,7 @@ export const createTerrain = async (
     centerBuffer,
     projectionBuffer,
     sizeBuffer,
+    elevationCacheBuffer,
     imageryMapBuffer,
     elevationMapBuffer,
     elevationTextures,

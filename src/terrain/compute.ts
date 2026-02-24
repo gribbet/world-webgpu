@@ -8,6 +8,7 @@ export const createComputePipeline = async ({
   centerBuffer,
   projectionBuffer,
   sizeBuffer,
+  elevationCacheBuffer,
   elevationMapBuffer,
   imageryMapBuffer,
   elevationTextures,
@@ -18,6 +19,7 @@ export const createComputePipeline = async ({
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   sizeBuffer: GPUBuffer;
+  elevationCacheBuffer: GPUBuffer;
   imageryMapBuffer: GPUBuffer;
   elevationMapBuffer: GPUBuffer;
   elevationTextures: GPUTexture;
@@ -55,14 +57,15 @@ export const createComputePipeline = async ({
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: centerBuffer } },
-      { binding: 1, resource: { buffer: projectionBuffer } },
-      { binding: 2, resource: { buffer: sizeBuffer } },
-      { binding: 3, resource: { buffer: tilesBuffer } },
-      { binding: 4, resource: { buffer: countBuffer } },
-      { binding: 5, resource: { buffer: imageryMapBuffer } },
-      { binding: 6, resource: { buffer: elevationMapBuffer } },
-      { binding: 7, resource: elevationTexturesView },
+      { binding: 0, resource: { buffer: tilesBuffer } },
+      { binding: 1, resource: { buffer: countBuffer } },
+      { binding: 2, resource: { buffer: centerBuffer } },
+      { binding: 3, resource: { buffer: projectionBuffer } },
+      { binding: 4, resource: { buffer: sizeBuffer } },
+      { binding: 5, resource: { buffer: elevationCacheBuffer } },
+      { binding: 6, resource: { buffer: imageryMapBuffer } },
+      { binding: 7, resource: { buffer: elevationMapBuffer } },
+      { binding: 8, resource: elevationTexturesView },
     ],
   });
 
