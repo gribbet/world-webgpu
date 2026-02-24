@@ -4,14 +4,22 @@ export const createComputePipeline = async ({
   device,
   tilesBuffer,
   countBuffer,
-  targetBuffer,
+  centerBuffer,
   projectionBuffer,
+  sizeBuffer,
+  elevationMapBuffer,
+  imageryMapBuffer,
+  elevationTextures,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  targetBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
+  sizeBuffer: GPUBuffer;
+  imageryMapBuffer: GPUBuffer;
+  elevationMapBuffer: GPUBuffer;
+  elevationTextures: GPUTexture;
 }) => {
   const module = device.createShaderModule({
     code:
@@ -19,7 +27,7 @@ export const createComputePipeline = async ({
       (await (await fetch(new URL("./compute.wgsl", import.meta.url))).text()),
   });
 
-  const pipeline = device.createComputePipeline({
+  const pipeline = await device.createComputePipelineAsync({
     layout: "auto",
     compute: {
       module,
@@ -38,34 +46,38 @@ export const createComputePipeline = async ({
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
+  const elevationTexturesView = elevationTextures.createView({
+    dimension: "2d-array",
+    arrayLayerCount: 256,
+  });
+
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: targetBuffer } },
+      { binding: 0, resource: { buffer: centerBuffer } },
       { binding: 1, resource: { buffer: projectionBuffer } },
-      { binding: 2, resource: { buffer: tilesBuffer } },
-      { binding: 3, resource: { buffer: countBuffer } },
+      { binding: 2, resource: { buffer: sizeBuffer } },
+      { binding: 3, resource: { buffer: tilesBuffer } },
+      { binding: 4, resource: { buffer: countBuffer } },
+      { binding: 5, resource: { buffer: imageryMapBuffer } },
+      { binding: 6, resource: { buffer: elevationMapBuffer } },
+      { binding: 7, resource: elevationTexturesView },
     ],
   });
 
   const encode = (encoder: GPUCommandEncoder) => {
-    encoder.clearBuffer(countBuffer, 0, countBuffer.size);
     const pass = encoder.beginComputePass();
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(1);
     pass.end();
-    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
-    encoder.copyBufferToBuffer(
-      countBuffer,
-      0,
-      countReadBuffer,
-      0,
-      countReadBuffer.size,
-    );
   };
 
   const read = async () => {
+    const encoder = device.createCommandEncoder();
+    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
+    encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
+    device.queue.submit([encoder.finish()]);
     await Promise.all([
       countReadBuffer.mapAsync(GPUMapMode.READ),
       buffer.mapAsync(GPUMapMode.READ),
@@ -79,9 +91,9 @@ export const createComputePipeline = async ({
       .map(
         (_, i) =>
           [
-            result[i * 4] ?? 0,
-            result[i * 4 + 1] ?? 0,
-            result[i * 4 + 2] ?? 0,
+            result[i * 8] ?? 0,
+            result[i * 8 + 1] ?? 0,
+            result[i * 8 + 2] ?? 0,
           ] satisfies [number, number, number],
       );
     return tiles;

@@ -7,10 +7,8 @@ export const createRenderPipeline = async ({
   sampleCount,
   tilesBuffer,
   countBuffer,
-  targetBuffer,
+  centerBuffer,
   projectionBuffer,
-  imageryIndicesBuffer,
-  elevationIndicesBuffer,
   imageryTextures,
   elevationTextures,
 }: {
@@ -19,10 +17,8 @@ export const createRenderPipeline = async ({
   sampleCount: number;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  targetBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
-  imageryIndicesBuffer: GPUBuffer;
-  elevationIndicesBuffer: GPUBuffer;
   imageryTextures: GPUTexture;
   elevationTextures: GPUTexture;
 }) => {
@@ -40,7 +36,7 @@ export const createRenderPipeline = async ({
       buffers: [
         {
           arrayStride: 2 * 4,
-          attributes: [{ shaderLocation: 0, format: "float32x2", offset: 0 }],
+          attributes: [{ shaderLocation: 0, format: "uint32x2", offset: 0 }],
         },
       ],
     },
@@ -59,21 +55,31 @@ export const createRenderPipeline = async ({
     },
     primitive: {
       topology: "triangle-list",
+      cullMode: "front",
     },
   });
 
-  const resolution = (2 << 8) >> terrainDownsample;
+  const resolution = (2 ** 8) >> terrainDownsample;
   const vertices = new Array(resolution + 1)
     .fill(0)
     .flatMap((_, x) =>
       new Array(resolution + 1)
         .fill(0)
-        .flatMap((_, y) => [x / resolution, y / resolution]),
+        .flatMap((_, y) => [
+          Math.floor((x / resolution) * 2 ** 31),
+          Math.floor((y / resolution) * 2 ** 31),
+        ]),
     );
+  const indexCount = resolution * resolution * 6;
+  const indirectBuffer = createBuffer(
+    device,
+    GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_DST,
+    new Uint32Array([indexCount, 0, 0, 0, 0]),
+  );
   const verticesBuffer = createBuffer(
     device,
     GPUBufferUsage.VERTEX,
-    new Float32Array(vertices),
+    new Uint32Array(vertices),
   );
 
   const indices = new Array(resolution).fill(0).flatMap((_, x) =>
@@ -116,24 +122,23 @@ export const createRenderPipeline = async ({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
       { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: countBuffer } },
-      { binding: 2, resource: { buffer: targetBuffer } },
-      { binding: 3, resource: { buffer: projectionBuffer } },
-      { binding: 4, resource: { buffer: imageryIndicesBuffer } },
-      { binding: 5, resource: { buffer: elevationIndicesBuffer } },
-      { binding: 6, resource: imageryTexturesView },
-      { binding: 7, resource: elevationTexturesView },
-      { binding: 8, resource: sampler },
+      { binding: 1, resource: { buffer: centerBuffer } },
+      { binding: 2, resource: { buffer: projectionBuffer } },
+      { binding: 3, resource: imageryTexturesView },
+      { binding: 4, resource: elevationTexturesView },
+      { binding: 5, resource: sampler },
     ],
   });
 
-  const encode = (pass: GPURenderPassEncoder, count: number) => {
-    if (count === 0) return;
+  const prepare = (encoder: GPUCommandEncoder) =>
+    encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
+
+  const encode = (pass: GPURenderPassEncoder) => {
     pass.setPipeline(pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
     pass.setBindGroup(0, bindGroup);
-    pass.drawIndexed(resolution ** 2 * 6, count);
+    pass.drawIndexedIndirect(indirectBuffer, 0);
   };
 
   const destroy = () => {
@@ -142,6 +147,7 @@ export const createRenderPipeline = async ({
   };
 
   return {
+    prepare,
     encode,
     destroy,
   };

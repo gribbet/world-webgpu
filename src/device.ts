@@ -1,23 +1,16 @@
 export const createBuffer = (
   device: GPUDevice,
   usage: GPUBufferUsageFlags,
-  data: ArrayLike<number> & ArrayBuffer,
+  data: ArrayBufferView,
 ) => {
   const buffer = device.createBuffer({
-    size: 16 * Math.ceil(data.byteLength / 16),
+    size: (data.byteLength + 3) & ~3,
     usage: usage | GPUBufferUsage.COPY_DST,
     mappedAtCreation: true,
   });
-  const Array =
-    data instanceof Uint32Array
-      ? Uint32Array
-      : data instanceof Int32Array
-        ? Int32Array
-        : data instanceof Float32Array
-          ? Float32Array
-          : undefined;
-  if (!Array) throw "unexpected";
-  new Array(buffer.getMappedRange()).set(data);
+  new Uint8Array(buffer.getMappedRange()).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
   buffer.unmap();
   return buffer;
 };

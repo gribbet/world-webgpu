@@ -9,8 +9,7 @@ import { resolve, type Value } from "../value";
 import { createComputer } from "./computer";
 import { createRenderPipeline } from "./render";
 import { createTextureLoader } from "./texture-loader";
-import type { TileTextures } from "./tile-textures";
-import { createTileTextures } from "./tile-textures";
+import { createTileTextures, type TileTextures } from "./tile-textures";
 
 export const createTerrain = async (
   { device, format, size, sampleCount }: Context,
@@ -24,24 +23,22 @@ export const createTerrain = async (
     elevationUrl: Value<string>;
   },
 ) => {
-  let tiles: Vec3[] = [];
-
   const tilesBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0, 0, 0])),
+    new Uint32Array(new Array(1024 * 8).fill(0)),
   );
 
   const countBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array([1]),
+    new Uint32Array([0]),
   );
 
-  const targetBuffer = createBuffer(
+  const centerBuffer = createBuffer(
     device,
     GPUBufferUsage.UNIFORM,
-    new Float32Array([0, 0, 0]),
+    new Uint8Array(16),
   );
 
   const projectionBuffer = createBuffer(
@@ -50,16 +47,22 @@ export const createTerrain = async (
     new Float32Array(mat4.identity()),
   );
 
-  const imageryIndicesBuffer = createBuffer(
+  const sizeBuffer = createBuffer(
     device,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
+    GPUBufferUsage.UNIFORM,
+    new Float32Array([1, 1]),
   );
 
-  const elevationIndicesBuffer = createBuffer(
+  const imageryMapBuffer = createBuffer(
     device,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    new Uint32Array(new Array(256).fill(0).flatMap(() => [0, 0])),
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
+  );
+
+  const elevationMapBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
   );
 
   const imageryTextures = device.createTexture({
@@ -84,8 +87,12 @@ export const createTerrain = async (
     device,
     tilesBuffer,
     countBuffer,
-    targetBuffer,
+    centerBuffer,
     projectionBuffer,
+    sizeBuffer,
+    elevationMapBuffer,
+    imageryMapBuffer,
+    elevationTextures,
   });
 
   const textureLoader = createTextureLoader({ device });
@@ -99,10 +106,9 @@ export const createTerrain = async (
       urlPattern: imageryUrl,
       device,
       textureLoader,
-      indicesBuffer: imageryIndicesBuffer,
+      mapBuffer: imageryMapBuffer,
       textures: imageryTextures,
     });
-    elevationTileTextures?.destroy();
   });
 
   resolve(elevationUrl).use(elevationUrl => {
@@ -111,7 +117,7 @@ export const createTerrain = async (
       urlPattern: elevationUrl,
       device,
       textureLoader,
-      indicesBuffer: elevationIndicesBuffer,
+      mapBuffer: elevationMapBuffer,
       textures: elevationTextures,
       initialDownsample: terrainDownsample,
     });
@@ -123,49 +129,58 @@ export const createTerrain = async (
     sampleCount,
     tilesBuffer,
     countBuffer,
-    targetBuffer,
+    centerBuffer,
     projectionBuffer,
-    imageryIndicesBuffer,
-    elevationIndicesBuffer,
     imageryTextures,
     elevationTextures,
   });
 
+  const projection = mat4.identity();
+  const centerData = new Uint8Array(16);
   const unsubscribe = useAll([size, resolve(view)], (size, view) => {
     const {
-      target,
+      center,
       distance,
       orientation: [pitch, yaw, roll],
     } = view;
+
     const [width, height] = size;
+
     const aspect = width / height;
-    const fov = 45;
-    const near = distance / 10;
-    const far = distance * 10000;
-    const projection = [
-      mat4.perspective((fov / 180) * Math.PI, aspect, near, far),
-      mat4.scaling([1, -1, 1]),
-      mat4.translation([0, 0, -distance]),
-      mat4.rotationX(pitch),
-      mat4.rotationY(roll),
-      mat4.rotationZ(-yaw),
-    ].reduce((acc, _) => mat4.multiply(acc, _), mat4.identity());
-    device.queue.writeBuffer(projectionBuffer, 0, new Float32Array(projection));
-    device.queue.writeBuffer(targetBuffer, 0, new Float32Array(target));
+    const fov = (45 / 180) * Math.PI;
+    const near = distance / 100;
+    const far = distance * 100;
+
+    mat4.perspective(fov, aspect, near, far, projection);
+    mat4.translate(projection, [0, 0, -distance], projection);
+    mat4.rotateX(projection, pitch, projection);
+    mat4.rotateY(projection, roll, projection);
+    mat4.rotateZ(projection, -yaw, projection);
+
+    const { queue } = device;
+    queue.writeBuffer(projectionBuffer, 0, projection);
+    queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
+    queue.writeBuffer(sizeBuffer, 0, new Float32Array(size));
   });
 
-  const prepare = async () => {
-    tiles = await computer.compute();
+  const prepare = (encoder: GPUCommandEncoder) => {
+    textureLoader.load();
+    computer.compute(encoder);
+    pipeline.prepare(encoder);
   };
 
-  const encode = (pass: GPURenderPassEncoder) => {
+  const encode = (pass: GPURenderPassEncoder) => pipeline.encode(pass);
+
+  const updateTextures = async () => {
+    const tiles = await computer.read();
     imageryTileTextures?.update(tiles);
     elevationTileTextures?.update(tiles);
-    pipeline.encode(pass, tiles.length);
-    textureLoader.load();
   };
 
+  const interval = setInterval(updateTextures, 100);
+
   const destroy = () => {
+    clearInterval(interval);
     unsubscribe();
     imageryTileTextures?.destroy();
     elevationTileTextures?.destroy();
@@ -173,11 +188,25 @@ export const createTerrain = async (
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();
-    targetBuffer.destroy();
+    centerBuffer.destroy();
     projectionBuffer.destroy();
-    imageryIndicesBuffer.destroy();
+    sizeBuffer.destroy();
+    imageryMapBuffer.destroy();
+    elevationMapBuffer.destroy();
     imageryTextures.destroy();
+    elevationTextures.destroy();
   };
 
   return { prepare, encode, destroy };
+};
+
+const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {
+  const latRad = (lat * Math.PI) / 180;
+  const mx = (lon + 180) / 360;
+  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
+  const dv = new DataView(data.buffer);
+  dv.setUint32(0, Math.floor(mx * 2 ** 31), true);
+  dv.setUint32(4, Math.floor(my * 2 ** 31), true);
+  dv.setFloat32(8, alt, true);
+  return data;
 };

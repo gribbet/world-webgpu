@@ -7,7 +7,7 @@ export const createContext = async (element: HTMLCanvasElement) => {
 
   const { gpu } = navigator;
   const adapter = await gpu.requestAdapter();
-  if (!adapter) throw new Error();
+  if (!adapter) throw new Error("No WebGPU adapter found");
 
   const device = await adapter.requestDevice();
 

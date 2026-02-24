@@ -4,32 +4,41 @@ export const createComputer = async ({
   device,
   tilesBuffer,
   countBuffer,
-  targetBuffer,
+  centerBuffer,
   projectionBuffer,
+  sizeBuffer,
+  imageryMapBuffer,
+  elevationMapBuffer,
+  elevationTextures,
 }: {
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  targetBuffer: GPUBuffer;
+  centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
+  sizeBuffer: GPUBuffer;
+  imageryMapBuffer: GPUBuffer;
+  elevationMapBuffer: GPUBuffer;
+  elevationTextures: GPUTexture;
 }) => {
   const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
     countBuffer,
-    targetBuffer,
+    centerBuffer,
     projectionBuffer,
+    sizeBuffer,
+    imageryMapBuffer,
+    elevationMapBuffer,
+    elevationTextures,
   });
 
-  const compute = async () => {
-    const encoder = device.createCommandEncoder();
+  const compute = (encoder: GPUCommandEncoder) =>
     computePipeline.encode(encoder);
-    device.queue.submit([encoder.finish()]);
-    await device.queue.onSubmittedWorkDone();
-    return await computePipeline.read();
-  };
+
+  const read = async () => await computePipeline.read();
 
   const { destroy } = computePipeline;
 
-  return { compute, destroy };
+  return { compute, read, destroy };
 };

@@ -3,7 +3,7 @@ import type { Value } from "./value";
 import { resolve } from "./value";
 
 export type Layer = {
-  prepare: () => Promise<void>;
+  prepare: (encode: GPUCommandEncoder) => void;
   encode: (pass: GPURenderPassEncoder) => void;
 };
 
@@ -34,6 +34,8 @@ export const createWorld = (
   let depthTexture = createDepthTexture([1, 1]);
 
   const unsubscribeSize = size.use(size => {
+    renderTexture.destroy();
+    depthTexture.destroy();
     renderTexture = createRenderTexture(size);
     depthTexture = createDepthTexture(size);
   });
@@ -42,8 +44,10 @@ export const createWorld = (
     _layers = layers;
   });
 
-  const render = async () => {
+  const render = () => {
     const encoder = device.createCommandEncoder();
+
+    _layers.forEach(_ => _.prepare(encoder));
 
     const pass = encoder.beginRenderPass({
       colorAttachments: [
@@ -51,31 +55,28 @@ export const createWorld = (
           view: renderTexture.createView(),
           resolveTarget: context.getCurrentTexture().createView(),
           loadOp: "clear",
-          storeOp: "store",
+          storeOp: "discard",
           clearValue: { r: 0, g: 0, b: 0, a: 1 },
         },
       ],
       depthStencilAttachment: {
         view: depthTexture.createView(),
         depthLoadOp: "clear",
-        depthStoreOp: "store",
+        depthStoreOp: "discard",
         depthClearValue: 1.0,
       },
     });
     _layers.forEach(_ => _.encode(pass));
     pass.end();
 
-    const { queue } = device;
-    queue.submit([encoder.finish()]);
-    await queue.onSubmittedWorkDone();
+    device.queue.submit([encoder.finish()]);
   };
 
   let running = true;
-  const frame = async () => {
+  const frame = () => {
     if (!running) return;
 
-    await Promise.all(_layers.map(_ => _.prepare()));
-    await render();
+    render();
 
     requestAnimationFrame(frame);
   };

@@ -1,1 +1,1 @@
-export const terrainDownsample = 3;
+export const terrainDownsample = 2;

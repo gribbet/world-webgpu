@@ -1,7 +1,6 @@
 import type { Vec3 } from "../model";
 import type { TextureLoader } from "./texture-loader";
-import { createTextureMap } from "./texture-map";
-import { createTileCache } from "./tile-cache";
+import { createTileTextureMap } from "./tile-texture-map";
 
 export type TileTextures = ReturnType<typeof createTileTextures>;
 
@@ -9,21 +8,26 @@ export const createTileTextures = ({
   urlPattern,
   device,
   textureLoader,
-  indicesBuffer,
+  mapBuffer,
   textures,
   initialDownsample = 0,
 }: {
   urlPattern: string;
   device: GPUDevice;
   textureLoader: TextureLoader;
-  indicesBuffer: GPUBuffer;
+  mapBuffer: GPUBuffer;
   textures: GPUTexture;
   initialDownsample?: number;
 }) => {
-  const cache = createTileCache({ device, textureLoader, urlPattern });
-  const map = createTextureMap({ device, textures });
+  const map = createTileTextureMap({
+    urlPattern,
+    device,
+    textureLoader,
+    textures,
+    mapBuffer,
+  });
 
-  const get = ([x = 0, y = 0, z = 0]) => {
+  const get = ([x, y, z]: Vec3) => {
     for (
       let downsample = Math.min(z, initialDownsample);
       downsample <= z;
@@ -31,22 +35,13 @@ export const createTileTextures = ({
     ) {
       const k = 2 ** downsample;
       const xyz: Vec3 = [Math.floor(x / k), Math.floor(y / k), z - downsample];
-      const texture = cache.get(xyz);
-      if (!texture) continue;
-      const index = map.get(texture.texture);
-      if (index === undefined) continue;
-      return [index, downsample];
+      map.get(xyz);
     }
   };
 
-  const update = (tiles: [number, number, number][]) => {
-    const data = tiles.flatMap(_ => get(_) ?? [0, 0]);
-    const { queue } = device;
-    queue.writeBuffer(indicesBuffer, 0, new Uint32Array(data));
-  };
+  const update = (tiles: Vec3[]) => tiles.forEach(get);
 
   const destroy = () => {
-    cache.destroy();
     map.destroy();
   };
 
