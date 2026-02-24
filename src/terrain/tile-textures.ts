@@ -91,4 +91,4 @@ const parents = (tiles: Vec3[]) =>
   unique(tiles.map(_ => downsample(_, 1)).filter(_ => !!_));
 
 const descendants: (tiles: Vec3[]) => Vec3[] = tiles =>
-  tiles.length > 0 ? unique([...tiles, ...descendants(parents(tiles))]) : [];
+  tiles.length > 0 ? unique([...descendants(parents(tiles)), ...tiles]) : [];
