@@ -77,6 +77,7 @@ export const createComputePipeline = async ({
   };
 
   const read = async () => {
+    await device.queue.onSubmittedWorkDone();
     await Promise.all([
       countReadBuffer.mapAsync(GPUMapMode.READ),
       buffer.mapAsync(GPUMapMode.READ),

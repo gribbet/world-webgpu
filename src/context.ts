@@ -11,7 +11,8 @@ export const createContext = async (element: HTMLCanvasElement) => {
 
   const device = await adapter.requestDevice();
 
-  const size = createSignal<[number, number]>([1, 1]);
+  const { width, height } = element;
+  const size = createSignal<[number, number]>([width, height]);
   new ResizeObserver(([{ contentRect: { width, height } = {} } = {}]) => {
     if (width === undefined || height === undefined) return;
     element.width = width;
