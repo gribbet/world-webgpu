@@ -1,3 +1,4 @@
+import { tileTextureLayers } from "../configuration";
 import { createBuffer } from "../device";
 
 export const createComputePipeline = async ({
@@ -48,7 +49,7 @@ export const createComputePipeline = async ({
 
   const elevationTexturesView = elevationTextures.createView({
     dimension: "2d-array",
-    arrayLayerCount: 256,
+    arrayLayerCount: tileTextureLayers,
   });
 
   const bindGroup = device.createBindGroup({

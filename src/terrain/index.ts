@@ -1,6 +1,6 @@
 import { mat4 } from "wgpu-matrix";
 
-import { terrainDownsample } from "../configuration";
+import { terrainDownsample, tileTextureLayers } from "../configuration";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
 import type { Vec3, View } from "../model";
@@ -66,7 +66,7 @@ export const createTerrain = async (
   );
 
   const imageryTextures = device.createTexture({
-    size: [256, 256, 256],
+    size: [256, 256, tileTextureLayers],
     format: "rgba8unorm",
     usage:
       GPUTextureUsage.TEXTURE_BINDING |
@@ -75,7 +75,7 @@ export const createTerrain = async (
   });
 
   const elevationTextures = device.createTexture({
-    size: [256, 256, 256],
+    size: [256, 256, tileTextureLayers],
     format: "rgba8unorm",
     usage:
       GPUTextureUsage.TEXTURE_BINDING |

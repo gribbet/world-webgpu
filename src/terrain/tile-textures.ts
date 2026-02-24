@@ -1,3 +1,4 @@
+import { tileTextureLayers } from "../configuration";
 import type { Vec3 } from "../model";
 import { fromKey, toKey } from "./common";
 import { createLru } from "./lru";
@@ -23,14 +24,14 @@ export const createTileTextures = ({
   initialDownsample?: number;
 }) => {
   const cache = createTileCache({ device, textureLoader, urlPattern });
-  const open = new Array(256).fill(0).map((_, i) => i);
+  const open = new Array(tileTextureLayers).fill(0).map((_, i) => i);
 
   const tileMapBuffer = createTileMapBuffer(device, mapBuffer);
 
   const pending: Vec3[] = [];
 
   const mapping = createLru<number, { index?: number; texture: GPUTexture }>({
-    maxSize: 256,
+    maxSize: tileTextureLayers,
     onEviction: (key, { index }) => {
       if (index !== undefined) open.push(index);
       tileMapBuffer.clear(fromKey(key));

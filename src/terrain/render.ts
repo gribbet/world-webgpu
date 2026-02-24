@@ -1,4 +1,4 @@
-import { terrainDownsample } from "../configuration";
+import { terrainDownsample, tileTextureLayers } from "../configuration";
 import { createBuffer } from "../device";
 
 export const createRenderPipeline = async ({
@@ -103,12 +103,12 @@ export const createRenderPipeline = async ({
 
   const imageryTexturesView = imageryTextures.createView({
     dimension: "2d-array",
-    arrayLayerCount: 256,
+    arrayLayerCount: tileTextureLayers,
   });
 
   const elevationTexturesView = elevationTextures.createView({
     dimension: "2d-array",
-    arrayLayerCount: 256,
+    arrayLayerCount: tileTextureLayers,
   });
 
   const sampler = device.createSampler({
