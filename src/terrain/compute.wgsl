@@ -89,7 +89,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             subdivide = length(pixels) > 384.0;
         }
 
-        if subdivide && z < 24u {
+        if subdivide && z <= 20u {
             stack[index] = vec3<u32>(2 * x, 2 * y, z + 1);
             index++;
             stack[index] = vec3<u32>(2 * x + 1, 2 * y, z + 1);

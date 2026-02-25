@@ -69,27 +69,37 @@ export const createComputePipeline = async ({
     ],
   });
 
+  let reading = false;
+
   const compute = (encoder: GPUCommandEncoder) => {
     const pass = encoder.beginComputePass();
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(1);
     pass.end();
-    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
-    encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
   };
 
   const read = async () => {
-    await device.queue.onSubmittedWorkDone();
+    if (reading) return;
+    reading = true;
+
+    const encoder = device.createCommandEncoder();
+    encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
+    encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
+    device.queue.submit([encoder.finish()]);
+
     await Promise.all([
       countReadBuffer.mapAsync(GPUMapMode.READ),
       buffer.mapAsync(GPUMapMode.READ),
     ]);
     const [count = 0] = new Uint32Array(countReadBuffer.getMappedRange());
-    countReadBuffer.unmap();
     const result = new Uint32Array(buffer.getMappedRange().slice(0));
+
+    countReadBuffer.unmap();
     buffer.unmap();
-    const tiles = new Array(count)
+    reading = false;
+
+    return new Array(count)
       .fill(0)
       .map(
         (_, i) =>
@@ -99,7 +109,6 @@ export const createComputePipeline = async ({
             result[i * 8 + 2] ?? 0,
           ] satisfies [number, number, number],
       );
-    return tiles;
   };
 
   const destroy = () => {

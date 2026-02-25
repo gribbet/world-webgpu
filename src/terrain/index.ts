@@ -184,6 +184,7 @@ export const createTerrain = async (
 
   const updateTextures = async () => {
     const tiles = await compute.read();
+    if (!tiles) return;
     imageryTileTextures?.load(tiles);
     elevationTileTextures?.load(tiles);
   };
