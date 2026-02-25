@@ -15,6 +15,7 @@ export const createTileTextures = ({
   textures,
   mapBuffer,
   initialDownsample = 0,
+  maxZ = 22,
 }: {
   urlPattern: string;
   device: GPUDevice;
@@ -22,6 +23,7 @@ export const createTileTextures = ({
   textures: GPUTexture;
   mapBuffer: GPUBuffer;
   initialDownsample?: number;
+  maxZ?: number;
 }) => {
   const cache = createTileCache({ device, textureLoader, urlPattern });
   const open = new Array(tileTextureLayers).fill(0).map((_, i) => i);
@@ -44,7 +46,7 @@ export const createTileTextures = ({
         descendants(
           tiles.map(_ => downsample(_, initialDownsample)).filter(_ => !!_),
         ),
-      ),
+      ).filter(([, , z]) => z <= maxZ),
     );
   };
 
