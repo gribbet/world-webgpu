@@ -73,7 +73,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         var subdivide = false;
-        if z < 2 || any(cw <= vec4(0.0)) {
+        if z < 3 || any(cw <= vec4(0.0)) {
             subdivide = true;
         } else {
             let n1 = screen(c1);
