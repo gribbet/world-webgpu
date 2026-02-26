@@ -1,30 +1,29 @@
 export type TextureLoader = ReturnType<typeof createTextureLoader>;
 
 export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
-  type Entry = {
+  type Load = {
     texture: GPUTexture;
     source: ImageBitmap;
     resolve: () => void;
   };
-  const queued: Entry[] = [];
+  const loads: Load[] = [];
 
-  const queue = (texture: GPUTexture, source: ImageBitmap) =>
-    new Promise<void>(resolve => queued.push({ texture, source, resolve }));
+  const load = (texture: GPUTexture, source: ImageBitmap) =>
+    new Promise<void>(resolve => loads.push({ texture, source, resolve }));
 
-  const process = ({ texture, source, resolve }: Entry) => {
-    const { width, height } = source;
-    device.queue.copyExternalImageToTexture(
-      { source },
-      { texture },
-      { width, height },
-    );
-    void device.queue.onSubmittedWorkDone().then(resolve);
-  };
-
-  const load = () => queued.splice(0, 2).map(process);
+  const update = () =>
+    loads.splice(0, 8).forEach(({ texture, source, resolve }) => {
+      const { width, height } = source;
+      device.queue.copyExternalImageToTexture(
+        { source },
+        { texture },
+        { width, height },
+      );
+      void device.queue.onSubmittedWorkDone().then(resolve);
+    });
 
   return {
-    queue,
     load,
+    update,
   };
 };

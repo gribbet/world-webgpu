@@ -1,12 +1,12 @@
 import { mat4 } from "wgpu-matrix";
 
-import { terrainDownsample } from "../configuration";
+import { terrainDownsample, tileTextureLayers } from "../configuration";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
 import type { Vec3, View } from "../model";
 import { useAll } from "../signal";
 import { resolve, type Value } from "../value";
-import { createComputer } from "./computer";
+import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
 import { createTextureLoader } from "./texture-loader";
 import { createTileTextures, type TileTextures } from "./tile-textures";
@@ -53,20 +53,26 @@ export const createTerrain = async (
     new Float32Array([1, 1]),
   );
 
+  const elevationCacheBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * 16376).fill(0xffffffff)),
+  );
+
   const imageryMapBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
-    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
+    new Uint32Array(new Array(4 * 4096).fill(0xffffffff)),
   );
 
   const elevationMapBuffer = createBuffer(
     device,
     GPUBufferUsage.STORAGE,
-    new Uint32Array(new Array(4 * 1024).fill(0xffffffff)),
+    new Uint32Array(new Array(4 * 4096).fill(0xffffffff)),
   );
 
   const imageryTextures = device.createTexture({
-    size: [256, 256, 256],
+    size: [256, 256, tileTextureLayers],
     format: "rgba8unorm",
     usage:
       GPUTextureUsage.TEXTURE_BINDING |
@@ -75,7 +81,7 @@ export const createTerrain = async (
   });
 
   const elevationTextures = device.createTexture({
-    size: [256, 256, 256],
+    size: [256, 256, tileTextureLayers],
     format: "rgba8unorm",
     usage:
       GPUTextureUsage.TEXTURE_BINDING |
@@ -83,15 +89,16 @@ export const createTerrain = async (
       GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
-  const computer = await createComputer({
+  const compute = await createComputePipeline({
     device,
     tilesBuffer,
     countBuffer,
     centerBuffer,
     projectionBuffer,
     sizeBuffer,
-    elevationMapBuffer,
+    elevationCacheBuffer,
     imageryMapBuffer,
+    elevationMapBuffer,
     elevationTextures,
   });
 
@@ -100,7 +107,7 @@ export const createTerrain = async (
   let imageryTileTextures: TileTextures | undefined;
   let elevationTileTextures: TileTextures | undefined;
 
-  resolve(imageryUrl).use(imageryUrl => {
+  const unsubscribeImageryUrl = resolve(imageryUrl).use(imageryUrl => {
     imageryTileTextures?.destroy();
     imageryTileTextures = createTileTextures({
       urlPattern: imageryUrl,
@@ -111,7 +118,7 @@ export const createTerrain = async (
     });
   });
 
-  resolve(elevationUrl).use(elevationUrl => {
+  const unsubscribeElevationUrl = resolve(elevationUrl).use(elevationUrl => {
     elevationTileTextures?.destroy();
     elevationTileTextures = createTileTextures({
       urlPattern: elevationUrl,
@@ -137,7 +144,7 @@ export const createTerrain = async (
 
   const projection = mat4.identity();
   const centerData = new Uint8Array(16);
-  const unsubscribe = useAll([size, resolve(view)], (size, view) => {
+  const unsubscribeView = useAll([size, resolve(view)], (size, view) => {
     const {
       center,
       distance,
@@ -163,28 +170,35 @@ export const createTerrain = async (
     queue.writeBuffer(sizeBuffer, 0, new Float32Array(size));
   });
 
-  const prepare = (encoder: GPUCommandEncoder) => {
-    textureLoader.load();
-    computer.compute(encoder);
-    pipeline.prepare(encoder);
+  const update = (encoder: GPUCommandEncoder) => {
+    textureLoader.update();
+    imageryTileTextures?.update(encoder);
+    elevationTileTextures?.update(encoder);
+    compute.compute(encoder);
+    pipeline.update(encoder);
   };
 
-  const encode = (pass: GPURenderPassEncoder) => pipeline.encode(pass);
+  const render = (pass: GPURenderPassEncoder) => {
+    pipeline.render(pass);
+  };
 
   const updateTextures = async () => {
-    const tiles = await computer.read();
-    imageryTileTextures?.update(tiles);
-    elevationTileTextures?.update(tiles);
+    const tiles = await compute.read();
+    if (!tiles) return;
+    imageryTileTextures?.load(tiles);
+    elevationTileTextures?.load(tiles);
   };
 
-  const interval = setInterval(updateTextures, 100);
+  const interval = setInterval(updateTextures, 250);
 
   const destroy = () => {
     clearInterval(interval);
-    unsubscribe();
+    unsubscribeView();
+    unsubscribeImageryUrl();
+    unsubscribeElevationUrl();
     imageryTileTextures?.destroy();
     elevationTileTextures?.destroy();
-    computer.destroy();
+    compute.destroy();
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();
@@ -197,7 +211,7 @@ export const createTerrain = async (
     elevationTextures.destroy();
   };
 
-  return { prepare, encode, destroy };
+  return { update, render, destroy };
 };
 
 const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {

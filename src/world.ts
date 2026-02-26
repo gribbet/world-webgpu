@@ -3,15 +3,15 @@ import type { Value } from "./value";
 import { resolve } from "./value";
 
 export type Layer = {
-  prepare: (encode: GPUCommandEncoder) => void;
-  encode: (pass: GPURenderPassEncoder) => void;
+  update: (encode: GPUCommandEncoder) => void;
+  render: (pass: GPURenderPassEncoder) => void;
 };
 
 export const createWorld = (
   { device, context, format, size, sampleCount }: Context,
-  { layers }: { layers: Value<Layer[]> },
+  { layers: _layers }: { layers: Value<Layer[]> },
 ) => {
-  let _layers: Layer[] = [];
+  let layers: Layer[] = [];
 
   const createRenderTexture = (size: [number, number]) =>
     device.createTexture({
@@ -40,14 +40,14 @@ export const createWorld = (
     depthTexture = createDepthTexture(size);
   });
 
-  const unsubscribeLayers = resolve(layers).use(layers => {
-    _layers = layers;
+  const unsubscribeLayers = resolve(_layers).use(_layers => {
+    layers = _layers;
   });
 
   const render = () => {
     const encoder = device.createCommandEncoder();
 
-    _layers.forEach(_ => _.prepare(encoder));
+    layers.forEach(_ => _.update(encoder));
 
     const pass = encoder.beginRenderPass({
       colorAttachments: [
@@ -66,7 +66,7 @@ export const createWorld = (
         depthClearValue: 1.0,
       },
     });
-    _layers.forEach(_ => _.encode(pass));
+    layers.forEach(_ => _.render(pass));
     pass.end();
 
     device.queue.submit([encoder.finish()]);

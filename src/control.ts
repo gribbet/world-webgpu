@@ -4,7 +4,7 @@ import { createSignal } from "./signal";
 export const createControl = (element: HTMLElement) => {
   const view = createSignal<View>({
     center: [-122.4194, 37.7749, 0], // SF
-    distance: 10000000,
+    distance: 100000,
     orientation: [0, 0, 0],
   });
 
