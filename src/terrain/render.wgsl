@@ -8,7 +8,7 @@
 
 struct VertexInput {
     @builtin(instance_index) instance: u32,
-    @location(0) uv: vec2<u32>,
+    @location(0) uvw: vec3<u32>,
 };
 
 struct VertexOutput {
@@ -24,13 +24,14 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let i = input.instance;
     let tile = tiles[i].tile;
     let index = tiles[i].elevation_texture;
-    let uv = vec2<f32>(input.uv) / ONE;
+    let uv = vec2<f32>(input.uvw.xy) / ONE;
     let alt = sample_elevation(elevation_textures, tile, uv, index);
     let tile_xy = tile.xy << vec2<u32>(31u - tile.z);
     let tile_size = f32(1u << (31u - tile.z));
     let offset = vec2<u32>(round(uv * tile_size));
     let xy = tile_xy + offset;
-    let position = Position(xy.x, xy.y, alt);
+    let skirt = select(0.0, -0.1 * tile_size * CIRCUMFERENCE / ONE, input.uvw.z > 0);
+    let position = Position(xy.x, xy.y, alt + skirt);
     output.position = project(position, center, projection);
     output.instance = input.instance;
     output.uv = uv;

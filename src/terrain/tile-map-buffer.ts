@@ -4,9 +4,6 @@ export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
   const size = Math.floor(buffer.size / 16);
   const data = new Uint32Array(size * 4).fill(0xffffffff);
 
-  const write = (i: number) =>
-    device.queue.writeBuffer(buffer, i * 16, data.subarray(i * 4, i * 4 + 4));
-
   const equals = ([ax, ay, az]: Vec3, [bx, by, bz]: Vec3) =>
     ax === bx && ay === by && az === bz;
 
@@ -17,12 +14,14 @@ export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
 
   const clearEntry = (i: number) => {
     data.set([0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff], i * 4);
-    write(i);
   };
 
   const setEntry = (i: number, xyz: Vec3, index: number) => {
     data.set([...xyz, index], i * 4);
-    write(i);
+  };
+
+  const update = () => {
+    device.queue.writeBuffer(buffer, 0, data);
   };
 
   const clear = (xyz: Vec3) => set(xyz, -1);
@@ -53,5 +52,5 @@ export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
     return h % size;
   };
 
-  return { set, clear };
+  return { set, clear, update };
 };

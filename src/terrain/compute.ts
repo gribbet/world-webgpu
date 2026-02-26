@@ -1,3 +1,4 @@
+import { tileTextureLayers } from "../configuration";
 import { createBuffer } from "../device";
 
 export const createComputePipeline = async ({
@@ -7,6 +8,7 @@ export const createComputePipeline = async ({
   centerBuffer,
   projectionBuffer,
   sizeBuffer,
+  elevationCacheBuffer,
   elevationMapBuffer,
   imageryMapBuffer,
   elevationTextures,
@@ -17,6 +19,7 @@ export const createComputePipeline = async ({
   centerBuffer: GPUBuffer;
   projectionBuffer: GPUBuffer;
   sizeBuffer: GPUBuffer;
+  elevationCacheBuffer: GPUBuffer;
   imageryMapBuffer: GPUBuffer;
   elevationMapBuffer: GPUBuffer;
   elevationTextures: GPUTexture;
@@ -48,24 +51,27 @@ export const createComputePipeline = async ({
 
   const elevationTexturesView = elevationTextures.createView({
     dimension: "2d-array",
-    arrayLayerCount: 256,
+    arrayLayerCount: tileTextureLayers,
   });
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: centerBuffer } },
-      { binding: 1, resource: { buffer: projectionBuffer } },
-      { binding: 2, resource: { buffer: sizeBuffer } },
-      { binding: 3, resource: { buffer: tilesBuffer } },
-      { binding: 4, resource: { buffer: countBuffer } },
-      { binding: 5, resource: { buffer: imageryMapBuffer } },
-      { binding: 6, resource: { buffer: elevationMapBuffer } },
-      { binding: 7, resource: elevationTexturesView },
+      { binding: 0, resource: { buffer: tilesBuffer } },
+      { binding: 1, resource: { buffer: countBuffer } },
+      { binding: 2, resource: { buffer: centerBuffer } },
+      { binding: 3, resource: { buffer: projectionBuffer } },
+      { binding: 4, resource: { buffer: sizeBuffer } },
+      { binding: 5, resource: { buffer: elevationCacheBuffer } },
+      { binding: 6, resource: { buffer: imageryMapBuffer } },
+      { binding: 7, resource: { buffer: elevationMapBuffer } },
+      { binding: 8, resource: elevationTexturesView },
     ],
   });
 
-  const encode = (encoder: GPUCommandEncoder) => {
+  let reading = false;
+
+  const compute = (encoder: GPUCommandEncoder) => {
     const pass = encoder.beginComputePass();
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
@@ -74,19 +80,26 @@ export const createComputePipeline = async ({
   };
 
   const read = async () => {
+    if (reading) return;
+    reading = true;
+
     const encoder = device.createCommandEncoder();
     encoder.copyBufferToBuffer(tilesBuffer, 0, buffer, 0, buffer.size);
     encoder.copyBufferToBuffer(countBuffer, 0, countReadBuffer, 0, 4);
     device.queue.submit([encoder.finish()]);
+
     await Promise.all([
       countReadBuffer.mapAsync(GPUMapMode.READ),
       buffer.mapAsync(GPUMapMode.READ),
     ]);
     const [count = 0] = new Uint32Array(countReadBuffer.getMappedRange());
-    countReadBuffer.unmap();
     const result = new Uint32Array(buffer.getMappedRange().slice(0));
+
+    countReadBuffer.unmap();
     buffer.unmap();
-    const tiles = new Array(count)
+    reading = false;
+
+    return new Array(count)
       .fill(0)
       .map(
         (_, i) =>
@@ -96,7 +109,6 @@ export const createComputePipeline = async ({
             result[i * 8 + 2] ?? 0,
           ] satisfies [number, number, number],
       );
-    return tiles;
   };
 
   const destroy = () => {
@@ -105,7 +117,7 @@ export const createComputePipeline = async ({
   };
 
   return {
-    encode,
+    compute,
     read,
     destroy,
   };
