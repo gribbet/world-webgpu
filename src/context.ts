@@ -1,5 +1,5 @@
 import { tileTextureLayers } from "./configuration";
-import { createSignal } from "./signal";
+import { createSignal, onCleanup } from "./reactive";
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
 
@@ -15,13 +15,16 @@ export const createContext = async (element: HTMLCanvasElement) => {
   });
 
   const { width, height } = element;
-  const size = createSignal<[number, number]>([width, height]);
-  new ResizeObserver(([{ contentRect: { width, height } = {} } = {}]) => {
-    if (width === undefined || height === undefined) return;
-    element.width = width;
-    element.height = height;
-    size.set([width, height]);
-  }).observe(element);
+  const [size, setSize] = createSignal<[number, number]>([width, height]);
+  const observer = new ResizeObserver(
+    ([{ contentRect: { width, height } = {} } = {}]) => {
+      if (width === undefined || height === undefined) return;
+      element.width = width;
+      element.height = height;
+      setSize([width, height]);
+    },
+  );
+  observer.observe(element);
 
   const context = element.getContext("webgpu");
   if (!context) throw new Error();
@@ -29,7 +32,17 @@ export const createContext = async (element: HTMLCanvasElement) => {
   const format = gpu.getPreferredCanvasFormat();
   context.configure({ device, format, alphaMode: "opaque" });
 
-  const { destroy } = device;
+  onCleanup(() => {
+    observer.disconnect();
+    device.destroy();
+  });
 
-  return { element, device, context, format, size, sampleCount, destroy };
+  return {
+    element,
+    device,
+    context,
+    format,
+    size,
+    sampleCount,
+  };
 };
