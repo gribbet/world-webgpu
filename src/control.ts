@@ -1,21 +1,11 @@
 import type { Vec3, View } from "./model";
-import { createSignal } from "./signal";
+import { createSignal, onCleanup } from "./reactive";
 
 export const createControl = (element: HTMLElement) => {
-  const view = createSignal<View>({
+  const [view, setView] = createSignal<View>({
     center: [-122.4194, 37.7749, 0], // SF
     distance: 100000,
     orientation: [0, 0, 0],
-  });
-
-  let _view: View = {
-    center: [0, 0, 0],
-    distance: 0,
-    orientation: [0, 0, 0],
-  };
-
-  view.use(_ => {
-    _view = _;
   });
 
   let dragging: [number, number] | undefined;
@@ -38,6 +28,7 @@ export const createControl = (element: HTMLElement) => {
       const [lastX, lastY] = dragging;
       const tx = clientX - lastX;
       const ty = clientY - lastY;
+      const _view = view();
       const { center, distance, orientation } = _view;
       const [lon, lat, hae] = center;
       const [pitch, yaw, roll] = orientation;
@@ -63,14 +54,14 @@ export const createControl = (element: HTMLElement) => {
           Math.min(latLimit, Math.max(-latLimit, lat + latDelta)),
           hae,
         ] satisfies Vec3;
-        view.set({ ..._view, center });
+        setView({ ..._view, center });
       } else if (buttons === 2) {
         const orientation = [
           pitch + ty * 0.01,
           yaw - tx * 0.01,
           roll,
         ] satisfies Vec3;
-        view.set({ ..._view, orientation });
+        setView({ ..._view, orientation });
       }
     },
     { signal },
@@ -88,7 +79,8 @@ export const createControl = (element: HTMLElement) => {
     "wheel",
     event => {
       event.preventDefault();
-      view.set({
+      const _view = view();
+      setView({
         ..._view,
         distance: _view.distance * Math.exp(event.deltaY * 0.001),
       });
@@ -100,7 +92,7 @@ export const createControl = (element: HTMLElement) => {
     signal,
   });
 
-  const destroy = () => abortController.abort();
+  onCleanup(() => abortController.abort());
 
-  return { view, destroy };
+  return { view };
 };
