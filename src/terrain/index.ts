@@ -180,8 +180,11 @@ export const createTerrain = async (
     pipeline.update(encoder);
   };
 
-  const render = (pass: GPURenderPassEncoder) => {
-    pipeline.render(pass);
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => {
+    pipeline.render(pass, { pick });
   };
 
   const updateTextures = async () => {

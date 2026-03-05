@@ -1,7 +1,8 @@
-elevation in compute
+
+Remove updateTextures interval
+bent tiles issue
 dispose
-skirt
-backface culling
-halfway tile clip
-Improve subdivision size logic
 Safari
+pick
+performance
+mmipmapping

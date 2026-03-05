@@ -31,7 +31,8 @@ fn project_tile(tile: vec3<u32>) -> vec4<f32> {
     let y = tile.y << shift;
     let elevation = tile_elevation(tile);
     let position = Position(x, y, elevation);
-    let value = project(position, center, projection);
+    let local = transform(position, center, projection);
+    let value = projection * vec4<f32>(local, 1.0);
     return value;
 }
 
