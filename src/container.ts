@@ -1,3 +1,4 @@
+import type { Layer, LayerDefinition, LayerFactory } from "./common";
 import type { Context } from "./context";
 import {
   createDerived,
@@ -8,7 +9,6 @@ import {
   type Properties,
   resolve,
 } from "./reactive";
-import type { Layer, LayerDefinition, LayerFactory } from "./world";
 
 export type ContainerProperties = {
   layers: LayerDefinition[];
@@ -91,8 +91,10 @@ export const createContainerLayer = (
   const update = (encoder: GPUCommandEncoder) =>
     active().forEach(_ => _.update?.(encoder));
 
-  const render = (pass: GPURenderPassEncoder) =>
-    active().forEach(_ => _.render(pass));
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => active().forEach(_ => _.render(pass, { pick }));
 
   return {
     update,

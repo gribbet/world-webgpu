@@ -42,16 +42,14 @@ fn transform_spherical(position: Position, center: Position) -> vec3<f32> {
     return vec3<f32>(x, y, z);
 }
 
-fn transform_local(position: Position, center: Position, projection: mat4x4<f32>) -> vec3<f32> {
+fn transform(position: Position, center: Position, projection: mat4x4<f32>) -> vec3<f32> {
     if abs(projection[3][3]) < 10000.0 {
         return transform_flat(position, center);
     }
     return transform_spherical(position, center);
 }
 
-fn project(position: Position, center: Position, projection: mat4x4<f32>) -> vec4<f32> {
-    return projection * vec4<f32>(transform_local(position, center, projection), 1.0);
-}
+
 
 struct Tile {
     tile: vec3<u32>,

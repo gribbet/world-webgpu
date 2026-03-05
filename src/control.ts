@@ -1,76 +1,65 @@
 import type { Vec3, View } from "./model";
 import { createSignal, onCleanup } from "./reactive";
+import type { World } from "./world";
 
-export const createControl = (element: HTMLElement) => {
+export const createControl = (element: HTMLElement, world: World) => {
   const [view, setView] = createSignal<View>({
     center: [-122.4194, 37.7749, 0], // SF
     distance: 100000,
     orientation: [0, 0, 0],
   });
 
-  let dragging: [number, number] | undefined;
-
   const abortController = new AbortController();
   const { signal } = abortController;
 
   element.addEventListener(
     "pointerdown",
-    ({ clientX, clientY }) => {
-      dragging = [clientX, clientY];
+    async () => {
+      const { width, height } = element.getBoundingClientRect();
+      const [x, y, z] = await world.pick(width / 2, height / 2);
+
+      const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
+      const { center, distance, orientation } = view();
+
+      setView({
+        orientation,
+        center: move(center, [x, y, z]),
+        distance: distance - d * (z > 0 ? 1 : -1),
+      });
     },
     { signal },
   );
 
   element.addEventListener(
     "pointermove",
-    ({ clientX, clientY, buttons }) => {
-      if (!dragging) return;
-      const [lastX, lastY] = dragging;
-      const tx = clientX - lastX;
-      const ty = clientY - lastY;
-      const _view = view();
-      const { center, distance, orientation } = _view;
-      const [lon, lat, hae] = center;
+    ({ buttons, movementX, movementY }) => {
+      if (buttons === 0) return;
+      const { center, distance, orientation } = view();
+      const [lon, lat, alt] = center;
       const [pitch, yaw, roll] = orientation;
-      dragging = [clientX, clientY];
 
       if (buttons === 1) {
         const metersPerPixel = distance / 1000;
 
         const cos = Math.cos(-yaw);
         const sin = Math.sin(-yaw);
-        const dx = cos * tx - sin * ty;
-        const dy = sin * tx + cos * ty;
+        const dx = cos * movementX - sin * movementY;
+        const dy = sin * movementX + cos * movementY;
 
-        const metersPerDegree = (2 * Math.PI * 6371000) / 360;
-        const lonDelta =
-          -(dx * metersPerPixel) /
-          (metersPerDegree * Math.cos((lat * Math.PI) / 180));
-        const latDelta = (dy * metersPerPixel) / metersPerDegree;
+        const center = move(
+          [lon, lat, alt],
+          [-dx * metersPerPixel, dy * metersPerPixel, 0],
+        );
 
-        const latLimit = 85;
-        const center = [
-          lon + lonDelta,
-          Math.min(latLimit, Math.max(-latLimit, lat + latDelta)),
-          hae,
-        ] satisfies Vec3;
-        setView({ ..._view, center });
+        setView({ center, distance, orientation });
       } else if (buttons === 2) {
         const orientation = [
-          pitch + ty * 0.01,
-          yaw - tx * 0.01,
+          pitch + movementY * 0.01,
+          yaw - movementX * 0.01,
           roll,
         ] satisfies Vec3;
-        setView({ ..._view, orientation });
+        setView({ center, distance, orientation });
       }
-    },
-    { signal },
-  );
-
-  window.addEventListener(
-    "pointerup",
-    () => {
-      dragging = undefined;
     },
     { signal },
   );
@@ -95,4 +84,18 @@ export const createControl = (element: HTMLElement) => {
   onCleanup(() => abortController.abort());
 
   return { view };
+};
+
+const move = (center: Vec3, enu: readonly [number, number, number]): Vec3 => {
+  const [lon, lat, alt] = center;
+  const [x, y, z] = enu;
+
+  const radius = 6378137.0;
+  const r = radius + alt;
+  const latRad = (lat * Math.PI) / 180;
+
+  const lonDelta = (x / (r * Math.cos(latRad))) * (180 / Math.PI);
+  const latDelta = (y / r) * (180 / Math.PI);
+
+  return [lon + lonDelta, lat + latDelta, alt + z];
 };

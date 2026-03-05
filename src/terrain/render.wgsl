@@ -15,6 +15,7 @@ struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) @interpolate(flat) instance: u32,
     @location(1) uv: vec2<f32>,
+    @location(2) local: vec3<f32>,
 };
 
 
@@ -31,20 +32,28 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let offset = vec2<u32>(round(uv * tile_size));
     let xy = tile_xy + offset;
     let skirt = select(0.0, -0.1 * tile_size * CIRCUMFERENCE / ONE, input.uvw.z > 0);
-    let position = Position(xy.x, xy.y, alt + skirt);
-    output.position = project(position, center, projection);
+    let world = Position(xy.x, xy.y, alt + skirt);
+    let local = transform(world, center, projection);
+    output.position = projection * vec4<f32>(local, 1.0);
     output.instance = input.instance;
     output.uv = uv;
+    output.local = local;
+
     return output;
 }
 
 
 @fragment
-fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
+fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     let i = input.instance;
     let tile = tiles[i].tile;
     let index = tiles[i].imagery_texture;
     let k = 1u << index.y;
     let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
     return textureSample(imagery_textures, sample, uv, index.x);
+}
+
+@fragment
+fn pick(input: VertexOutput) -> @location(0) vec4<f32> {
+    return vec4<f32>(input.local, 1.0);
 }

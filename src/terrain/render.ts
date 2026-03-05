@@ -28,7 +28,7 @@ export const createRenderPipeline = async ({
       (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
   });
 
-  const pipeline = await device.createRenderPipelineAsync({
+  const pipelineDescriptor = {
     layout: "auto",
     vertex: {
       module,
@@ -40,22 +40,38 @@ export const createRenderPipeline = async ({
         },
       ],
     },
-    fragment: {
-      module,
-      entryPoint: "fragment",
-      targets: [{ format }],
-    },
     depthStencil: {
       format: "depth24plus",
       depthWriteEnabled: true,
       depthCompare: "less",
     },
-    multisample: {
-      count: sampleCount,
-    },
     primitive: {
       topology: "triangle-list",
       cullMode: "front",
+    },
+  } satisfies GPURenderPipelineDescriptor;
+
+  const pipeline = await device.createRenderPipelineAsync({
+    ...pipelineDescriptor,
+    fragment: {
+      module,
+      entryPoint: "render",
+      targets: [{ format }],
+    },
+    multisample: {
+      count: sampleCount,
+    },
+  });
+
+  const pickPipeline = await device.createRenderPipelineAsync({
+    ...pipelineDescriptor,
+    fragment: {
+      module,
+      entryPoint: "pick",
+      targets: [{ format: "rgba32float" }],
+    },
+    multisample: {
+      count: 1,
     },
   });
 
@@ -127,14 +143,27 @@ export const createRenderPipeline = async ({
     ],
   });
 
+  const pickBindGroup = device.createBindGroup({
+    layout: pickPipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: tilesBuffer } },
+      { binding: 1, resource: { buffer: centerBuffer } },
+      { binding: 2, resource: { buffer: projectionBuffer } },
+      { binding: 4, resource: elevationTexturesView },
+    ],
+  });
+
   const update = (encoder: GPUCommandEncoder) =>
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
 
-  const render = (pass: GPURenderPassEncoder) => {
-    pass.setPipeline(pipeline);
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => {
+    pass.setPipeline(pick ? pickPipeline : pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
-    pass.setBindGroup(0, bindGroup);
+    pass.setBindGroup(0, pick ? pickBindGroup : bindGroup);
     pass.drawIndexedIndirect(indirectBuffer, 0);
   };
 

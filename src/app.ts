@@ -1,6 +1,6 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
-import { createDummyLayer } from "./layers/dummy";
+import type { View } from "./model";
 import {
   createDerived,
   createEffect,
@@ -22,24 +22,20 @@ export const createApp = () =>
 
     const context = await createContext(element);
 
-    const control = createControl(element);
-    const { view } = control;
-
-    const [test, setTest] = createSignal(1);
-
-    createEffect(() => {
-      const interval = setInterval(() => {
-        setTest(test() + 1);
-      }, 1000);
-      return () => clearInterval(interval);
+    const [view, setView] = createSignal<View>({
+      center: [-122.4194, 37.7749, 0], // SF
+      distance: 100000,
+      orientation: [0, 0, 0],
     });
 
-    createWorld(context, {
+    const world = createWorld(context, {
       layers: createDerived(() => [
         [createTerrain, { view, imageryUrl, elevationUrl }] as const,
-        ...(test() % 4 !== 0 ? ([[createDummyLayer, { test }]] as const) : []),
       ]),
     });
+
+    const control = createControl(element, world);
+    createEffect(() => setView(control.view()));
 
     return {
       dispose,
