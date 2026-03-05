@@ -12,23 +12,21 @@ export const createControl = (element: HTMLElement, world: World) => {
   const abortController = new AbortController();
   const { signal } = abortController;
 
-  element.addEventListener(
-    "pointerdown",
-    async () => {
-      const { width, height } = element.getBoundingClientRect();
-      const [x, y, z] = await world.pick(width / 2, height / 2);
+  const recenter = async () => {
+    const { width, height } = element.getBoundingClientRect();
+    const [x, y, z] = await world.pick(width / 2, height / 2);
 
-      const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
-      const { center, distance, orientation } = view();
+    const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
+    const { center, distance, orientation } = view();
 
-      setView({
-        orientation,
-        center: move(center, [x, y, z]),
-        distance: distance - d * (z > 0 ? 1 : -1),
-      });
-    },
-    { signal },
-  );
+    setView({
+      orientation,
+      center: move(center, [x, y, z]),
+      distance: distance - d * (z > 0 ? 1 : -1),
+    });
+  };
+
+  element.addEventListener("pointerdown", recenter, { signal });
 
   element.addEventListener(
     "pointermove",
@@ -66,12 +64,14 @@ export const createControl = (element: HTMLElement, world: World) => {
 
   element.addEventListener(
     "wheel",
-    event => {
+    async event => {
       event.preventDefault();
-      const _view = view();
+      await recenter();
+      const { center, distance, orientation } = view();
       setView({
-        ..._view,
-        distance: _view.distance * Math.exp(event.deltaY * 0.001),
+        center,
+        distance: distance * Math.exp(event.deltaY * 0.001),
+        orientation,
       });
     },
     { passive: false, signal },
