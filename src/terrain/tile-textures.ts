@@ -16,6 +16,7 @@ export const createTileTextures = ({
   mapBuffer,
   initialDownsample = 0,
   maxZ = 22,
+  mipLevelCount = 1,
 }: {
   urlPattern: string;
   device: GPUDevice;
@@ -24,8 +25,14 @@ export const createTileTextures = ({
   mapBuffer: GPUBuffer;
   initialDownsample?: number;
   maxZ?: number;
+  mipLevelCount?: number;
 }) => {
-  const cache = createTileCache({ device, textureLoader, urlPattern });
+  const cache = createTileCache({
+    device,
+    textureLoader,
+    urlPattern,
+    mipLevelCount,
+  });
   const open = new Array(tileTextureLayers).fill(0).map((_, i) => i);
 
   const tileMapBuffer = createTileMapBuffer(device, mapBuffer);
@@ -63,11 +70,18 @@ export const createTileTextures = ({
       mapping.set(key, { index, texture });
       if (index === undefined) return;
 
-      encoder.copyTextureToTexture(
-        { texture },
-        { texture: textures, origin: { z: index } },
-        { width: 256, height: 256 },
-      );
+      new Array(mipLevelCount).fill(0).forEach((_, i) => {
+        const size = 256 >> i;
+        encoder.copyTextureToTexture(
+          { texture, mipLevel: i },
+          {
+            texture: textures,
+            origin: { x: 0, y: 0, z: index },
+            mipLevel: i,
+          },
+          { width: size, height: size },
+        );
+      });
 
       tileMapBuffer.set(xyz, index);
     });
