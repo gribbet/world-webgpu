@@ -5,18 +5,21 @@ export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
     texture: GPUTexture;
     source: ImageBitmap;
     resolve: () => void;
+    mipLevel: number;
   };
   const loads: Load[] = [];
 
-  const load = (texture: GPUTexture, source: ImageBitmap) =>
-    new Promise<void>(resolve => loads.push({ texture, source, resolve }));
+  const load = (texture: GPUTexture, source: ImageBitmap, mipLevel = 0) =>
+    new Promise<void>(resolve =>
+      loads.push({ texture, source, resolve, mipLevel }),
+    );
 
   const update = () =>
-    loads.splice(0, 8).forEach(({ texture, source, resolve }) => {
+    loads.splice(0, 16).forEach(({ texture, source, mipLevel, resolve }) => {
       const { width, height } = source;
       device.queue.copyExternalImageToTexture(
         { source },
-        { texture },
+        { texture, mipLevel },
         { width, height },
       );
       void device.queue.onSubmittedWorkDone().then(resolve);

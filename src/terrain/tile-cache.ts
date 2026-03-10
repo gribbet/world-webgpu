@@ -10,10 +10,12 @@ export const createTileCache = ({
   device,
   textureLoader,
   urlPattern,
+  mipLevelCount = 1,
 }: {
   device: GPUDevice;
   textureLoader: TextureLoader;
   urlPattern: string;
+  mipLevelCount?: number;
 }) => {
   const tiles = createTileIndexCache<TileTexture>({
     maxSize: 2000,
@@ -37,14 +39,11 @@ export const createTileCache = ({
       }
       loading.set(xyz, true);
     } else {
-      const [x = 0, y = 0, z = 0] = xyz;
-      const url = urlPattern
-        .replace("{x}", `${x}`)
-        .replace("{y}", `${y}`)
-        .replace("{z}", `${z}`);
       const texture = createTileTexture({
         device,
-        url,
+        urlPattern,
+        xyz,
+        mipLevelCount,
         textureLoader,
         onLoad: () => loading.delete(xyz),
       });

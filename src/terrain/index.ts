@@ -1,6 +1,10 @@
 import { mat4 } from "wgpu-matrix";
 
-import { terrainDownsample, tileTextureLayers } from "../configuration";
+import {
+  imageryMipLevels,
+  terrainDownsample,
+  tileTextureLayers,
+} from "../configuration";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
 import type { Vec3, View } from "../model";
@@ -73,6 +77,7 @@ export const createTerrain = async (
   const imageryTextures = device.createTexture({
     size: [256, 256, tileTextureLayers],
     format: "rgba8unorm",
+    mipLevelCount: imageryMipLevels,
     usage:
       GPUTextureUsage.TEXTURE_BINDING |
       GPUTextureUsage.COPY_DST |
@@ -125,6 +130,7 @@ export const createTerrain = async (
       textureLoader,
       mapBuffer: imageryMapBuffer,
       textures: imageryTextures,
+      mipLevelCount: imageryMipLevels,
     });
     imageryTileTextures = textures;
     onCleanup(() => textures.destroy());

@@ -1,24 +1,43 @@
-export type Data = ["load" | "cancel", string];
+export type Data =
+  | [
+      "load",
+      {
+        id: number;
+        url: string;
+        crop?: [x: number, y: number, width: number, height: number];
+      },
+    ]
+  | ["cancel", { id: number }];
 
 addEventListener("message", async event => {
-  const [action, url] = event.data as Data;
+  const [action, parameters] = event.data as Data;
+  const { id } = parameters;
   if (action !== "load") return;
   const abortController = new AbortController();
   const { signal } = abortController;
-  const handler = (event: MessageEvent) => {
-    const [action, thisUrl] = event.data as Data;
-    if (action === "cancel" && thisUrl === url) abortController.abort();
-  };
-  addEventListener("message", handler);
+  addEventListener(
+    "message",
+    (event: MessageEvent) => {
+      const [action, { id }] = event.data as Data;
+      if (action === "cancel" && id === parameters.id) abortController.abort();
+    },
+    { signal },
+  );
   try {
+    const { url, crop } = parameters;
     const response = await fetch(url, { mode: "cors", signal });
     if (!response.ok) {
-      postMessage({ url, image: undefined });
+      postMessage({ url, id, image: undefined });
       return;
     }
     const blob = await response.blob();
-    const image = await createImageBitmap(blob);
-    postMessage({ url, image }, [image] as never);
+
+    const image = await (crop
+      ? createImageBitmap(blob, ...crop)
+      : createImageBitmap(blob));
+
+    // @ts-expect-error Transferable
+    postMessage({ url, id, image }, [image]);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     if (
@@ -29,11 +48,9 @@ addEventListener("message", async event => {
       return;
     else if (error.message === "Failed to fetch") {
       // Network error (eg. CORS issue)
-      postMessage({ url, image: undefined });
+      postMessage({ id, image: undefined });
       return;
     }
     throw error;
-  } finally {
-    removeEventListener("message", handler);
   }
 });
