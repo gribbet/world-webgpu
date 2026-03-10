@@ -64,9 +64,8 @@ export const createControl = (element: HTMLElement, world: World) => {
 
   element.addEventListener(
     "wheel",
-    async event => {
+    event => {
       event.preventDefault();
-      await recenter();
       const { center, distance, orientation } = view();
       setView({
         center,
