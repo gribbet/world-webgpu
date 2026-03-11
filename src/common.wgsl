@@ -1,3 +1,7 @@
+@group(0) @binding(0) var<uniform> center: Position;
+@group(0) @binding(1) var<uniform> projection: mat4x4<f32>;
+@group(0) @binding(2) var<uniform> screen_size: vec2<f32>;
+
 const PI = radians(180.);
 const ONE = 2147483648.0;
 const RADIUS = 6371000.0;
@@ -48,7 +52,6 @@ fn transform(position: Position, center: Position, projection: mat4x4<f32>) -> v
     }
     return transform_spherical(position, center);
 }
-
 
 
 struct Tile {

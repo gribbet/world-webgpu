@@ -1,12 +1,9 @@
-@group(0) @binding(0) var<storage, read_write> tiles: array<Tile>;
-@group(0) @binding(1) var<storage, read_write> count: atomic<u32>;
-@group(0) @binding(2) var<uniform> center: Position;
-@group(0) @binding(3) var<uniform> projection: mat4x4<f32>;
-@group(0) @binding(4) var<uniform> screen_size: vec2<f32>;
-@group(0) @binding(5) var<storage, read_write> elevation_cache: array<MapEntry>;
-@group(0) @binding(6) var<storage, read> imagery_map: array<MapEntry>;
-@group(0) @binding(7) var<storage, read> elevation_map: array<MapEntry>;
-@group(0) @binding(8) var elevation_textures: texture_2d_array<f32>;
+@group(1) @binding(0) var<storage, read_write> tiles: array<Tile>;
+@group(1) @binding(1) var<storage, read_write> count: atomic<u32>;
+@group(1) @binding(2) var<storage, read_write> elevation_cache: array<MapEntry>;
+@group(1) @binding(3) var<storage, read> imagery_map: array<MapEntry>;
+@group(1) @binding(4) var<storage, read> elevation_map: array<MapEntry>;
+@group(1) @binding(5) var elevation_textures: texture_2d_array<f32>;
 
 fn tile_elevation(tile: vec3<u32>) -> f32 {
     let size = arrayLength(&elevation_cache);

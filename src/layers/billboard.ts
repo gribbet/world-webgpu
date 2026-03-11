@@ -1,9 +1,7 @@
-import { mat4 } from "wgpu-matrix";
-
-import { colorData, positionData, projectionData } from "../common";
+import { colorData, positionData, viewLayout } from "../common";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
-import type { Vec3, Vec4, View } from "../model";
+import type { Vec3, Vec4 } from "../model";
 import { createEffect, type Properties, resolve } from "../reactive";
 
 export type Billboard = {
@@ -12,15 +10,14 @@ export type Billboard = {
 };
 
 export type BillboardProps = {
-  view: View;
   billboards: Billboard[];
 };
 
 export const createBillboardLayer = async (
   context: Context,
-  { view, billboards }: Properties<BillboardProps>,
+  { billboards }: Properties<BillboardProps>,
 ) => {
-  const { device, format, sampleCount, size } = context;
+  const { device, format, sampleCount } = context;
 
   const maxBillboards = 10000;
   const billboardData = new Uint8Array(maxBillboards * 32);
@@ -28,24 +25,6 @@ export const createBillboardLayer = async (
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     billboardData,
-  );
-
-  const centerBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Uint8Array(16),
-  );
-
-  const projectionBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Float32Array(16),
-  );
-
-  const sizeBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Float32Array([1, 1]),
   );
 
   const module = device.createShaderModule({
@@ -61,28 +40,13 @@ export const createBillboardLayer = async (
       {
         binding: 0,
         visibility: GPUShaderStage.VERTEX,
-        buffer: { type: "uniform" },
-      },
-      {
-        binding: 1,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: { type: "uniform" },
-      },
-      {
-        binding: 2,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: { type: "uniform" },
-      },
-      {
-        binding: 3,
-        visibility: GPUShaderStage.VERTEX,
         buffer: { type: "read-only-storage" },
       },
     ],
   });
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [bindGroupLayout],
+    bindGroupLayouts: [viewLayout(device), bindGroupLayout],
   });
 
   const pipeline = await device.createRenderPipelineAsync({
@@ -136,12 +100,7 @@ export const createBillboardLayer = async (
 
   const bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
-    entries: [
-      { binding: 0, resource: { buffer: centerBuffer } },
-      { binding: 1, resource: { buffer: projectionBuffer } },
-      { binding: 2, resource: { buffer: sizeBuffer } },
-      { binding: 3, resource: { buffer: billboardsBuffer } },
-    ],
+    entries: [{ binding: 0, resource: { buffer: billboardsBuffer } }],
   });
 
   createEffect(() => {
@@ -158,24 +117,12 @@ export const createBillboardLayer = async (
     device.queue.writeBuffer(billboardsBuffer, 0, billboardData, 0, n * 32);
   });
 
-  const projection = mat4.identity();
-  const centerData = new Uint8Array(16);
-  createEffect(() => {
-    const [width, height] = size();
-    const { center } = resolve(view);
-    const { queue } = device;
-    projectionData(resolve(view), size(), projection);
-    queue.writeBuffer(projectionBuffer, 0, projection);
-    queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
-    queue.writeBuffer(sizeBuffer, 0, new Float32Array([width, height]));
-  });
-
   return {
     render: (pass: GPURenderPassEncoder, { pick }: { pick?: boolean } = {}) => {
       const count = resolve(billboards).length;
       if (count === 0) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
-      pass.setBindGroup(0, bindGroup);
+      pass.setBindGroup(1, bindGroup);
       pass.draw(4, Math.min(count, maxBillboards), 0, 0);
     },
   };

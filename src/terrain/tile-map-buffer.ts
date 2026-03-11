@@ -20,8 +20,14 @@ export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
     data.set([...xyz, index], i * 4);
   };
 
-  const update = () => {
-    device.queue.writeBuffer(buffer, 0, data);
+  const stagingBuffer = device.createBuffer({
+    size: data.byteLength,
+    usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+  });
+
+  const update = (encoder: GPUCommandEncoder) => {
+    device.queue.writeBuffer(stagingBuffer, 0, data);
+    encoder.copyBufferToBuffer(stagingBuffer, 0, buffer, 0, buffer.size);
   };
 
   const clear = (xyz: Vec3) => set(xyz, -1);

@@ -1,10 +1,9 @@
-import { mat4 } from "wgpu-matrix";
-
 import type { Context } from "./context";
-import type { Vec3, Vec4, View } from "./model";
+import type { Vec3, Vec4 } from "./model";
 import type { Properties } from "./reactive";
 
 export type Layer = {
+  compute?: (pass: GPUComputePassEncoder) => void;
   update?: (encode: GPUCommandEncoder) => void;
   render: (pass: GPURenderPassEncoder, options?: { pick?: boolean }) => void;
 };
@@ -18,6 +17,18 @@ export type LayerFactory<P extends Record<string, unknown> = any> = (
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LayerDefinition<P extends Record<string, unknown> = any> =
   readonly [LayerFactory<P>, P];
+
+export const viewLayout = (device: GPUDevice) =>
+  device.createBindGroupLayout({
+    entries: [0, 1, 2].map(binding => ({
+      binding,
+      visibility:
+        GPUShaderStage.VERTEX |
+        GPUShaderStage.FRAGMENT |
+        GPUShaderStage.COMPUTE,
+      buffer: { type: "uniform" },
+    })),
+  });
 
 export const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {
   const latRad = (lat * Math.PI) / 180;
@@ -37,27 +48,4 @@ export const colorData = ([r, g, b, a]: Vec4, data: Uint8Array) => {
   view.setFloat32(8, b, true);
   view.setFloat32(12, a, true);
   return data;
-};
-
-export const projectionData = (
-  view: View,
-  [width, height]: [number, number],
-  projection: Float32Array,
-) => {
-  const {
-    distance,
-    orientation: [pitch, yaw, roll],
-  } = view;
-
-  const aspect = width / height;
-  const fov = (45 / 180) * Math.PI;
-  const near = distance / 100;
-  const far = distance * 100;
-
-  mat4.perspective(fov, aspect, near, far, projection);
-  mat4.translate(projection, [0, 0, -distance], projection);
-  mat4.rotateX(projection, pitch, projection);
-  mat4.rotateY(projection, roll, projection);
-  mat4.rotateZ(projection, -yaw, projection);
-  return projection;
 };
