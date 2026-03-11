@@ -83,7 +83,7 @@ export const createDerived = <T>(f: () => T): Accessor<T> => {
 };
 
 export const map = <T, U>(
-  list: () => T[],
+  list: Accessor<T[]>,
   mapper: (item: T, i: Accessor<number>) => U,
 ): Accessor<U[]> => {
   type Entry = { value: U; setIndex: (i: number) => void; dispose: () => void };
@@ -100,8 +100,9 @@ export const map = <T, U>(
         cache.delete(item);
       } else {
         const [index, setIndex] = createSignal(i);
+        const value = mapper(item, index);
         entry = createRoot(dispose => ({
-          value: mapper(item, index),
+          value,
           setIndex,
           dispose,
         }));

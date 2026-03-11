@@ -1,5 +1,6 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
+import { type Billboard, createBillboardLayer } from "./layers/billboard";
 import type { View } from "./model";
 import {
   createDerived,
@@ -24,13 +25,43 @@ export const createApp = () =>
 
     const [view, setView] = createSignal<View>({
       center: [-122.4194, 37.7749, 0], // SF
-      distance: 100000,
+      distance: 10000,
       orientation: [0, 0, 0],
     });
 
+    const initialBillboards = new Array(10000).fill(0).map(
+      () =>
+        ({
+          position: [
+            -122.4194 + (Math.random() - 0.5) * 0.25,
+            37.7749 + (Math.random() - 0.5) * 0.25,
+            Math.random() * 1000,
+          ],
+          color: [Math.random(), Math.random(), Math.random(), 1.0],
+        }) satisfies Billboard,
+    );
+
+    const [billboards, setBillboards] = createSignal(initialBillboards);
+
+    let t = 0;
+    setInterval(() => {
+      t += 0.1;
+      setBillboards(
+        initialBillboards.map(({ position: [x, y, z], color }, i) => ({
+          position: [
+            x + Math.sin(t + i) * 0.001,
+            y + Math.cos(t + i) * 0.001,
+            z,
+          ],
+          color,
+        })),
+      );
+    }, 16);
+
     const world = createWorld(context, {
       layers: createDerived(() => [
-        [createTerrain, { view, imageryUrl, elevationUrl }] as const,
+        [createTerrain, { view, imageryUrl, elevationUrl }],
+        [createBillboardLayer, { view, billboards }],
       ]),
     });
 

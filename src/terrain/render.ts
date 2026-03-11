@@ -40,14 +40,14 @@ export const createRenderPipeline = async ({
         },
       ],
     },
+    primitive: {
+      topology: "triangle-list",
+      cullMode: "front",
+    },
     depthStencil: {
       format: "depth24plus",
       depthWriteEnabled: true,
       depthCompare: "less",
-    },
-    primitive: {
-      topology: "triangle-list",
-      cullMode: "front",
     },
   } satisfies GPURenderPipelineDescriptor;
 
