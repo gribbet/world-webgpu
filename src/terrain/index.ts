@@ -1,5 +1,6 @@
 import { mat4 } from "wgpu-matrix";
 
+import { positionData, projectionData } from "../common";
 import {
   imageryMipLevels,
   terrainDownsample,
@@ -7,7 +8,7 @@ import {
 } from "../configuration";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
-import type { Vec3, View } from "../model";
+import type { View } from "../model";
 import { createEffect, onCleanup, type Properties, resolve } from "../reactive";
 import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
@@ -151,28 +152,11 @@ export const createTerrain = async (
 
   const projection = mat4.identity();
   const centerData = new Uint8Array(16);
-
   createEffect(() => {
     const [width, height] = size();
-
-    const {
-      center,
-      distance,
-      orientation: [pitch, yaw, roll],
-    } = resolve(view);
-
-    const aspect = width / height;
-    const fov = (45 / 180) * Math.PI;
-    const near = distance / 100;
-    const far = distance * 100;
-
-    mat4.perspective(fov, aspect, near, far, projection);
-    mat4.translate(projection, [0, 0, -distance], projection);
-    mat4.rotateX(projection, pitch, projection);
-    mat4.rotateY(projection, roll, projection);
-    mat4.rotateZ(projection, -yaw, projection);
-
+    const { center } = resolve(view);
     const { queue } = device;
+    projectionData(resolve(view), size(), projection);
     queue.writeBuffer(projectionBuffer, 0, projection);
     queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
     queue.writeBuffer(sizeBuffer, 0, new Float32Array([width, height]));
@@ -222,15 +206,4 @@ export const createTerrain = async (
     update,
     render,
   };
-};
-
-const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {
-  const latRad = (lat * Math.PI) / 180;
-  const mx = (lon + 180) / 360;
-  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
-  const dv = new DataView(data.buffer);
-  dv.setUint32(0, Math.floor(mx * 2 ** 31), true);
-  dv.setUint32(4, Math.floor(my * 2 ** 31), true);
-  dv.setFloat32(8, alt, true);
-  return data;
 };
