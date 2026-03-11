@@ -1,9 +1,7 @@
-@group(0) @binding(0) var<storage, read> tiles: array<Tile>;
-@group(0) @binding(1) var<uniform> center: Position;
-@group(0) @binding(2) var<uniform> projection: mat4x4<f32>;
-@group(0) @binding(3) var imagery_textures: texture_2d_array<f32>;
-@group(0) @binding(4) var elevation_textures: texture_2d_array<f32>;
-@group(0) @binding(5) var sample: sampler;
+@group(1) @binding(0) var<storage, read> tiles: array<Tile>;
+@group(1) @binding(1) var imagery_textures: texture_2d_array<f32>;
+@group(1) @binding(2) var elevation_textures: texture_2d_array<f32>;
+@group(1) @binding(3) var sample: sampler;
 
 
 struct VertexInput {

@@ -88,6 +88,9 @@ export const createContainerLayer = (
     });
   });
 
+  const compute = (pass: GPUComputePassEncoder) =>
+    active().forEach(_ => _.compute?.(pass));
+
   const update = (encoder: GPUCommandEncoder) =>
     active().forEach(_ => _.update?.(encoder));
 
@@ -97,6 +100,7 @@ export const createContainerLayer = (
   ) => active().forEach(_ => _.render(pass, { pick }));
 
   return {
+    compute,
     update,
     render,
   };

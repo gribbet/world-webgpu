@@ -85,7 +85,7 @@ export const createTileTextures = ({
 
       tileMapBuffer.set(xyz, index);
     });
-    tileMapBuffer.update();
+    tileMapBuffer.update(encoder);
   };
 
   const destroy = () => mapping.clear();

@@ -1,17 +1,22 @@
-import type { LayerDefinition } from "./common";
+import { mat4 } from "wgpu-matrix";
+
+import { type LayerDefinition, positionData, viewLayout } from "./common";
 import { createContainerLayer } from "./container";
 import type { Context } from "./context";
-import { createEffect, onCleanup, type Properties } from "./reactive";
+import { createBuffer } from "./device";
+import type { View } from "./model";
+import { createEffect, onCleanup, type Properties, resolve } from "./reactive";
 
 export type World = ReturnType<typeof createWorld>;
 
 export type WorldProperties = {
+  view: View;
   layers: LayerDefinition[];
 };
 
 export const createWorld = (
   context: Context,
-  { layers }: Properties<WorldProperties>,
+  { view, layers }: Properties<WorldProperties>,
 ) => {
   const { device, format, sampleCount, size } = context;
 
@@ -55,7 +60,63 @@ export const createWorld = (
     pickDepthTexture = createDepthTexture([width, height], 1);
   });
 
+  const centerBuffer = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    new Uint8Array(16),
+  );
+
+  const projectionBuffer = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    new Float32Array(16),
+  );
+
+  const sizeBuffer = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    new Float32Array(2),
+  );
+
+  const layout = viewLayout(device);
+
+  const bindGroup = device.createBindGroup({
+    layout,
+    entries: [centerBuffer, projectionBuffer, sizeBuffer].map(
+      (buffer, binding) => ({ binding, resource: { buffer } }),
+    ),
+  });
+
+  const projection = mat4.identity();
+  const centerData = new Uint8Array(16);
+  createEffect(() => {
+    const [width, height] = size();
+    const {
+      center,
+      distance,
+      orientation: [pitch, yaw, roll],
+    } = resolve(view);
+
+    const aspect = width / height;
+    const fov = (45 / 180) * Math.PI;
+    const near = distance / 100;
+    const far = distance * 100;
+
+    mat4.perspective(fov, aspect, near, far, projection);
+    mat4.translate(projection, [0, 0, -distance], projection);
+    mat4.rotateX(projection, pitch, projection);
+    mat4.rotateY(projection, roll, projection);
+    mat4.rotateZ(projection, -yaw, projection);
+
+    device.queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
+    device.queue.writeBuffer(projectionBuffer, 0, projection);
+    device.queue.writeBuffer(sizeBuffer, 0, new Float32Array([width, height]));
+  });
+
   onCleanup(() => {
+    centerBuffer.destroy();
+    projectionBuffer.destroy();
+    sizeBuffer.destroy();
     renderTexture.destroy();
     depthTexture.destroy();
     pickTexture.destroy();
@@ -69,6 +130,12 @@ export const createWorld = (
     if (!running) return;
 
     const encoder = device.createCommandEncoder();
+
+    const compute = encoder.beginComputePass();
+    compute.setBindGroup(0, bindGroup);
+    root.compute?.(compute);
+    compute.end();
+
     root.update?.(encoder);
 
     const pass = encoder.beginRenderPass({
@@ -89,6 +156,7 @@ export const createWorld = (
       },
     });
 
+    pass.setBindGroup(0, bindGroup);
     root.render(pass);
     pass.end();
 
@@ -108,6 +176,8 @@ export const createWorld = (
         depthClearValue: 1.0,
       },
     });
+
+    pickPass.setBindGroup(0, bindGroup);
     root.render(pickPass, { pick: true });
     pickPass.end();
 

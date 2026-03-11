@@ -1,6 +1,3 @@
-import { mat4 } from "wgpu-matrix";
-
-import { positionData, projectionData } from "../common";
 import {
   imageryMipLevels,
   terrainDownsample,
@@ -23,9 +20,9 @@ export type TerrainProps = {
 
 export const createTerrain = async (
   context: Context,
-  { view, imageryUrl, elevationUrl }: Properties<TerrainProps>,
+  { imageryUrl, elevationUrl }: Properties<TerrainProps>,
 ) => {
-  const { device, format, size, sampleCount } = context;
+  const { device } = context;
 
   const tilesBuffer = createBuffer(
     device,
@@ -37,24 +34,6 @@ export const createTerrain = async (
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
     new Uint32Array([0]),
-  );
-
-  const centerBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Uint8Array(16),
-  );
-
-  const projectionBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Float32Array(mat4.identity()),
-  );
-
-  const sizeBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM,
-    new Float32Array([1, 1]),
   );
 
   const elevationCacheBuffer = createBuffer(
@@ -94,13 +73,10 @@ export const createTerrain = async (
       GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
-  const compute = await createComputePipeline({
+  const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
-    projectionBuffer,
-    sizeBuffer,
     elevationCacheBuffer,
     imageryMapBuffer,
     elevationMapBuffer,
@@ -108,13 +84,9 @@ export const createTerrain = async (
   });
 
   const pipeline = await createRenderPipeline({
-    device,
-    format,
-    sampleCount,
+    context,
     tilesBuffer,
     countBuffer,
-    centerBuffer,
-    projectionBuffer,
     imageryTextures,
     elevationTextures,
   });
@@ -150,23 +122,14 @@ export const createTerrain = async (
     onCleanup(() => textures.destroy());
   });
 
-  const projection = mat4.identity();
-  const centerData = new Uint8Array(16);
-  createEffect(() => {
-    const [width, height] = size();
-    const { center } = resolve(view);
-    const { queue } = device;
-    projectionData(resolve(view), size(), projection);
-    queue.writeBuffer(projectionBuffer, 0, projection);
-    queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
-    queue.writeBuffer(sizeBuffer, 0, new Float32Array([width, height]));
-  });
+  const compute = (pass: GPUComputePassEncoder) => {
+    computePipeline.compute(pass);
+  };
 
   const update = (encoder: GPUCommandEncoder) => {
     textureLoader.update();
-    imageryTileTextures?.update(encoder);
     elevationTileTextures?.update(encoder);
-    compute.compute(encoder);
+    imageryTileTextures?.update(encoder);
     pipeline.update(encoder);
   };
 
@@ -178,7 +141,7 @@ export const createTerrain = async (
   };
 
   const updateTextures = async () => {
-    const tiles = await compute.read();
+    const tiles = await computePipeline.read();
     if (!tiles) return;
     imageryTileTextures?.load(tiles);
     elevationTileTextures?.load(tiles);
@@ -188,13 +151,10 @@ export const createTerrain = async (
 
   onCleanup(() => {
     clearInterval(timer);
-    compute.destroy();
+    computePipeline.destroy();
     pipeline.destroy();
     tilesBuffer.destroy();
     countBuffer.destroy();
-    centerBuffer.destroy();
-    projectionBuffer.destroy();
-    sizeBuffer.destroy();
     elevationCacheBuffer.destroy();
     imageryMapBuffer.destroy();
     elevationMapBuffer.destroy();
@@ -203,6 +163,7 @@ export const createTerrain = async (
   });
 
   return {
+    compute,
     update,
     render,
   };

@@ -1,35 +1,55 @@
+import { viewLayout } from "../common";
 import { tileTextureLayers } from "../configuration";
+import type { Context } from "../context";
 import { createBuffer } from "../device";
 
 export const createRenderPipeline = async ({
-  device,
-  format,
-  sampleCount,
+  context,
   tilesBuffer,
   countBuffer,
-  centerBuffer,
-  projectionBuffer,
   imageryTextures,
   elevationTextures,
 }: {
-  device: GPUDevice;
-  format: GPUTextureFormat;
-  sampleCount: number;
+  context: Context;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  centerBuffer: GPUBuffer;
-  projectionBuffer: GPUBuffer;
   imageryTextures: GPUTexture;
   elevationTextures: GPUTexture;
 }) => {
+  const { device, format, sampleCount } = context;
   const module = device.createShaderModule({
     code:
       (await (await fetch(new URL("../common.wgsl", import.meta.url))).text()) +
       (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
   });
 
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: { viewDimension: "2d-array" },
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        texture: { viewDimension: "2d-array" },
+      },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+    ],
+  });
+
+  const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [viewLayout(device), bindGroupLayout],
+  });
+
   const pipelineDescriptor = {
-    layout: "auto",
+    layout: pipelineLayout,
     vertex: {
       module,
       entryPoint: "vertex",
@@ -132,24 +152,12 @@ export const createRenderPipeline = async ({
   });
 
   const bindGroup = device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(0),
+    layout: bindGroupLayout,
     entries: [
       { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: centerBuffer } },
-      { binding: 2, resource: { buffer: projectionBuffer } },
-      { binding: 3, resource: imageryTexturesView },
-      { binding: 4, resource: elevationTexturesView },
-      { binding: 5, resource: sampler },
-    ],
-  });
-
-  const pickBindGroup = device.createBindGroup({
-    layout: pickPipeline.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: centerBuffer } },
-      { binding: 2, resource: { buffer: projectionBuffer } },
-      { binding: 4, resource: elevationTexturesView },
+      { binding: 1, resource: imageryTexturesView },
+      { binding: 2, resource: elevationTexturesView },
+      { binding: 3, resource: sampler },
     ],
   });
 
@@ -163,7 +171,7 @@ export const createRenderPipeline = async ({
     pass.setPipeline(pick ? pickPipeline : pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
-    pass.setBindGroup(0, pick ? pickBindGroup : bindGroup);
+    pass.setBindGroup(1, bindGroup);
     pass.drawIndexedIndirect(indirectBuffer, 0);
   };
 

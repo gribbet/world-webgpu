@@ -59,9 +59,10 @@ export const createApp = () =>
     }, 16);
 
     const world = createWorld(context, {
+      view,
       layers: createDerived(() => [
-        [createTerrain, { view, imageryUrl, elevationUrl }],
-        [createBillboardLayer, { view, billboards }],
+        [createTerrain, { imageryUrl, elevationUrl }],
+        [createBillboardLayer, { billboards }],
       ]),
     });
 
