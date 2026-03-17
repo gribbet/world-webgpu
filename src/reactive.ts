@@ -45,7 +45,7 @@ const cleanup = ({ cleanups }: Effect) => {
   cleanups.length = 0;
 };
 
-export const createEffect = (f: () => void | (() => void)) => {
+export const effect = (f: () => void | (() => void)) => {
   const run = () => {
     cleanup(effect);
 
@@ -76,14 +76,14 @@ export const createEffect = (f: () => void | (() => void)) => {
 
 export const onCleanup = (f: () => void) => currentOwner?.cleanups.push(f);
 
-export const createDerived = <T>(f: () => T): Accessor<T> => {
-  const [signal, setSignal] = createSignal<T>(undefined as T);
-  createEffect(() => setSignal(f()));
-  return signal;
+export const derived = <T>(f: () => T): Accessor<T> => {
+  const [value, setValue] = createSignal<T>(undefined as T);
+  effect(() => setValue(f()));
+  return value;
 };
 
 export const map = <T, U>(
-  list: Accessor<T[]>,
+  list: T[] | Accessor<T[]>,
   mapper: (item: T, i: Accessor<number>) => U,
 ): Accessor<U[]> => {
   type Entry = { value: U; setIndex: (i: number) => void; dispose: () => void };
@@ -91,8 +91,8 @@ export const map = <T, U>(
 
   onCleanup(() => cache.forEach(_ => _.dispose()));
 
-  return createDerived(() => {
-    const nextList = list();
+  return derived(() => {
+    const nextList = resolve(list);
     const next: [T, Entry][] = nextList.map((item, i) => {
       let entry = cache.get(item);
       if (entry) {

@@ -1,7 +1,16 @@
-import type { Vec3 } from "../model";
+import { createBuffer } from "../../device";
+import type { Vec3 } from "../../model";
+import { onCleanup } from "../../reactive";
 
-export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
-  const size = Math.floor(buffer.size / 16);
+export type TileMapBuffer = ReturnType<typeof createTileMapBuffer>;
+
+export const createTileMapBuffer = (device: GPUDevice) => {
+  const size = 4096;
+  const buffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * size).fill(0xffffffff)),
+  );
   const data = new Uint32Array(size * 4).fill(0xffffffff);
 
   const equals = ([ax, ay, az]: Vec3, [bx, by, bz]: Vec3) =>
@@ -58,5 +67,7 @@ export const createTileMapBuffer = (device: GPUDevice, buffer: GPUBuffer) => {
     return h % size;
   };
 
-  return { set, clear, update };
+  onCleanup(() => buffer.destroy());
+
+  return { set, clear, update, buffer };
 };

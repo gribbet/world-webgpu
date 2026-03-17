@@ -1,0 +1,45 @@
+
+Remove updateTextures interval
+bent tiles issue
+dispose
+Safari
+performance
+
+2 initial views
+billboard subdirectory or not
+use signals for tile compute performance
+
+billboard images
+text layer
+
+line layer
+polygon layer
+
+image-load
+- keyed on url/ContainerProperties
+
+texture-group<Key>
+ takes a (key: Key, index: number, cancel?: Promise<never>) => ImageBitmap or ImageBitmap[] for mipmaps
+  - check width/height. Resize and reset if necessary
+  - will use existing textureloader
+ and an onEvict(key); 
+ provides a .load(key)
+ has a load timeout (200,s) to timeout stale requests
+ - can hook tilemapbuffer to imageBitmapconstructor and onEvict
+ Provide signal? can hook into 
+ Provides index?
+
+ tile-cache removed
+
+
+
+ How to timeout stale requests? 
+ 
+
+
+
+Mipmap for imagery. Another worker for crop/resize? 
+skip compute
+layer definition type safety issues
+worker for mipmaps and text generation
+

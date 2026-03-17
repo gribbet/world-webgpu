@@ -1,5 +1,6 @@
 import { tileTextureLayers } from "./configuration";
 import { createSignal, onCleanup } from "./reactive";
+import { createTextureLoader } from "./texture-loader";
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
 
@@ -32,6 +33,8 @@ export const createContext = async (element: HTMLCanvasElement) => {
   const format = gpu.getPreferredCanvasFormat();
   context.configure({ device, format, alphaMode: "opaque" });
 
+  const textureLoader = createTextureLoader({ device });
+
   onCleanup(() => {
     observer.disconnect();
     device.destroy();
@@ -44,5 +47,6 @@ export const createContext = async (element: HTMLCanvasElement) => {
     format,
     size,
     sampleCount,
+    textureLoader,
   };
 };

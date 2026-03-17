@@ -1,13 +1,13 @@
 export type LruOptions<K, V> = {
   maxSize: number;
   maxAge?: number;
-  onEviction?: (key: K, value: V) => void;
+  onEvict?: (key: K, value: V) => void;
 };
 
 export const createLru = <K, V>({
   maxSize,
   maxAge,
-  onEviction,
+  onEvict,
 }: LruOptions<K, V>) => {
   const mapping = new Map<K, { value: V; timestamp: number }>();
 
@@ -15,7 +15,7 @@ export const createLru = <K, V>({
     const entry = mapping.get(key);
     if (!entry) return;
     mapping.delete(key);
-    onEviction?.(key, entry.value);
+    onEvict?.(key, entry.value);
   };
 
   const isExpired = (timestamp: number) =>
@@ -46,7 +46,10 @@ export const createLru = <K, V>({
 
   const _delete = (key: K) => mapping.delete(key);
 
-  const clear = () => mapping.clear();
+  const clear = () => {
+    keys().forEach(evict);
+    mapping.clear();
+  };
 
   const has = (key: K) => {
     const entry = mapping.get(key);
@@ -59,6 +62,9 @@ export const createLru = <K, V>({
 
   const keys = () => mapping.keys();
 
+  const entries = () =>
+    mapping.entries().map(([key, { value }]) => [key, value] as const);
+
   return {
     get,
     set,
@@ -66,6 +72,7 @@ export const createLru = <K, V>({
     clear,
     has,
     keys,
+    entries,
     get size() {
       return mapping.size;
     },

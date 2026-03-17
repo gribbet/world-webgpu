@@ -1,9 +1,9 @@
 import type { Layer, LayerDefinition, LayerFactory } from "./common";
 import type { Context } from "./context";
 import {
-  createDerived,
-  createEffect,
   createSignal,
+  derived,
+  effect,
   map,
   onCleanup,
   type Properties,
@@ -29,7 +29,7 @@ export const createContainerLayer = (
 
   onCleanup(() => groups.clear());
 
-  const stableList = createDerived(() => {
+  const stableList = derived(() => {
     const next = resolve(layers);
     const nextGroups = new Map<LayerFactory, StableEntry[]>();
 
@@ -76,7 +76,7 @@ export const createContainerLayer = (
     ),
   );
 
-  createEffect(() => {
+  effect(() => {
     const list = items();
     let current = true;
     onCleanup(() => {

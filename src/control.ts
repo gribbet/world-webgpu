@@ -5,7 +5,7 @@ import type { World } from "./world";
 export const createControl = (element: HTMLElement, world: World) => {
   const [view, setView] = createSignal<View>({
     center: [-122.4194, 37.7749, 0], // SF
-    distance: 10000,
+    distance: 10000000,
     orientation: [0, 0, 0],
   });
 

@@ -8,15 +8,13 @@ export type Layer = {
   render: (pass: GPURenderPassEncoder, options?: { pick?: boolean }) => void;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type LayerFactory<P extends Record<string, unknown> = any> = (
+export type LayerFactory<P> = (
   context: Context,
   props: Properties<P>,
 ) => Layer | Promise<Layer>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type LayerDefinition<P extends Record<string, unknown> = any> =
-  readonly [LayerFactory<P>, P];
+export type LayerDefinition<P = any> = readonly [LayerFactory<P>, P];
 
 export const viewLayout = (device: GPUDevice) =>
   device.createBindGroupLayout({
@@ -48,4 +46,17 @@ export const colorData = ([r, g, b, a]: Vec4, data: Uint8Array) => {
   view.setFloat32(8, b, true);
   view.setFloat32(12, a, true);
   return data;
+};
+
+export const limit = (n: number) => {
+  let active = 0;
+  const queue: (() => void)[] = [];
+  return async () => {
+    if (active >= n) await new Promise<void>(_ => queue.push(_));
+    active++;
+    return () => {
+      active--;
+      queue.shift()?.();
+    };
+  };
 };
