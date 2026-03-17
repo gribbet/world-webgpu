@@ -1,7 +1,7 @@
-import { viewLayout } from "../common";
-import { tileTextureLayers } from "../configuration";
-import type { Context } from "../context";
-import { createBuffer } from "../device";
+import { viewLayout } from "../../common";
+import type { Context } from "../../context";
+import { createBuffer } from "../../device";
+import { derived } from "../../reactive";
 
 export const createRenderPipeline = async ({
   context,
@@ -13,8 +13,8 @@ export const createRenderPipeline = async ({
   context: Context;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  imageryTextures: GPUTexture;
-  elevationTextures: GPUTexture;
+  imageryTextures: () => GPUTexture;
+  elevationTextures: () => GPUTexture;
 }) => {
   const { device, format, sampleCount } = context;
   const module = device.createShaderModule({
@@ -40,7 +40,11 @@ export const createRenderPipeline = async ({
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
         texture: { viewDimension: "2d-array" },
       },
-      { binding: 3, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: { type: "filtering" },
+      },
     ],
   });
 
@@ -134,16 +138,6 @@ export const createRenderPipeline = async ({
     new Uint32Array(indices),
   );
 
-  const imageryTexturesView = imageryTextures.createView({
-    dimension: "2d-array",
-    arrayLayerCount: tileTextureLayers,
-  });
-
-  const elevationTexturesView = elevationTextures.createView({
-    dimension: "2d-array",
-    arrayLayerCount: tileTextureLayers,
-  });
-
   const sampler = device.createSampler({
     magFilter: "linear",
     minFilter: "linear",
@@ -151,15 +145,23 @@ export const createRenderPipeline = async ({
     maxAnisotropy: 16,
   });
 
-  const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
-    entries: [
-      { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: imageryTexturesView },
-      { binding: 2, resource: elevationTexturesView },
-      { binding: 3, resource: sampler },
-    ],
-  });
+  const bindGroup = derived(() =>
+    device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: tilesBuffer } },
+        {
+          binding: 1,
+          resource: imageryTextures().createView({ dimension: "2d-array" }),
+        },
+        {
+          binding: 2,
+          resource: elevationTextures().createView({ dimension: "2d-array" }),
+        },
+        { binding: 3, resource: sampler },
+      ],
+    }),
+  );
 
   const update = (encoder: GPUCommandEncoder) =>
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
@@ -171,7 +173,7 @@ export const createRenderPipeline = async ({
     pass.setPipeline(pick ? pickPipeline : pipeline);
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
-    pass.setBindGroup(1, bindGroup);
+    pass.setBindGroup(1, bindGroup());
     pass.drawIndexedIndirect(indirectBuffer, 0);
   };
 

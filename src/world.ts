@@ -5,7 +5,7 @@ import { createContainerLayer } from "./container";
 import type { Context } from "./context";
 import { createBuffer } from "./device";
 import type { View } from "./model";
-import { createEffect, onCleanup, type Properties, resolve } from "./reactive";
+import { effect, onCleanup, type Properties, resolve } from "./reactive";
 
 export type World = ReturnType<typeof createWorld>;
 
@@ -18,7 +18,7 @@ export const createWorld = (
   context: Context,
   { view, layers }: Properties<WorldProperties>,
 ) => {
-  const { device, format, sampleCount, size } = context;
+  const { device, format, sampleCount, size, textureLoader } = context;
 
   const createRenderTexture = (size: [number, number]) =>
     device.createTexture({
@@ -48,7 +48,7 @@ export const createWorld = (
   let pickTexture = createPickTexture([1, 1]);
   let pickDepthTexture = createDepthTexture([1, 1], 1);
 
-  createEffect(() => {
+  effect(() => {
     const [width, height] = size();
     renderTexture.destroy();
     depthTexture.destroy();
@@ -89,7 +89,7 @@ export const createWorld = (
 
   const projection = mat4.identity();
   const centerData = new Uint8Array(16);
-  createEffect(() => {
+  effect(() => {
     const [width, height] = size();
     const {
       center,
@@ -137,6 +137,8 @@ export const createWorld = (
     compute.end();
 
     root.update?.(encoder);
+
+    textureLoader.update();
 
     const pass = encoder.beginRenderPass({
       colorAttachments: [

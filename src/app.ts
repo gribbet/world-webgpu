@@ -1,14 +1,9 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
-import { type Billboard, createBillboardLayer } from "./layers/billboard";
+import { createTerrain } from "./layers/terrain";
+import { createTextLayer } from "./layers/text";
 import type { View } from "./model";
-import {
-  createDerived,
-  createEffect,
-  createRoot,
-  createSignal,
-} from "./reactive";
-import { createTerrain } from "./terrain";
+import { createRoot, createSignal, derived, effect } from "./reactive";
 import { createWorld } from "./world";
 
 const imageryUrl = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
@@ -25,49 +20,52 @@ export const createApp = () =>
 
     const [view, setView] = createSignal<View>({
       center: [-122.4194, 37.7749, 0], // SF
-      distance: 10000,
+      distance: 1000000000,
       orientation: [0, 0, 0],
     });
 
-    const initialBillboards = new Array(10000).fill(0).map(
-      () =>
-        ({
-          position: [
-            -122.4194 + (Math.random() - 0.5) * 0.25,
-            37.7749 + (Math.random() - 0.5) * 0.25,
-            Math.random() * 1000,
-          ],
-          color: [Math.random(), Math.random(), Math.random(), 1.0],
-        }) satisfies Billboard,
-    );
+    const [time, setTime] = createSignal(0);
+    const animate = (t: number) => {
+      setTime(t);
+      requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
 
-    const [billboards, setBillboards] = createSignal(initialBillboards);
+    const textEntries = new Array(10000).fill(0).map((_, i) => {
+      const [x, y, z] = [
+        (Math.random() - 0.5) * 2.0 * 180.0,
+        (Math.random() - 0.5) * 2.0 * 85.0,
+        10000 + Math.random() * 100,
+      ];
+      const position = derived(() => [
+        x + Math.sin(time() * 0.001 + i),
+        y + Math.cos(time() * 0.001 + i),
+        z,
+      ]);
+      const text = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+      const color = [Math.random(), Math.random(), Math.random(), 1.0] as const;
 
-    let t = 0;
-    setInterval(() => {
-      t += 0.1;
-      setBillboards(
-        initialBillboards.map(({ position: [x, y, z], color }, i) => ({
-          position: [
-            x + Math.sin(t + i) * 0.001,
-            y + Math.cos(t + i) * 0.001,
-            z,
-          ],
-          color,
-        })),
-      );
-    }, 16);
+      return {
+        position,
+        size: 1000000,
+        text,
+        color,
+        font: "sans-serif",
+        fontSize: 48,
+        maxScale: 1,
+      };
+    });
 
     const world = createWorld(context, {
       view,
-      layers: createDerived(() => [
+      layers: [
         [createTerrain, { imageryUrl, elevationUrl }],
-        [createBillboardLayer, { billboards }],
-      ]),
+        [createTextLayer, { entries: textEntries }],
+      ],
     });
 
     const control = createControl(element, world);
-    createEffect(() => setView(control.view()));
+    effect(() => setView(control.view()));
 
     return {
       dispose,

@@ -1,12 +1,12 @@
-import { viewLayout } from "../common";
-import { tileTextureLayers } from "../configuration";
-import { createBuffer } from "../device";
+import { viewLayout } from "../../common";
+import { createBuffer } from "../../device";
+import type { Accessor } from "../../reactive";
+import { derived } from "../../reactive";
 
 export const createComputePipeline = async ({
   device,
   tilesBuffer,
   countBuffer,
-  elevationCacheBuffer,
   elevationMapBuffer,
   imageryMapBuffer,
   elevationTextures,
@@ -14,10 +14,9 @@ export const createComputePipeline = async ({
   device: GPUDevice;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
-  elevationCacheBuffer: GPUBuffer;
   imageryMapBuffer: GPUBuffer;
   elevationMapBuffer: GPUBuffer;
-  elevationTextures: GPUTexture;
+  elevationTextures: Accessor<GPUTexture>;
 }) => {
   const module = device.createShaderModule({
     code:
@@ -83,28 +82,34 @@ export const createComputePipeline = async ({
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
-  const elevationTexturesView = elevationTextures.createView({
-    dimension: "2d-array",
-    arrayLayerCount: tileTextureLayers,
-  });
+  const elevationCacheBuffer = createBuffer(
+    device,
+    GPUBufferUsage.STORAGE,
+    new Uint32Array(new Array(4 * 16376).fill(0xffffffff)),
+  );
 
-  const bindGroup = device.createBindGroup({
-    layout,
-    entries: [
-      { binding: 0, resource: { buffer: tilesBuffer } },
-      { binding: 1, resource: { buffer: countBuffer } },
-      { binding: 2, resource: { buffer: elevationCacheBuffer } },
-      { binding: 3, resource: { buffer: imageryMapBuffer } },
-      { binding: 4, resource: { buffer: elevationMapBuffer } },
-      { binding: 5, resource: elevationTexturesView },
-    ],
-  });
+  const bindGroup = derived(() =>
+    device.createBindGroup({
+      layout,
+      entries: [
+        { binding: 0, resource: { buffer: tilesBuffer } },
+        { binding: 1, resource: { buffer: countBuffer } },
+        { binding: 2, resource: { buffer: elevationCacheBuffer } },
+        { binding: 3, resource: { buffer: imageryMapBuffer } },
+        { binding: 4, resource: { buffer: elevationMapBuffer } },
+        {
+          binding: 5,
+          resource: elevationTextures().createView({ dimension: "2d-array" }),
+        },
+      ],
+    }),
+  );
 
   let reading = false;
 
   const compute = (pass: GPUComputePassEncoder) => {
     pass.setPipeline(pipeline);
-    pass.setBindGroup(1, bindGroup);
+    pass.setBindGroup(1, bindGroup());
     pass.dispatchWorkgroups(1);
   };
 
@@ -143,6 +148,7 @@ export const createComputePipeline = async ({
   const destroy = () => {
     countReadBuffer.destroy();
     buffer.destroy();
+    elevationCacheBuffer.destroy();
   };
 
   return {
