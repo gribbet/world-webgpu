@@ -89,12 +89,24 @@ export const createBillboardLayer = async (
     bindGroupLayouts: [viewLayout(device), bindGroupLayout],
   });
 
-  const pipeline = await device.createRenderPipelineAsync({
+  const pipelineDescriptor = {
     layout: pipelineLayout,
     vertex: {
       module,
       entryPoint: "vertex",
     },
+    primitive: {
+      topology: "triangle-strip",
+    },
+    depthStencil: {
+      format: "depth24plus",
+      depthWriteEnabled: true,
+      depthCompare: "less",
+    },
+  } satisfies GPURenderPipelineDescriptor;
+
+  const pipeline = await device.createRenderPipelineAsync({
+    ...pipelineDescriptor,
     fragment: {
       module,
       entryPoint: "render",
@@ -102,25 +114,11 @@ export const createBillboardLayer = async (
         {
           format,
           blend: {
-            color: {
-              srcFactor: "one",
-              dstFactor: "one-minus-src-alpha",
-            },
-            alpha: {
-              srcFactor: "one",
-              dstFactor: "one-minus-src-alpha",
-            },
+            color: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
+            alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
           },
         },
       ],
-    },
-    primitive: {
-      topology: "triangle-strip",
-    },
-    depthStencil: {
-      format: "depth24plus",
-      depthWriteEnabled: true,
-      depthCompare: "less",
     },
     multisample: {
       count: sampleCount,
@@ -128,24 +126,11 @@ export const createBillboardLayer = async (
   });
 
   const pickPipeline = await device.createRenderPipelineAsync({
-    layout: pipelineLayout,
-    vertex: {
-      module,
-      entryPoint: "vertex",
-    },
+    ...pipelineDescriptor,
     fragment: {
       module,
       entryPoint: "pick",
       targets: [{ format: "rgba32float" }],
-    },
-    primitive: {
-      topology: "triangle-strip",
-      cullMode: "none",
-    },
-    depthStencil: {
-      format: "depth24plus",
-      depthWriteEnabled: true,
-      depthCompare: "less",
     },
     multisample: {
       count: 1,
@@ -210,28 +195,35 @@ export const createBillboardLayer = async (
     }
   });
 
-  return {
-    update: () => {
-      textureGroup.ensure(
-        resolve(billboards)
-          .map(_ => resolve(_.image))
-          .filter(_ => !!_),
+  const update = () => {
+    textureGroup.ensure(
+      resolve(billboards)
+        .map(_ => resolve(_.image))
+        .filter(_ => !!_),
+    );
+    if (count > 0 && dirty)
+      device.queue.writeBuffer(
+        billboardsBuffer,
+        0,
+        billboardData,
+        0,
+        count * stride,
       );
-      if (count > 0 && dirty)
-        device.queue.writeBuffer(
-          billboardsBuffer,
-          0,
-          billboardData,
-          0,
-          count * stride,
-        );
-      dirty = false;
-    },
-    render: (pass: GPURenderPassEncoder, { pick }: { pick?: boolean } = {}) => {
-      if (count === 0) return;
-      pass.setPipeline(pick ? pickPipeline : pipeline);
-      pass.setBindGroup(1, bindGroup());
-      pass.draw(4, Math.min(count, maxBillboards), 0, 0);
-    },
+    dirty = false;
+  };
+
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => {
+    if (count === 0) return;
+    pass.setPipeline(pick ? pickPipeline : pipeline);
+    pass.setBindGroup(1, bindGroup());
+    pass.draw(4, Math.min(count, maxBillboards), 0, 0);
+  };
+
+  return {
+    update,
+    render,
   };
 };

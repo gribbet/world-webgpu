@@ -1,5 +1,6 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
+import { createFillLayer } from "./layers/fill";
 import { createTerrain } from "./layers/terrain";
 import { createTextLayer } from "./layers/text";
 import type { View } from "./model";
@@ -31,7 +32,7 @@ export const createApp = () =>
     };
     requestAnimationFrame(animate);
 
-    const textEntries = new Array(10000).fill(0).map((_, i) => {
+    const textEntries = new Array(100).fill(0).map((_, i) => {
       const [x, y, z] = [
         (Math.random() - 0.5) * 2.0 * 180.0,
         (Math.random() - 0.5) * 2.0 * 85.0,
@@ -61,6 +62,18 @@ export const createApp = () =>
       layers: [
         [createTerrain, { imageryUrl, elevationUrl }],
         [createTextLayer, { entries: textEntries }],
+        [
+          createFillLayer,
+          {
+            vertices: [
+              { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
+              { position: [-122.3, 37.7, 10000], color: [0, 1, 0, 0.5] },
+              { position: [-122.3, 37.9, 10000], color: [0, 0, 1, 0.5] },
+              { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
+            ],
+            indices: [0, 1, 2, 0, 2, 3],
+          },
+        ],
       ],
     });
 

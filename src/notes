@@ -43,3 +43,5 @@ skip compute
 layer definition type safety issues
 worker for mipmaps and text generation
 
+casing in wgsl
+Rename VertexOutput
