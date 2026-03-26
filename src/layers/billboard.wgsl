@@ -32,10 +32,10 @@ fn vertex(
     let local = transform(billboard.position, center, projection);
 
     let corners = array(
-        vec2(-1.0, -1.0),
-        vec2(1.0, -1.0),
         vec2(-1.0, 1.0),
-        vec2(1.0, 1.0)
+        vec2(1.0, 1.0),
+        vec2(-1.0, -1.0),
+        vec2(1.0, -1.0)
     );
 
     let width = f32(billboard.width);
@@ -71,16 +71,11 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     return color;
 }
 
-struct PickOutput {
-    @location(0) position: vec4<f32>,
-    @location(1) id: u32,
-};
-
 @fragment
 fn pick(input: VertexOutput) -> PickOutput {
     let color = textureSampleBias(textures, sample, input.uv, input.texture, -1.0);
     if color.a * input.color.a < 0.1 {
         discard;
     }
-    return PickOutput(vec4<f32>(input.local, 1.0), input.id);
+    return packPick(input.local, input.id);
 }

@@ -51,12 +51,7 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     return textureSample(imageryTextures, sample, uv, index.x);
 }
 
-struct PickOutput {
-    @location(0) position: vec4<f32>,
-    @location(1) id: u32,
-};
-
 @fragment
 fn pick(input: VertexOutput) -> PickOutput {
-    return PickOutput(vec4<f32>(input.local, 1.0), 0xffffffffu);
+    return packPick(input.local, 0xffffffffu);
 }

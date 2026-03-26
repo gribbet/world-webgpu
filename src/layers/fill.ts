@@ -1,8 +1,9 @@
-import { colorData, positionData, viewLayout } from "../common";
+import { colorData, positionData } from "../common";
 import type { Context } from "../context";
 import { createBuffer } from "../device";
 import type { Vec3, Vec4 } from "../model";
 import { effect, type Properties, resolve } from "../reactive";
+import { createLayerPipelines } from "./common";
 
 export type Vertex = {
   position: Vec3;
@@ -18,7 +19,7 @@ export const createFillLayer = async (
   context: Context,
   { vertices, indices }: Properties<FillProps>,
 ) => {
-  const { device, format, sampleCount } = context;
+  const { device } = context;
 
   const stride = 32;
   const maxVertices = 100000;
@@ -38,11 +39,9 @@ export const createFillLayer = async (
     new Uint8Array(indexData.buffer),
   );
 
-  const module = device.createShaderModule({
-    code:
-      (await (await fetch(new URL("./common.wgsl", import.meta.url))).text()) +
-      (await (await fetch(new URL("./fill.wgsl", import.meta.url))).text()),
-  });
+  const code = await (
+    await fetch(new URL("./fill.wgsl", import.meta.url))
+  ).text();
 
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -54,47 +53,10 @@ export const createFillLayer = async (
     ],
   });
 
-  const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [viewLayout(device), bindGroupLayout],
-  });
-
-  const pipelineDescriptor = {
-    layout: pipelineLayout,
-    vertex: { module, entryPoint: "vertex" },
-    primitive: { topology: "triangle-list" },
-    depthStencil: {
-      format: "depth24plus",
-      depthWriteEnabled: true,
-      depthCompare: "less",
-    },
-  } satisfies GPURenderPipelineDescriptor;
-
-  const pipeline = await device.createRenderPipelineAsync({
-    ...pipelineDescriptor,
-    fragment: {
-      module,
-      entryPoint: "render",
-      targets: [
-        {
-          format,
-          blend: {
-            color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha" },
-            alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
-          },
-        },
-      ],
-    },
-    multisample: { count: sampleCount },
-  });
-
-  const pickPipeline = await device.createRenderPipelineAsync({
-    ...pipelineDescriptor,
-    fragment: {
-      module,
-      entryPoint: "pick",
-      targets: [{ format: "rgba32float" }, { format: "r32uint" }],
-    },
-    multisample: { count: 1 },
+  const { pipeline, pickPipeline } = await createLayerPipelines({
+    context,
+    bindGroupLayout,
+    code,
   });
 
   const bindGroup = device.createBindGroup({

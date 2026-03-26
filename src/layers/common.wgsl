@@ -72,3 +72,12 @@ fn sampleElevation(elevationTextures: texture_2d_array<f32>, tile: vec3<u32>, uv
     let e = textureLoad(elevationTextures, ij, index.x, 0);
     return (((256.0 * 256.0 * 255.0 * e.r) + (256.0 * 255.0 * e.g) + (255. * e.b)) / 10.0 - 10000.0);
 }
+
+struct PickOutput {
+    @location(0) position: vec4<f32>,
+    @location(1) id: u32,
+}
+
+fn packPick(position: vec3<f32>, id: u32) -> PickOutput {
+    return PickOutput(vec4<f32>(position, 1.0), id);
+}

@@ -27,15 +27,10 @@ fn render(in: VertexOutput) -> @location(0) vec4<f32> {
     return in.color;
 }
 
-struct PickOutput {
-    @location(0) position: vec4<f32>,
-    @location(1) id: u32,
-};
-
 @fragment
 fn pick(in: VertexOutput) -> PickOutput {
     if in.color.a < 0.1 {
         discard;
     }
-    return PickOutput(vec4<f32>(in.local, 1.0), 0xffffffffu);
+    return packPick(in.local, 0xffffffffu);
 }

@@ -1,7 +1,7 @@
-import { viewLayout } from "../../common";
 import type { Context } from "../../context";
 import { createBuffer } from "../../device";
 import { derived } from "../../reactive";
+import { createLayerPipelines } from "../common";
 
 export const createRenderPipeline = async ({
   context,
@@ -16,12 +16,10 @@ export const createRenderPipeline = async ({
   imageryTextures: () => GPUTexture;
   elevationTextures: () => GPUTexture;
 }) => {
-  const { device, format, sampleCount } = context;
-  const module = device.createShaderModule({
-    code:
-      (await (await fetch(new URL("../common.wgsl", import.meta.url))).text()) +
-      (await (await fetch(new URL("./render.wgsl", import.meta.url))).text()),
-  });
+  const { device } = context;
+  const code = await (
+    await fetch(new URL("./render.wgsl", import.meta.url))
+  ).text();
 
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -48,55 +46,17 @@ export const createRenderPipeline = async ({
     ],
   });
 
-  const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [viewLayout(device), bindGroupLayout],
-  });
-
-  const pipelineDescriptor = {
-    layout: pipelineLayout,
-    vertex: {
-      module,
-      entryPoint: "vertex",
-      buffers: [
-        {
-          arrayStride: 3 * 4,
-          attributes: [{ shaderLocation: 0, format: "uint32x3", offset: 0 }],
-        },
-      ],
-    },
-    primitive: {
-      topology: "triangle-list",
-      cullMode: "front",
-    },
-    depthStencil: {
-      format: "depth24plus",
-      depthWriteEnabled: true,
-      depthCompare: "less",
-    },
-  } satisfies GPURenderPipelineDescriptor;
-
-  const pipeline = await device.createRenderPipelineAsync({
-    ...pipelineDescriptor,
-    fragment: {
-      module,
-      entryPoint: "render",
-      targets: [{ format }],
-    },
-    multisample: {
-      count: sampleCount,
-    },
-  });
-
-  const pickPipeline = await device.createRenderPipelineAsync({
-    ...pipelineDescriptor,
-    fragment: {
-      module,
-      entryPoint: "pick",
-      targets: [{ format: "rgba32float" }, { format: "r32uint" }],
-    },
-    multisample: {
-      count: 1,
-    },
+  const { pipeline, pickPipeline } = await createLayerPipelines({
+    context,
+    bindGroupLayout,
+    buffers: [
+      {
+        arrayStride: 12,
+        attributes: [{ shaderLocation: 0, format: "uint32x3", offset: 0 }],
+      },
+    ],
+    topology: "triangle-list",
+    code,
   });
 
   const resolution = 21;
@@ -129,7 +89,7 @@ export const createRenderPipeline = async ({
   const indices = new Array(count).fill(0).flatMap((_, x) =>
     new Array(count).fill(0).flatMap((_, y) => {
       const i = y * (count + 1) + x;
-      return [i, i + (count + 1), i + (count + 2), i, i + (count + 2), i + 1];
+      return [i, i + (count + 2), i + (count + 1), i, i + 1, i + (count + 2)];
     }),
   );
   const indicesBuffer = createBuffer(
