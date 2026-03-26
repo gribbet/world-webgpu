@@ -18,6 +18,8 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) @interpolate(flat) texture: i32,
+    @location(3) local: vec3<f32>,
+    @location(4) @interpolate(flat) id: u32,
 };
 
 @vertex
@@ -55,6 +57,8 @@ fn vertex(
     output.color = billboard.color;
     output.uv = uv;
     output.texture = billboard.texture;
+    output.local = local;
+    output.id = instanceIndex;
     return output;
 }
 
@@ -67,7 +71,16 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     return color;
 }
 
+struct PickOutput {
+    @location(0) position: vec4<f32>,
+    @location(1) id: u32,
+};
+
 @fragment
-fn pick(input: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+fn pick(input: VertexOutput) -> PickOutput {
+    let color = textureSampleBias(textures, sample, input.uv, input.texture, -1.0);
+    if color.a * input.color.a < 0.1 {
+        discard;
+    }
+    return PickOutput(vec4<f32>(input.local, 1.0), input.id);
 }

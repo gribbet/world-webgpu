@@ -130,7 +130,7 @@ export const createBillboardLayer = async (
     fragment: {
       module,
       entryPoint: "pick",
-      targets: [{ format: "rgba32float" }],
+      targets: [{ format: "rgba32float" }, { format: "r32uint" }],
     },
     multisample: {
       count: 1,

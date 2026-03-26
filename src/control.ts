@@ -14,7 +14,9 @@ export const createControl = (element: HTMLElement, world: World) => {
 
   const recenter = async () => {
     const { width, height } = element.getBoundingClientRect();
-    const [x, y, z] = await world.pick(width / 2, height / 2);
+    const {
+      position: [x, y, z],
+    } = await world.pick(width / 2, height / 2);
 
     const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
     const { center, distance, orientation } = view();

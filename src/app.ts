@@ -77,6 +77,10 @@ export const createApp = () =>
       ],
     });
 
+    document.addEventListener("click", async ({ x, y }) =>
+      console.log(await world.pick(x, y)),
+    );
+
     const control = createControl(element, world);
     effect(() => setView(control.view()));
 

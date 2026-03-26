@@ -45,3 +45,6 @@ worker for mipmaps and text generation
 
 casing in wgsl
 Rename VertexOutput
+textureSampleBias?
+Similarities between layers
+[number, number] Vec2?

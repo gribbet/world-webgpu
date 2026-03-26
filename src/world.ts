@@ -1,11 +1,14 @@
 import { mat4 } from "wgpu-matrix";
 
-import { type LayerDefinition, positionData, viewLayout } from "./common";
+import type { LayerDefinition } from "./common";
+import { positionData, viewLayout } from "./common";
 import { createContainerLayer } from "./container";
 import type { Context } from "./context";
 import { createBuffer } from "./device";
 import type { View } from "./model";
+import { createPicker } from "./picker";
 import { effect, onCleanup, type Properties, resolve } from "./reactive";
+import { createRenderer } from "./renderer";
 
 export type World = ReturnType<typeof createWorld>;
 
@@ -18,47 +21,12 @@ export const createWorld = (
   context: Context,
   { view, layers }: Properties<WorldProperties>,
 ) => {
-  const { device, format, sampleCount, size, textureLoader } = context;
+  const { device, size, textureLoader } = context;
 
-  const createRenderTexture = (size: [number, number]) =>
-    device.createTexture({
-      size,
-      sampleCount,
-      format,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-  const createDepthTexture = (size: [number, number], samples: number) =>
-    device.createTexture({
-      size,
-      format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-      sampleCount: samples,
-    });
-
-  const createPickTexture = (size: [number, number]) =>
-    device.createTexture({
-      size,
-      format: "rgba32float",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-    });
-
-  let renderTexture = createRenderTexture([1, 1]);
-  let depthTexture = createDepthTexture([1, 1], sampleCount);
-  let pickTexture = createPickTexture([1, 1]);
-  let pickDepthTexture = createDepthTexture([1, 1], 1);
-
-  effect(() => {
-    const [width, height] = size();
-    renderTexture.destroy();
-    depthTexture.destroy();
-    pickTexture.destroy();
-    pickDepthTexture.destroy();
-    renderTexture = createRenderTexture([width, height]);
-    depthTexture = createDepthTexture([width, height], sampleCount);
-    pickTexture = createPickTexture([width, height]);
-    pickDepthTexture = createDepthTexture([width, height], 1);
-  });
+  const renderer = createRenderer(context);
+  const { renderView, depthView } = renderer;
+  const picker = createPicker(context);
+  const { pick, positionView, pickView, depthView: pickDepthView } = picker;
 
   const centerBuffer = createBuffer(
     device,
@@ -117,10 +85,6 @@ export const createWorld = (
     centerBuffer.destroy();
     projectionBuffer.destroy();
     sizeBuffer.destroy();
-    renderTexture.destroy();
-    depthTexture.destroy();
-    pickTexture.destroy();
-    pickDepthTexture.destroy();
   });
 
   const root = createContainerLayer(context, { layers });
@@ -143,7 +107,7 @@ export const createWorld = (
     const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: renderTexture.createView(),
+          view: renderView(),
           resolveTarget: context.context.getCurrentTexture().createView(),
           loadOp: "clear",
           storeOp: "discard",
@@ -151,7 +115,7 @@ export const createWorld = (
         },
       ],
       depthStencilAttachment: {
-        view: depthTexture.createView(),
+        view: depthView(),
         depthLoadOp: "clear",
         depthStoreOp: "discard",
         depthClearValue: 1.0,
@@ -165,14 +129,20 @@ export const createWorld = (
     const pickPass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: pickTexture.createView(),
+          view: positionView(),
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+        },
+        {
+          view: pickView(),
           loadOp: "clear",
           storeOp: "store",
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
         },
       ],
       depthStencilAttachment: {
-        view: pickDepthTexture.createView(),
+        view: pickDepthView(),
         depthLoadOp: "clear",
         depthStoreOp: "discard",
         depthClearValue: 1.0,
@@ -192,34 +162,6 @@ export const createWorld = (
   onCleanup(() => {
     running = false;
   });
-
-  const pick = async (px: number, py: number) => {
-    const readBuffer = device.createBuffer({
-      size: 16,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
-
-    const encoder = device.createCommandEncoder();
-    encoder.copyTextureToBuffer(
-      {
-        texture: pickTexture,
-        origin: [Math.floor(px), Math.floor(py), 0],
-      },
-      { buffer: readBuffer, bytesPerRow: 256 },
-      [1, 1, 1],
-    );
-    device.queue.submit([encoder.finish()]);
-
-    await readBuffer.mapAsync(GPUMapMode.READ);
-    const [x = 0, y = 0, z = 0] = new Float32Array(
-      readBuffer.getMappedRange().slice(0, 12),
-    );
-
-    readBuffer.unmap();
-    readBuffer.destroy();
-
-    return [x, y, z] as const;
-  };
 
   return {
     pick,
