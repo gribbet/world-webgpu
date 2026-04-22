@@ -1,11 +1,105 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
 import { createFillLayer } from "./layers/fill";
+import { createMeshLayer, type Mesh, type Vertex } from "./layers/mesh";
 import { createTerrain } from "./layers/terrain";
 import { createTextLayer } from "./layers/text";
-import type { View } from "./model";
+import type { Vec3, Vec4, View } from "./model";
 import { createRoot, createSignal, derived, effect } from "./reactive";
 import { createWorld } from "./world";
+
+const createCubeMesh = (): Mesh => {
+  const faces: {
+    corners: [number, number, number][];
+    normal: [number, number, number];
+    color: Vec4;
+  }[] = [
+    {
+      corners: [
+        [1, -1, 1],
+        [1, -1, -1],
+        [1, 1, -1],
+        [1, 1, 1],
+      ],
+      normal: [1, 0, 0],
+      color: [1, 0, 0, 1],
+    },
+    {
+      corners: [
+        [-1, -1, -1],
+        [-1, -1, 1],
+        [-1, 1, 1],
+        [-1, 1, -1],
+      ],
+      normal: [-1, 0, 0],
+      color: [0, 1, 1, 1],
+    },
+    {
+      corners: [
+        [-1, 1, 1],
+        [1, 1, 1],
+        [1, 1, -1],
+        [-1, 1, -1],
+      ],
+      normal: [0, 1, 0],
+      color: [0, 1, 0, 1],
+    },
+    {
+      corners: [
+        [-1, -1, -1],
+        [1, -1, -1],
+        [1, -1, 1],
+        [-1, -1, 1],
+      ],
+      normal: [0, -1, 0],
+      color: [1, 0, 1, 1],
+    },
+    {
+      corners: [
+        [-1, -1, 1],
+        [1, -1, 1],
+        [1, 1, 1],
+        [-1, 1, 1],
+      ],
+      normal: [0, 0, 1],
+      color: [0, 0, 1, 1],
+    },
+    {
+      corners: [
+        [1, -1, -1],
+        [-1, -1, -1],
+        [-1, 1, -1],
+        [1, 1, -1],
+      ],
+      normal: [0, 0, -1],
+      color: [1, 1, 0, 1],
+    },
+  ];
+
+  const vertices: Vertex[] = [];
+  const indices: Vec3[] = [];
+  const faceUvs: [number, number][] = [
+    [0, 1],
+    [1, 1],
+    [1, 0],
+    [0, 0],
+  ];
+
+  faces.forEach((face, f) => {
+    face.corners.forEach((corner, c) => {
+      vertices.push({
+        position: corner,
+        color: face.color,
+        uv: faceUvs[c],
+        normal: face.normal,
+      });
+    });
+    const base = f * 4;
+    indices.push([base, base + 1, base + 2], [base, base + 2, base + 3]);
+  });
+
+  return { vertices, indices };
+};
 
 const imageryUrl = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
 const mapboxToken =
@@ -57,6 +151,13 @@ export const createApp = () =>
       };
     });
 
+    const cubeMesh = createCubeMesh();
+    const cubeSize = 50000; // 50 km half-extent
+    const spin = derived<Vec4>(() => {
+      const a = time() * 0.0005;
+      return [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
+    });
+
     const world = createWorld(context, {
       view,
       layers: [
@@ -72,6 +173,19 @@ export const createApp = () =>
               { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
             ],
             indices: [0, 1, 2, 0, 2, 3],
+          },
+        ],
+        [
+          createMeshLayer,
+          {
+            mesh: cubeMesh,
+            instances: [
+              {
+                position: [-122.4194, 37.7749, 100000],
+                scale: cubeSize,
+                orientation: spin,
+              },
+            ],
           },
         ],
       ],
