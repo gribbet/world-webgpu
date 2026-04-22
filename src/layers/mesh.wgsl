@@ -1,7 +1,9 @@
 struct Instance {
     position: Position,
     orientation: vec4<f32>,
-    scale: vec3<f32>,
+    scale: f32,
+    minScalePixels: f32,
+    maxScalePixels: f32,
     color: vec4<f32>,
     pickId: u32,
 };
@@ -32,7 +34,19 @@ fn vertex(
     let instance = instances[instanceIndex];
 
     let origin = transform(instance.position, center, projection);
-    let local = origin + rotateQuat(position * instance.scale, instance.orientation);
+    
+    // Extract perspective scale f = 1/tan(fov/2) from the combined P*V matrix.
+    // The upper-left 3x3 is diag(f/aspect, f, A) * R, so the length of row 1 = f.
+    let f = length(vec3<f32>(projection[0][1], projection[1][1], projection[2][1]));
+    let clipPos = projection * vec4(origin, 1.0);
+    let dist = clipPos.w;
+    let pixelsPerUnit = f * screenSize.y * 0.5 / dist;
+
+    var s = instance.scale;
+    s = select(s, max(s, instance.minScalePixels / pixelsPerUnit), instance.minScalePixels > 0.0);
+    s = select(s, min(s, instance.maxScalePixels / pixelsPerUnit), instance.maxScalePixels > 0.0);
+
+    let local = origin + rotateQuat(position * s, instance.orientation);
 
     var output: VertexOutput;
     output.position = projection * vec4(local, 1.0);

@@ -27,6 +27,8 @@ export type Instance = {
   position: Vec3;
   orientation?: Vec4;
   scale?: number;
+  minScalePixels?: number;
+  maxScalePixels?: number;
   color?: Vec4;
 };
 
@@ -142,7 +144,14 @@ export const createMeshLayer = async (
       if (!instance) continue;
 
       const offset = i * stride;
-      const { position, orientation, scale, color } = instance;
+      const {
+        position,
+        orientation,
+        scale,
+        minScalePixels,
+        maxScalePixels,
+        color,
+      } = instance;
 
       const pickId = pickRegistry.allocate();
       const view = new DataView(instanceData.buffer, offset);
@@ -163,10 +172,9 @@ export const createMeshLayer = async (
       });
       effect(() => {
         const view = new DataView(instanceData.buffer, offset);
-        const s = resolve(scale) ?? 1;
-        view.setFloat32(32, s, true);
-        view.setFloat32(36, s, true);
-        view.setFloat32(40, s, true);
+        view.setFloat32(32, resolve(scale) ?? 1, true);
+        view.setFloat32(36, resolve(minScalePixels) ?? -1, true);
+        view.setFloat32(40, resolve(maxScalePixels) ?? -1, true);
         dirty = true;
       });
       effect(() => {

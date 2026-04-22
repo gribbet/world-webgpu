@@ -152,7 +152,7 @@ export const createApp = () =>
     });
 
     const cubeMesh = createCubeMesh();
-    const cubeSize = 50000; // 50 km half-extent
+    const cubeSize = 1000; // 50 km half-extent
     const spin = derived<Vec4>(() => {
       const a = time() * 0.0005;
       return [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
@@ -181,8 +181,10 @@ export const createApp = () =>
             mesh: cubeMesh,
             instances: [
               {
-                position: [-122.4194, 37.7749, 100000],
+                position: [-122.4194, 37.7749, 1000],
                 scale: cubeSize,
+                minScalePixels: 8,
+                maxScalePixels: 32,
                 orientation: spin,
               },
             ],
