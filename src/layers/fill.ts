@@ -19,9 +19,9 @@ export const createFillLayer = async (
   context: Context,
   { vertices, indices }: Properties<FillProps>,
 ) => {
-  const { device } = context;
+  const { device, pickRegistry } = context;
 
-  const stride = 32;
+  const stride = 48;
   const maxVertices = 100000;
   const maxIndices = 300000;
 
@@ -64,6 +64,8 @@ export const createFillLayer = async (
     entries: [{ binding: 0, resource: { buffer: vertexBuffer } }],
   });
 
+  const pickId = pickRegistry.allocate();
+
   let vertexCount = 0;
   let indexCount = 0;
   let dirty = false;
@@ -80,6 +82,8 @@ export const createFillLayer = async (
       const offset = i * stride;
       positionData(position, vertexData.subarray(offset));
       colorData(color, vertexData.subarray(offset + 16));
+      const view = new DataView(vertexData.buffer, offset);
+      view.setUint32(32, pickId, true);
     }
     for (let i = 0; i < indexCount; i++) indexData[i] = _indices[i] ?? 0;
 

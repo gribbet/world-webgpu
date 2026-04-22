@@ -11,6 +11,7 @@ struct Billboard {
     height: u32,
     minScale: f32,
     maxScale: f32,
+    pickId: u32,
 };
 
 struct VertexOutput {
@@ -58,7 +59,7 @@ fn vertex(
     output.uv = uv;
     output.texture = billboard.texture;
     output.local = local;
-    output.id = instanceIndex;
+    output.id = billboard.pickId;
     return output;
 }
 

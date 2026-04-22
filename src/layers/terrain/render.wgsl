@@ -2,6 +2,7 @@
 @group(1) @binding(1) var imageryTextures: texture_2d_array<f32>;
 @group(1) @binding(2) var elevationTextures: texture_2d_array<f32>;
 @group(1) @binding(3) var sample: sampler;
+@group(1) @binding(4) var<uniform> pickId: u32;
 
 
 struct VertexInput {
@@ -53,5 +54,5 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn pick(input: VertexOutput) -> PickOutput {
-    return packPick(input.local, 0xffffffffu);
+    return packPick(input.local, pickId);
 }

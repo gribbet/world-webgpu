@@ -16,7 +16,7 @@ export const createTerrain = async (
   context: Context,
   { imageryUrl, elevationUrl }: Properties<TerrainProps>,
 ) => {
-  const { device } = context;
+  const { device, pickRegistry } = context;
 
   const tilesBuffer = createBuffer(
     device,
@@ -55,6 +55,8 @@ export const createTerrain = async (
 
   const elevationTextures = derived(() => elevation().texture());
 
+  const pickId = pickRegistry.allocate();
+
   const computePipeline = await createComputePipeline({
     device,
     tilesBuffer,
@@ -70,6 +72,7 @@ export const createTerrain = async (
     countBuffer,
     imageryTextures,
     elevationTextures,
+    pickId,
   });
 
   const compute = (pass: GPUComputePassEncoder) =>

@@ -9,12 +9,14 @@ export const createRenderPipeline = async ({
   countBuffer,
   imageryTextures,
   elevationTextures,
+  pickId,
 }: {
   context: Context;
   tilesBuffer: GPUBuffer;
   countBuffer: GPUBuffer;
   imageryTextures: () => GPUTexture;
   elevationTextures: () => GPUTexture;
+  pickId: number;
 }) => {
   const { device } = context;
   const code = await (
@@ -43,8 +45,19 @@ export const createRenderPipeline = async ({
         visibility: GPUShaderStage.FRAGMENT,
         sampler: { type: "filtering" },
       },
+      {
+        binding: 4,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+      },
     ],
   });
+
+  const pickBuffer = createBuffer(
+    device,
+    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    new Uint32Array([pickId]),
+  );
 
   const { pipeline, pickPipeline } = await createLayerPipelines({
     context,
@@ -119,6 +132,7 @@ export const createRenderPipeline = async ({
           resource: elevationTextures().createView({ dimension: "2d-array" }),
         },
         { binding: 3, resource: sampler },
+        { binding: 4, resource: { buffer: pickBuffer } },
       ],
     }),
   );

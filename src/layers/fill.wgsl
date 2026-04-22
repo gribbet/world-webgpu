@@ -1,6 +1,7 @@
 struct Vertex {
     position: Position,
     color: vec4<f32>,
+    pickId: u32,
 };
 
 @group(1) @binding(0) var<storage, read> vertices: array<Vertex>;
@@ -9,6 +10,7 @@ struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) local: vec3<f32>,
+    @location(2) @interpolate(flat) id: u32,
 };
 
 @vertex
@@ -19,6 +21,7 @@ fn vertex(@builtin(vertex_index) index: u32) -> VertexOutput {
     out.position = projection * vec4(local, 1.0);
     out.color = v.color;
     out.local = local;
+    out.id = v.pickId;
     return out;
 }
 
@@ -32,5 +35,5 @@ fn pick(in: VertexOutput) -> PickOutput {
     if in.color.a < 0.1 {
         discard;
     }
-    return packPick(in.local, 0xffffffffu);
+    return packPick(in.local, in.id);
 }

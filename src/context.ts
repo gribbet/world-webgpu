@@ -1,4 +1,5 @@
 import { tileTextureLayers } from "./configuration";
+import { createPickRegistry } from "./pick-registry";
 import { createSignal, onCleanup } from "./reactive";
 import { createTextureLoader } from "./texture-loader";
 
@@ -34,6 +35,7 @@ export const createContext = async (element: HTMLCanvasElement) => {
   context.configure({ device, format, alphaMode: "opaque" });
 
   const textureLoader = createTextureLoader({ device });
+  const pickRegistry = createPickRegistry();
 
   onCleanup(() => {
     observer.disconnect();
@@ -48,5 +50,6 @@ export const createContext = async (element: HTMLCanvasElement) => {
     size,
     sampleCount,
     textureLoader,
+    pickRegistry,
   };
 };

@@ -29,7 +29,7 @@ export const createBillboardLayer = async (
   context: Context,
   { billboards }: Properties<BillboardProps>,
 ) => {
-  const { device } = context;
+  const { device, pickRegistry } = context;
 
   const maxBillboards = 10000;
   const stride = 64;
@@ -114,12 +114,14 @@ export const createBillboardLayer = async (
       const { position, color, image, size, minScale, maxScale } = billboard;
 
       const metadata = derived(() => imageMetadata()[resolve(image)]);
+      const pickId = pickRegistry.allocate();
       effect(() => {
         const view = new DataView(billboardData.buffer, offset);
         const data = metadata();
         view.setInt32(32, data?.index ?? -1, true);
         view.setUint32(36, data?.width ?? 0, true);
         view.setUint32(40, data?.height ?? 0, true);
+        view.setUint32(52, pickId, true);
         dirty = true;
       });
       effect(() => {
