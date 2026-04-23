@@ -6,18 +6,19 @@ import { createContainerLayer } from "./container";
 import type { Context } from "./context";
 import { createBuffer } from "./device";
 import type { View } from "./model";
+import { createOutline } from "./outline";
 import { createPicker } from "./picker";
 import { effect, onCleanup, type Properties, resolve } from "./reactive";
 import { createRenderer } from "./renderer";
 
-export type World = ReturnType<typeof createWorld>;
+export type World = Awaited<ReturnType<typeof createWorld>>;
 
 export type WorldProperties = {
   view: View;
   layers: LayerDefinition[];
 };
 
-export const createWorld = (
+export const createWorld = async (
   context: Context,
   { view, layers }: Properties<WorldProperties>,
 ) => {
@@ -89,6 +90,8 @@ export const createWorld = (
 
   const root = createContainerLayer(context, { layers });
 
+  const outline = await createOutline(context);
+
   let running = true;
   const frame = () => {
     if (!running) return;
@@ -152,6 +155,18 @@ export const createWorld = (
     pickPass.setBindGroup(0, bindGroup);
     root.render(pickPass, { pick: true });
     pickPass.end();
+
+    const outlinePass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: context.context.getCurrentTexture().createView(),
+          loadOp: "load",
+          storeOp: "store",
+        },
+      ],
+    });
+    outline.render(outlinePass, pickView());
+    outlinePass.end();
 
     device.queue.submit([encoder.finish()]);
 

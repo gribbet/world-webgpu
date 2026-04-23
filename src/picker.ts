@@ -1,25 +1,29 @@
 import { createLock } from "./common";
 import type { Context } from "./context";
+import type { Vec2 } from "./model";
 import { effect, onCleanup } from "./reactive";
 
 export const createPicker = (context: Context) => {
-  const { device, size } = context;
+  const { device, size, devicePixelRatio } = context;
 
-  const createPositionTexture = (size: [number, number]) =>
+  const createPositionTexture = (size: Vec2) =>
     device.createTexture({
       size,
       format: "rgba32float",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     });
 
-  const createPickTexture = (size: [number, number]) =>
+  const createPickTexture = (size: Vec2) =>
     device.createTexture({
       size,
       format: "r32uint",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.TEXTURE_BINDING,
     });
 
-  const createDepthTexture = (size: [number, number]) =>
+  const createDepthTexture = (size: Vec2) =>
     device.createTexture({
       size,
       format: "depth24plus",
@@ -36,12 +40,14 @@ export const createPicker = (context: Context) => {
 
   effect(() => {
     const [width, height] = size();
+    const w = width * devicePixelRatio;
+    const h = height * devicePixelRatio;
     positionTexture.destroy();
     pickTexture.destroy();
     depthTexture.destroy();
-    positionTexture = createPositionTexture([width, height]);
-    pickTexture = createPickTexture([width, height]);
-    depthTexture = createDepthTexture([width, height]);
+    positionTexture = createPositionTexture([w, h]);
+    pickTexture = createPickTexture([w, h]);
+    depthTexture = createDepthTexture([w, h]);
   });
 
   const positionReadBuffer = device.createBuffer({
@@ -59,7 +65,11 @@ export const createPicker = (context: Context) => {
     const release = await lock();
 
     try {
-      const origin = [Math.floor(px), Math.floor(py), 0] as const;
+      const origin = [
+        Math.floor(px * devicePixelRatio),
+        Math.floor(py * devicePixelRatio),
+        0,
+      ] as const;
 
       const encoder = device.createCommandEncoder();
       encoder.copyTextureToBuffer(

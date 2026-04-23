@@ -1,4 +1,5 @@
 import { tileTextureLayers } from "./configuration";
+import type { Vec2 } from "./model";
 import { createPickRegistry } from "./pick-registry";
 import { createSignal, onCleanup } from "./reactive";
 import { createTextureLoader } from "./texture-loader";
@@ -16,13 +17,14 @@ export const createContext = async (element: HTMLCanvasElement) => {
     requiredLimits: { maxTextureArrayLayers: tileTextureLayers },
   });
 
+  const devicePixelRatio = window.devicePixelRatio || 1;
   const { width, height } = element;
-  const [size, setSize] = createSignal<[number, number]>([width, height]);
+  const [size, setSize] = createSignal<Vec2>([width, height]);
   const observer = new ResizeObserver(
     ([{ contentRect: { width, height } = {} } = {}]) => {
       if (width === undefined || height === undefined) return;
-      element.width = width;
-      element.height = height;
+      element.width = width * devicePixelRatio;
+      element.height = height * devicePixelRatio;
       setSize([width, height]);
     },
   );
@@ -48,6 +50,7 @@ export const createContext = async (element: HTMLCanvasElement) => {
     context,
     format,
     size,
+    devicePixelRatio,
     sampleCount,
     textureLoader,
     pickRegistry,

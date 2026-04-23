@@ -4,7 +4,7 @@ import { createFillLayer } from "./layers/fill";
 import { createMeshLayer, type Mesh, type Vertex } from "./layers/mesh";
 import { createTerrain } from "./layers/terrain";
 import { createTextLayer } from "./layers/text";
-import type { Vec3, Vec4, View } from "./model";
+import type { Vec2, Vec3, Vec4, View } from "./model";
 import { createRoot, createSignal, derived, effect } from "./reactive";
 import { createWorld } from "./world";
 
@@ -78,7 +78,7 @@ const createCubeMesh = (): Mesh => {
 
   const vertices: Vertex[] = [];
   const indices: Vec3[] = [];
-  const faceUvs: [number, number][] = [
+  const faceUvs: Vec2[] = [
     [0, 1],
     [1, 1],
     [1, 0],
@@ -130,7 +130,7 @@ export const createApp = () =>
       const [x, y, z] = [
         (Math.random() - 0.5) * 2.0 * 180.0,
         (Math.random() - 0.5) * 2.0 * 85.0,
-        10000 + Math.random() * 100,
+        10000 + Math.random() * 10000,
       ];
       const position = derived(() => [
         x + Math.sin(time() * 0.001 + i),
@@ -158,7 +158,7 @@ export const createApp = () =>
       return [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
     });
 
-    const world = createWorld(context, {
+    const world = await createWorld(context, {
       view,
       layers: [
         [createTerrain, { imageryUrl, elevationUrl }],
@@ -181,10 +181,10 @@ export const createApp = () =>
             mesh: cubeMesh,
             instances: [
               {
-                position: [-122.4194, 37.7749, 1000],
+                position: [-122.4194, 37.7749, 10000],
                 scale: cubeSize,
-                minScalePixels: 8,
-                maxScalePixels: 32,
+                minScalePixels: 24,
+                maxScalePixels: 96,
                 orientation: spin,
               },
             ],

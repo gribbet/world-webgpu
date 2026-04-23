@@ -23,6 +23,19 @@ fn rotateQuat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
 }
 
+fn computePixelsPerUnit(origin: vec3<f32>) -> f32 {
+    let f = length(vec3(projection[0][1], projection[1][1], projection[2][1]));
+    let clipPos = projection * vec4(origin, 1.0);
+    return f * screenSize.y * 0.5 / clipPos.w;
+}
+
+fn computeScale(instance: Instance, pixelsPerUnit: f32) -> f32 {
+    var s = instance.scale;
+    s = select(s, max(s, instance.minScalePixels / pixelsPerUnit), instance.minScalePixels > 0.0);
+    s = select(s, min(s, instance.maxScalePixels / pixelsPerUnit), instance.maxScalePixels > 0.0);
+    return s;
+}
+
 @vertex
 fn vertex(
     @builtin(instance_index) instanceIndex: u32,
@@ -34,17 +47,8 @@ fn vertex(
     let instance = instances[instanceIndex];
 
     let origin = transform(instance.position, center, projection);
-    
-    // Extract perspective scale f = 1/tan(fov/2) from the combined P*V matrix.
-    // The upper-left 3x3 is diag(f/aspect, f, A) * R, so the length of row 1 = f.
-    let f = length(vec3<f32>(projection[0][1], projection[1][1], projection[2][1]));
-    let clipPos = projection * vec4(origin, 1.0);
-    let dist = clipPos.w;
-    let pixelsPerUnit = f * screenSize.y * 0.5 / dist;
-
-    var s = instance.scale;
-    s = select(s, max(s, instance.minScalePixels / pixelsPerUnit), instance.minScalePixels > 0.0);
-    s = select(s, min(s, instance.maxScalePixels / pixelsPerUnit), instance.maxScalePixels > 0.0);
+    let pixelsPerUnit = computePixelsPerUnit(origin);
+    let s = computeScale(instance, pixelsPerUnit);
 
     let local = origin + rotateQuat(position * s, instance.orientation);
 

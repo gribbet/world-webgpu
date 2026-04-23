@@ -1,10 +1,11 @@
 import type { Context } from "./context";
+import type { Vec2 } from "./model";
 import { effect, onCleanup } from "./reactive";
 
 export const createRenderer = (context: Context) => {
-  const { device, size, format, sampleCount } = context;
+  const { device, size, devicePixelRatio, format, sampleCount } = context;
 
-  const createRenderTexture = (size: [number, number]) =>
+  const createRenderTexture = (size: Vec2) =>
     device.createTexture({
       size,
       sampleCount,
@@ -12,7 +13,7 @@ export const createRenderer = (context: Context) => {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-  const createDepthTexture = (size: [number, number]) =>
+  const createDepthTexture = (size: Vec2) =>
     device.createTexture({
       size,
       format: "depth24plus",
@@ -25,10 +26,12 @@ export const createRenderer = (context: Context) => {
 
   effect(() => {
     const [width, height] = size();
+    const w = width * devicePixelRatio;
+    const h = height * devicePixelRatio;
     renderTexture.destroy();
     depthTexture.destroy();
-    renderTexture = createRenderTexture([width, height]);
-    depthTexture = createDepthTexture([width, height]);
+    renderTexture = createRenderTexture([w, h]);
+    depthTexture = createDepthTexture([w, h]);
   });
 
   const renderView = () => renderTexture.createView();

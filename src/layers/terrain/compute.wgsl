@@ -84,7 +84,7 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
 
             let span = n_max - n_min;
             let pixels = span.xy * screenSize / 2.0;
-            subdivide = length(pixels) > 384.0;
+            subdivide = length(pixels) > 512.0;
         }
 
         if subdivide && z <= 20u {

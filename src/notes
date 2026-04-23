@@ -47,6 +47,5 @@ casing in wgsl
 Rename VertexOutput
 textureSampleBias?
 Similarities between layers
-[number, number] Vec2?
 Load transition
 Pick to mouse events

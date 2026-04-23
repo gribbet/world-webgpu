@@ -50,8 +50,6 @@ const renderTextImage = async ({
 
     context.font = fontString;
     context.fillStyle = "white";
-    context.strokeStyle = "black";
-    context.lineWidth = 4;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.clearRect(0, 0, width, height);
