@@ -1,14 +1,18 @@
 import type { Vec3, View } from "./model";
-import { createSignal, onCleanup } from "./reactive";
+import { type Accessor, onCleanup } from "./reactive";
 import type { World } from "./world";
 
-export const createControl = (element: HTMLElement, world: World) => {
-  const [view, setView] = createSignal<View>({
-    center: [-122.4194, 37.7749, 0], // SF
-    distance: 100000,
-    orientation: [0, 0, 0],
-  });
-
+export const createControl = ({
+  element,
+  world,
+  view,
+  setView,
+}: {
+  element: HTMLElement;
+  world: World;
+  view: Accessor<View>;
+  setView: (_: View) => void;
+}) => {
   const abortController = new AbortController();
   const { signal } = abortController;
 
@@ -83,8 +87,6 @@ export const createControl = (element: HTMLElement, world: World) => {
   });
 
   onCleanup(() => abortController.abort());
-
-  return { view };
 };
 
 const move = (center: Vec3, enu: readonly [number, number, number]): Vec3 => {

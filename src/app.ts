@@ -6,7 +6,7 @@ import { type Mesh, mesh, type Vertex } from "./layers/mesh";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
-import { createRoot, createSignal, derived, effect } from "./reactive";
+import { createRoot, createSignal, derived } from "./reactive";
 import { createWorld } from "./world";
 
 const createCubeMesh = (): Mesh => {
@@ -116,7 +116,7 @@ export const createApp = () =>
 
     const [view, setView] = createSignal<View>({
       center: [-122.4194, 37.7749, 0], // SF
-      distance: 1000000000,
+      distance: 100000,
       orientation: [0, 0, 0],
     });
 
@@ -269,8 +269,7 @@ export const createApp = () =>
       console.log(await world.pick(x, y)),
     );
 
-    const control = createControl(element, world);
-    effect(() => setView(control.view()));
+    createControl({ element, world, view, setView });
 
     return {
       dispose,
