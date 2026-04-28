@@ -40,12 +40,14 @@ texture-group<Key>
 
 Mipmap for imagery. Another worker for crop/resize? 
 skip compute
-layer definition type safety issues
 worker for mipmaps and text generation
 
 casing in wgsl
 Rename VertexOutput
 textureSampleBias?
 Similarities between layers
+mipmap transition
 Load transition
 Pick to mouse events
+
+typed gpu serialization

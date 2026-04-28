@@ -37,7 +37,6 @@ export const createLayerPipelines = async ({
     },
     primitive: {
       topology,
-      cullMode: "back",
     },
     depthStencil: {
       format: "depth24plus",

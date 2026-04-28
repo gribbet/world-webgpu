@@ -1,6 +1,7 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
 import { fill } from "./layers/fill";
+import { type Line, line } from "./layers/line/index";
 import { type Mesh, mesh, type Vertex } from "./layers/mesh";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
@@ -128,13 +129,13 @@ export const createApp = () =>
 
     const textEntries = new Array(100).fill(0).map((_, i) => {
       const [x, y, z] = [
-        (Math.random() - 0.5) * 2.0 * 180.0,
-        (Math.random() - 0.5) * 2.0 * 85.0,
+        (Math.random() - 0.5) * 2.0 * 1.0 - 122.4194,
+        (Math.random() - 0.5) * 2.0 * 1.0 + 37.7749,
         10000 + Math.random() * 10000,
       ];
       const position = derived<Vec3>(() => [
-        x + Math.sin(time() * 0.001 + i),
-        y + Math.cos(time() * 0.001 + i),
+        x + Math.sin(time() * 0.00001 + i),
+        y + Math.cos(time() * 0.00001 + i),
         z,
       ]);
       const text = String.fromCharCode(65 + Math.floor(Math.random() * 26));
@@ -159,11 +160,87 @@ export const createApp = () =>
       return [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
     });
 
+    const lineExamples = derived<Line[]>(() => {
+      const pulse = 800 + Math.sin(time() * 0.002) * 400;
+      const centerLon = -122.4194;
+      const centerLat = 37.7749;
+      const ringRadius = 0.12;
+      const count = 1000;
+      const ringPoints = Array.from({ length: count }, (_, i) => {
+        const t = (i / (count - 1)) * Math.PI * 2;
+        return {
+          position: [
+            centerLon + Math.cos(t) * ringRadius,
+            centerLat + Math.sin(t) * ringRadius,
+            3000 + Math.sin(t * 3 + time() * 0.0015) * 1200,
+          ] as Vec3,
+          color: [0.2, 0.9, 1.0, 0.9] as Vec4,
+          width: pulse,
+        };
+      });
+
+      const count2 = 1000;
+      const redOrangePoints = Array.from({ length: count2 }, (_, i) => {
+        const t = i / (count2 - 1);
+        const lon = -122.58 + t * (-122.16 - -122.58);
+        const lat = 37.69 + Math.sin(t * Math.PI) * 0.17;
+        const alt = 2000 + Math.sin(t * Math.PI * 4) * 1500 + t * 2000;
+        const r = 1.0;
+        const g = t < 0.5 ? 0.2 + t * 1.6 : 1.0;
+        const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
+        const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
+        return {
+          position: [lon, lat, alt] as Vec3,
+          color: [r, g, b, 0.95] as Vec4,
+          width: w,
+        };
+      });
+
+      return [
+        {
+          points: redOrangePoints,
+        },
+        {
+          points: [
+            {
+              position: [-122.52, 37.92, 2000],
+              color: [0.3, 0.9, 1.0, 0.85],
+              width: 1800,
+            },
+            {
+              position: [-122.45, 37.86, 7000],
+              color: [0.2, 0.8, 1.0, 0.85],
+              width: 1800,
+            },
+            {
+              position: [-122.38, 37.92, 2000],
+              color: [0.1, 0.7, 1.0, 0.85],
+              width: 1800,
+            },
+            {
+              position: [-122.31, 37.86, 7000],
+              color: [0.1, 0.6, 1.0, 0.85],
+              width: 1800,
+            },
+            {
+              position: [-122.24, 37.92, 2000],
+              color: [0.1, 0.5, 1.0, 0.85],
+              width: 1800,
+            },
+          ],
+        },
+        {
+          points: ringPoints,
+        },
+      ];
+    });
+
     const world = await createWorld(context, {
       view,
       layers: [
         terrain({ imageryUrl, elevationUrl }),
         text({ entries: textEntries }),
+        line({ lines: lineExamples }),
         fill({
           vertices: [
             { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
