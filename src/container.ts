@@ -1,4 +1,4 @@
-import type { Layer, LayerDefinition, LayerFactory } from "./common";
+import type { Layer, LayerDescriptor, LayerFactory } from "./common";
 import type { Context } from "./context";
 import {
   createSignal,
@@ -11,70 +11,69 @@ import {
 } from "./reactive";
 
 export type ContainerProperties = {
-  layers: LayerDefinition[];
+  layers: LayerDescriptor[];
+};
+
+type Cell = {
+  key: object;
+  create: () => Layer | Promise<Layer>;
+  update: (properties: object) => void;
+};
+
+const createCell = <P>(
+  context: Context,
+  factory: LayerFactory<P>,
+  initial: Properties<P>,
+): Cell => {
+  const [getProps, setProps] = createSignal(initial);
+  const reactiveProps = {} as Properties<P>;
+  for (const key in initial)
+    Object.defineProperty(reactiveProps, key, {
+      get: () => getProps()[key as keyof Properties<P>],
+      enumerable: true,
+    });
+  return {
+    key: factory,
+    create: () => factory(context, reactiveProps),
+    update: properties => setProps(properties as Properties<P>),
+  };
 };
 
 export const createContainerLayer = (
   context: Context,
   { layers }: Properties<ContainerProperties>,
 ): Layer => {
-  type StableEntry<
-    P extends Record<string, unknown> = Record<string, unknown>,
-  > = {
-    type: LayerFactory<P>;
-    properties: P;
-    update: (properties: P) => void;
-  };
-  const groups = new Map<LayerFactory, StableEntry[]>();
+  const groups = new Map<object, Cell[]>();
 
   onCleanup(() => groups.clear());
 
   const stableList = derived(() => {
     const next = resolve(layers);
-    const nextGroups = new Map<LayerFactory, StableEntry[]>();
+    const nextGroups = new Map<object, Cell[]>();
 
-    const result = next.map(def => {
-      const [type, properties] = def;
-      let group = groups.get(type);
-      let entry = group?.shift();
+    const result = next.map(descriptor =>
+      descriptor((factory, properties) => {
+        let group = groups.get(factory);
+        let cell = group?.shift();
 
-      if (entry) entry.update(properties);
-      else {
-        const [getLatestProps, setLatestProps] = createSignal(properties);
-        const reactiveProps = {} as Record<string, unknown>;
+        if (cell) cell.update(properties);
+        else cell = createCell(context, factory, properties);
 
-        for (const key in properties)
-          Object.defineProperty(reactiveProps, key, {
-            get: () => getLatestProps()[key],
-            enumerable: true,
-          });
-
-        entry = {
-          type,
-          properties: reactiveProps,
-          update: setLatestProps,
-        };
-      }
-
-      group = nextGroups.get(type) ?? [];
-      group.push(entry);
-      nextGroups.set(type, group);
-      return entry;
-    });
+        group = nextGroups.get(cell.key) ?? [];
+        group.push(cell);
+        nextGroups.set(cell.key, group);
+        return cell;
+      }),
+    );
 
     groups.clear();
-    for (const [type, properties] of nextGroups) groups.set(type, properties);
+    for (const [key, cells] of nextGroups) groups.set(key, cells);
     return result;
   });
 
   const [active, setActive] = createSignal<Layer[]>([]);
 
-  const items = map(stableList, (stable: StableEntry) =>
-    stable.type(
-      context,
-      stable.properties as Properties<Record<string, unknown>>,
-    ),
-  );
+  const items = map(stableList, _ => _.create());
 
   effect(() => {
     const list = items();

@@ -1,6 +1,6 @@
 import { mat4 } from "wgpu-matrix";
 
-import type { LayerDefinition } from "./common";
+import type { LayerDescriptor } from "./common";
 import { positionData, viewLayout } from "./common";
 import { createContainerLayer } from "./container";
 import type { Context } from "./context";
@@ -15,7 +15,7 @@ export type World = Awaited<ReturnType<typeof createWorld>>;
 
 export type WorldProperties = {
   view: View;
-  layers: LayerDefinition[];
+  layers: LayerDescriptor[];
 };
 
 export const createWorld = async (

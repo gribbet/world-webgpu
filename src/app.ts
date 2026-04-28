@@ -1,9 +1,9 @@
 import { createContext } from "./context";
 import { createControl } from "./control";
-import { createFillLayer } from "./layers/fill";
-import { createMeshLayer, type Mesh, type Vertex } from "./layers/mesh";
-import { createTerrain } from "./layers/terrain";
-import { createTextLayer } from "./layers/text";
+import { fill } from "./layers/fill";
+import { type Mesh, mesh, type Vertex } from "./layers/mesh";
+import { terrain } from "./layers/terrain";
+import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
 import { createRoot, createSignal, derived, effect } from "./reactive";
 import { createWorld } from "./world";
@@ -132,7 +132,7 @@ export const createApp = () =>
         (Math.random() - 0.5) * 2.0 * 85.0,
         10000 + Math.random() * 10000,
       ];
-      const position = derived(() => [
+      const position = derived<Vec3>(() => [
         x + Math.sin(time() * 0.001 + i),
         y + Math.cos(time() * 0.001 + i),
         z,
@@ -147,6 +147,7 @@ export const createApp = () =>
         color,
         font: "sans-serif",
         fontSize: 48,
+        minScale: 0,
         maxScale: 1,
       };
     });
@@ -161,35 +162,29 @@ export const createApp = () =>
     const world = await createWorld(context, {
       view,
       layers: [
-        [createTerrain, { imageryUrl, elevationUrl }],
-        [createTextLayer, { entries: textEntries }],
-        [
-          createFillLayer,
-          {
-            vertices: [
-              { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
-              { position: [-122.3, 37.7, 10000], color: [0, 1, 0, 0.5] },
-              { position: [-122.3, 37.9, 10000], color: [0, 0, 1, 0.5] },
-              { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
-            ],
-            indices: [0, 1, 2, 0, 2, 3],
-          },
-        ],
-        [
-          createMeshLayer,
-          {
-            mesh: cubeMesh,
-            instances: [
-              {
-                position: [-122.4194, 37.7749, 10000],
-                scale: cubeSize,
-                minScalePixels: 24,
-                maxScalePixels: 96,
-                orientation: spin,
-              },
-            ],
-          },
-        ],
+        terrain({ imageryUrl, elevationUrl }),
+        text({ entries: textEntries }),
+        fill({
+          vertices: [
+            { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
+            { position: [-122.3, 37.7, 10000], color: [0, 1, 0, 0.5] },
+            { position: [-122.3, 37.9, 10000], color: [0, 0, 1, 0.5] },
+            { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
+          ],
+          indices: [0, 1, 2, 0, 2, 3],
+        }),
+        mesh({
+          mesh: cubeMesh,
+          instances: [
+            {
+              position: [-122.4194, 37.7749, 10000],
+              scale: cubeSize,
+              minScalePixels: 24,
+              maxScalePixels: 96,
+              orientation: spin,
+            },
+          ],
+        }),
       ],
     });
 

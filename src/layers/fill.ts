@@ -1,8 +1,7 @@
-import { colorData, positionData } from "../common";
-import type { Context } from "../context";
+import { colorData, createLayerType, positionData } from "../common";
 import { createBuffer } from "../device";
 import type { Vec3, Vec4 } from "../model";
-import { effect, type Properties, resolve } from "../reactive";
+import { effect, resolve } from "../reactive";
 import { createLayerPipelines } from "./common";
 
 export type Vertex = {
@@ -15,113 +14,112 @@ export type FillProps = {
   indices: number[];
 };
 
-export const createFillLayer = async (
-  context: Context,
-  { vertices, indices }: Properties<FillProps>,
-) => {
-  const { device, pickRegistry } = context;
+export const fill = createLayerType<FillProps>(
+  async (context, { vertices, indices }) => {
+    const { device, pickRegistry } = context;
 
-  const stride = 48;
-  const maxVertices = 100000;
-  const maxIndices = 300000;
+    const stride = 48;
+    const maxVertices = 100000;
+    const maxIndices = 300000;
 
-  const vertexData = new Uint8Array(maxVertices * stride);
-  const indexData = new Uint32Array(maxIndices);
+    const vertexData = new Uint8Array(maxVertices * stride);
+    const indexData = new Uint32Array(maxIndices);
 
-  const vertexBuffer = createBuffer(
-    device,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    vertexData,
-  );
-  const indexBuffer = createBuffer(
-    device,
-    GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-    new Uint8Array(indexData.buffer),
-  );
-
-  const code = await (
-    await fetch(new URL("./fill.wgsl", import.meta.url))
-  ).text();
-
-  const bindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: { type: "read-only-storage" },
-      },
-    ],
-  });
-
-  const { pipeline, pickPipeline } = await createLayerPipelines({
-    context,
-    bindGroupLayout,
-    code,
-  });
-
-  const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
-    entries: [{ binding: 0, resource: { buffer: vertexBuffer } }],
-  });
-
-  const pickId = pickRegistry.allocate();
-
-  let vertexCount = 0;
-  let indexCount = 0;
-  let dirty = false;
-
-  effect(() => {
-    const _vertices = resolve(vertices);
-    const _indices = resolve(indices);
-    vertexCount = Math.min(_vertices.length, maxVertices);
-    indexCount = Math.min(_indices.length, maxIndices);
-
-    for (let i = 0; i < vertexCount; i++) {
-      const { position, color } = _vertices[i] ?? {};
-      if (!position || !color) continue;
-      const offset = i * stride;
-      positionData(position, vertexData.subarray(offset));
-      colorData(color, vertexData.subarray(offset + 16));
-      const view = new DataView(vertexData.buffer, offset);
-      view.setUint32(32, pickId, true);
-    }
-    for (let i = 0; i < indexCount; i++) indexData[i] = _indices[i] ?? 0;
-
-    dirty = true;
-  });
-
-  const update = () => {
-    if (!dirty || indexCount === 0) return;
-    device.queue.writeBuffer(
-      vertexBuffer,
-      0,
+    const vertexBuffer = createBuffer(
+      device,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       vertexData,
-      0,
-      vertexCount * stride,
     );
-    device.queue.writeBuffer(
-      indexBuffer,
-      0,
-      indexData.buffer,
-      0,
-      indexCount * 4,
+    const indexBuffer = createBuffer(
+      device,
+      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      new Uint8Array(indexData.buffer),
     );
-    dirty = false;
-  };
 
-  const render = (
-    pass: GPURenderPassEncoder,
-    { pick }: { pick?: boolean } = {},
-  ) => {
-    if (indexCount === 0) return;
-    pass.setPipeline(pick ? pickPipeline : pipeline);
-    pass.setBindGroup(1, bindGroup);
-    pass.setIndexBuffer(indexBuffer, "uint32");
-    pass.drawIndexed(indexCount);
-  };
+    const code = await (
+      await fetch(new URL("./fill.wgsl", import.meta.url))
+    ).text();
 
-  return {
-    update,
-    render,
-  };
-};
+    const bindGroupLayout = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "read-only-storage" },
+        },
+      ],
+    });
+
+    const { pipeline, pickPipeline } = await createLayerPipelines({
+      context,
+      bindGroupLayout,
+      code,
+    });
+
+    const bindGroup = device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: [{ binding: 0, resource: { buffer: vertexBuffer } }],
+    });
+
+    const pickId = pickRegistry.allocate();
+
+    let vertexCount = 0;
+    let indexCount = 0;
+    let dirty = false;
+
+    effect(() => {
+      const _vertices = resolve(vertices);
+      const _indices = resolve(indices);
+      vertexCount = Math.min(_vertices.length, maxVertices);
+      indexCount = Math.min(_indices.length, maxIndices);
+
+      for (let i = 0; i < vertexCount; i++) {
+        const { position, color } = _vertices[i] ?? {};
+        if (!position || !color) continue;
+        const offset = i * stride;
+        positionData(position, vertexData.subarray(offset));
+        colorData(color, vertexData.subarray(offset + 16));
+        const view = new DataView(vertexData.buffer, offset);
+        view.setUint32(32, pickId, true);
+      }
+      for (let i = 0; i < indexCount; i++) indexData[i] = _indices[i] ?? 0;
+
+      dirty = true;
+    });
+
+    const update = () => {
+      if (!dirty || indexCount === 0) return;
+      device.queue.writeBuffer(
+        vertexBuffer,
+        0,
+        vertexData,
+        0,
+        vertexCount * stride,
+      );
+      device.queue.writeBuffer(
+        indexBuffer,
+        0,
+        indexData.buffer,
+        0,
+        indexCount * 4,
+      );
+      dirty = false;
+    };
+
+    const render = (
+      pass: GPURenderPassEncoder,
+      { pick }: { pick?: boolean } = {},
+    ) => {
+      if (indexCount === 0) return;
+      pass.setPipeline(pick ? pickPipeline : pipeline);
+      pass.setBindGroup(1, bindGroup);
+      pass.setIndexBuffer(indexBuffer, "uint32");
+      pass.drawIndexed(indexCount);
+    };
+
+    return {
+      update,
+      render,
+    };
+  },
+);

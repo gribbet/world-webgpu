@@ -1,4 +1,5 @@
-import type { Context } from "../context";
+import { createLayerType } from "../common";
+import { createContainerLayer } from "../container";
 import type { Vec3, Vec4 } from "../model";
 import {
   createSignal,
@@ -7,7 +8,7 @@ import {
   type Properties,
   resolve,
 } from "../reactive";
-import { createBillboardLayer } from "./billboard";
+import { billboard } from "./billboard";
 import { createTextImage } from "./text-image";
 
 export type TextEntry = {
@@ -25,10 +26,7 @@ export type TextProps = {
   entries: Properties<TextEntry>[];
 };
 
-export const createTextLayer = (
-  context: Context,
-  { entries }: Properties<TextProps>,
-) => {
+export const text = createLayerType<TextProps>((context, { entries }) => {
   const billboards = map(
     entries,
     ({ text, position, size, font, fontSize, color, minScale, maxScale }) => {
@@ -55,5 +53,7 @@ export const createTextLayer = (
     },
   );
 
-  return createBillboardLayer(context, { billboards });
-};
+  return createContainerLayer(context, {
+    layers: [billboard({ billboards })],
+  });
+});

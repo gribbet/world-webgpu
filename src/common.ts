@@ -13,8 +13,15 @@ export type LayerFactory<P> = (
   props: Properties<P>,
 ) => Layer | Promise<Layer>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type LayerDefinition<P = any> = readonly [LayerFactory<P>, P];
+export type LayerDescriptor = <R>(
+  apply: <P>(factory: LayerFactory<P>, properties: Properties<P>) => R,
+) => R;
+
+export const createLayerType =
+  <P>(factory: LayerFactory<P>) =>
+  (properties: Properties<P>): LayerDescriptor =>
+  <R>(apply: <Q>(factory: LayerFactory<Q>, properties: Properties<Q>) => R) =>
+    apply(factory, properties);
 
 export const viewLayout = (device: GPUDevice) =>
   device.createBindGroupLayout({
