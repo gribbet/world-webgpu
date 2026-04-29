@@ -1,7 +1,8 @@
-import { colorData, createLayerType, positionData } from "../common";
+import { createLayerType } from "../common";
 import { createBuffer } from "../device";
 import type { Vec3, Vec4 } from "../model";
-import { effect, resolve } from "../reactive";
+import { derived, effect, resolve } from "../reactive";
+import { array, position, struct, u32, vec4f } from "../storage";
 import { createLayerPipelines } from "./common";
 
 export type Vertex = {
@@ -14,22 +15,23 @@ export type FillProps = {
   indices: number[];
 };
 
+const vertexStruct = struct({
+  position: position(),
+  color: vec4f(),
+  pickId: u32(),
+});
+
 export const fill = createLayerType<FillProps>(
   async (context, { vertices, indices }) => {
     const { device, pickRegistry } = context;
 
-    const stride = 48;
-    const maxVertices = 100000;
     const maxIndices = 300000;
-
-    const vertexData = new Uint8Array(maxVertices * stride);
     const indexData = new Uint32Array(maxIndices);
 
-    const vertexBuffer = createBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      vertexData,
-    );
+    const storage = array(vertexStruct, device, {
+      usage: GPUBufferUsage.STORAGE,
+      initialCapacity: 1024,
+    });
     const indexBuffer = createBuffer(
       device,
       GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
@@ -56,46 +58,44 @@ export const fill = createLayerType<FillProps>(
       code,
     });
 
-    const bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: vertexBuffer } }],
-    });
+    const bindGroup = derived(() =>
+      device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{ binding: 0, resource: { buffer: storage.buffer() } }],
+      }),
+    );
 
     const pickId = pickRegistry.allocate();
 
     let vertexCount = 0;
     let indexCount = 0;
-    let dirty = false;
+    let indicesDirty = false;
 
     effect(() => {
       const _vertices = resolve(vertices);
       const _indices = resolve(indices);
-      vertexCount = Math.min(_vertices.length, maxVertices);
+      vertexCount = _vertices.length;
       indexCount = Math.min(_indices.length, maxIndices);
+
+      storage.resize(vertexCount);
 
       for (let i = 0; i < vertexCount; i++) {
         const { position, color } = _vertices[i] ?? {};
         if (!position || !color) continue;
-        const offset = i * stride;
-        positionData(position, vertexData.subarray(offset));
-        colorData(color, vertexData.subarray(offset + 16));
-        const view = new DataView(vertexData.buffer, offset);
-        view.setUint32(32, pickId, true);
+        const item = storage.items[i];
+        if (!item) continue;
+        item.position = position;
+        item.color = color;
+        item.pickId = pickId;
       }
       for (let i = 0; i < indexCount; i++) indexData[i] = _indices[i] ?? 0;
 
-      dirty = true;
+      indicesDirty = true;
     });
 
     const update = () => {
-      if (!dirty || indexCount === 0) return;
-      device.queue.writeBuffer(
-        vertexBuffer,
-        0,
-        vertexData,
-        0,
-        vertexCount * stride,
-      );
+      storage.flush();
+      if (!indicesDirty || indexCount === 0) return;
       device.queue.writeBuffer(
         indexBuffer,
         0,
@@ -103,7 +103,7 @@ export const fill = createLayerType<FillProps>(
         0,
         indexCount * 4,
       );
-      dirty = false;
+      indicesDirty = false;
     };
 
     const render = (
@@ -112,7 +112,7 @@ export const fill = createLayerType<FillProps>(
     ) => {
       if (indexCount === 0) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
-      pass.setBindGroup(1, bindGroup);
+      pass.setBindGroup(1, bindGroup());
       pass.setIndexBuffer(indexBuffer, "uint32");
       pass.drawIndexed(indexCount);
     };
