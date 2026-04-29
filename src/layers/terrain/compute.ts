@@ -1,7 +1,7 @@
 import { viewLayout } from "../../common";
 import { createBuffer } from "../../device";
 import type { Accessor } from "../../reactive";
-import { derived } from "../../reactive";
+import { derived, onCleanup } from "../../reactive";
 
 export const createComputePipeline = async ({
   device,
@@ -145,15 +145,10 @@ export const createComputePipeline = async ({
       );
   };
 
-  const destroy = () => {
-    countReadBuffer.destroy();
-    buffer.destroy();
-    elevationCacheBuffer.destroy();
-  };
+  onCleanup(() => buffer.destroy());
 
   return {
     compute,
     read,
-    destroy,
   };
 };

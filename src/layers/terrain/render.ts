@@ -151,14 +151,8 @@ export const createRenderPipeline = async ({
     pass.drawIndexedIndirect(indirectBuffer, 0);
   };
 
-  const destroy = () => {
-    verticesBuffer.destroy();
-    indicesBuffer.destroy();
-  };
-
   return {
     update,
     render,
-    destroy,
   };
 };

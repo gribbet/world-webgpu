@@ -64,11 +64,7 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
   );
 
   onCleanup(() => {
-    pointsBuffer.destroy();
-    nodesBuffer.destroy();
     outVerticesBuffer.destroy();
-    nodeCountBuffer.destroy();
-    indexBuffer.destroy();
   });
 
   const renderCode = await (

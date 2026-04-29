@@ -5,11 +5,10 @@ import {
   createSignal,
   derived,
   effect,
-  onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
-import { array, f32, position, struct, u32, vec4f } from "../storage";
+import { f32, position, struct, structArray, u32, vec4f } from "../storage";
 import { createLayerPipelines } from "./common";
 
 const instanceStruct = struct({
@@ -52,7 +51,7 @@ export const mesh = createLayerType<MeshProps>(
   async (context, { mesh, instances }) => {
     const { device, pickRegistry } = context;
 
-    const storage = array(instanceStruct, device, {
+    const storage = structArray(instanceStruct, device, {
       usage: GPUBufferUsage.STORAGE,
       initialCapacity: 1024,
     });
@@ -131,10 +130,6 @@ export const mesh = createLayerType<MeshProps>(
         vertex,
         indices,
         indexCount: indicesData.length,
-      });
-      onCleanup(() => {
-        vertex.destroy();
-        indices.destroy();
       });
     });
 

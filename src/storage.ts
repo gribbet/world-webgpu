@@ -24,11 +24,17 @@ type BackingStore = {
 
 type ItemWriterStore = Pick<BackingStore, "view" | "markDirty">;
 
-const createItemFactory = <S extends Shape>(
-  shape: S,
+export type StructDef<S extends Shape> = {
+  readonly stride: number;
+  readonly shape: S;
+  readonly offsets: Record<string, number>;
+};
+
+const createStructItemFactory = <S extends Shape>(
+  def: StructDef<S>,
   store: ItemWriterStore,
 ) => {
-  const { offsets } = struct(shape);
+  const { shape, offsets } = def;
 
   return (baseOffset = 0): ItemView<S> => {
     const item = {} as ItemView<S>;
@@ -166,12 +172,6 @@ export const position = (): Field<Vec3> => ({
   },
 });
 
-export type StructDef<S extends Shape> = {
-  readonly stride: number;
-  readonly shape: S;
-  readonly offsets: Record<string, number>;
-};
-
 export const struct = <S extends Shape>(shape: S): StructDef<S> => {
   const offsets: Record<string, number> = {};
   let cursor = 0;
@@ -199,34 +199,36 @@ export const buffer = <S extends Shape>(
   device: GPUDevice,
   options: { usage: GPUBufferUsageFlags },
 ): StructBuffer<S> => {
-  const { stride } = struct(shape);
+  const def = struct(shape);
+  const { stride } = def;
   const store = createBackingStore(device, options.usage, stride);
   const { buffer: gpuBuffer, flush, markDirty, view } = store;
-  const makeItem = createItemFactory(shape, { markDirty, view });
+  const makeItem = createStructItemFactory(def, { markDirty, view });
   const item = makeItem();
 
   return { item, buffer: gpuBuffer, flush };
 };
 
-export type StructArray<S extends Shape> = {
+type ArrayResult<TItem> = {
   readonly stride: number;
-  readonly items: ItemView<S>[];
+  readonly items: TItem[];
   readonly buffer: Accessor<GPUBuffer>;
   resize(n: number): void;
   flush(): void;
 };
 
-export const array = <S extends Shape>(
-  def: StructDef<S>,
-  device: GPUDevice,
-  options: { usage: GPUBufferUsageFlags; initialCapacity?: number },
-): StructArray<S> => {
-  const { stride, shape } = def;
-  let capacity = Math.max(1, options.initialCapacity ?? 1);
+export type StructArray<S extends Shape> = ArrayResult<ItemView<S>>;
+export type ScalarArray<T> = ArrayResult<T>;
+
+const createArrayCore = <TItem>(
+  stride: number,
+  store: BackingStore,
+  initialCapacity: number,
+  installItem: (items: TItem[], index: number) => void,
+): ArrayResult<TItem> => {
+  let capacity = Math.max(1, initialCapacity);
   let count = 0;
-  const store = createBackingStore(device, options.usage, capacity * stride);
-  const items: ItemView<S>[] = [];
-  const makeItem = createItemFactory(shape, store);
+  const items: TItem[] = [];
 
   const grow = (required: number) => {
     let next = capacity;
@@ -240,8 +242,63 @@ export const array = <S extends Shape>(
     const next = Math.max(0, n);
     if (next > capacity) grow(next);
     count = next;
-    while (items.length < count) items.push(makeItem(items.length * stride));
+    while (items.length < count) installItem(items, items.length);
   };
 
   return { stride, items, buffer: store.buffer, resize, flush: store.flush };
+};
+
+const createStructArray = <S extends Shape>(
+  def: StructDef<S>,
+  device: GPUDevice,
+  options: { usage: GPUBufferUsageFlags; initialCapacity?: number },
+): StructArray<S> => {
+  const { stride } = def;
+  const store = createBackingStore(
+    device,
+    options.usage,
+    (options.initialCapacity ?? 1) * stride,
+  );
+  const makeItem = createStructItemFactory(def, store);
+
+  return createArrayCore<ItemView<S>>(
+    stride,
+    store,
+    options.initialCapacity ?? 1,
+    (items, index) => {
+      items.push(makeItem(index * stride));
+    },
+  );
+};
+
+export const structArray = createStructArray;
+
+export const array = <T>(
+  field: Field<T>,
+  device: GPUDevice,
+  options: { usage: GPUBufferUsageFlags; initialCapacity?: number },
+): ScalarArray<T> => {
+  const { align, size, write } = field;
+  const stride = alignTo(size, align);
+  const store = createBackingStore(
+    device,
+    options.usage,
+    (options.initialCapacity ?? 1) * stride,
+  );
+
+  return createArrayCore<T>(
+    stride,
+    store,
+    options.initialCapacity ?? 1,
+    (items, index) => {
+      const abs = index * stride;
+      Object.defineProperty(items, index, {
+        enumerable: true,
+        set(value: T) {
+          write(store.view(), abs, value);
+          store.markDirty(abs, abs + size);
+        },
+      });
+    },
+  );
 };

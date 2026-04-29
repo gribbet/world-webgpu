@@ -1,8 +1,7 @@
 import { createLayerType } from "../common";
-import { createBuffer } from "../device";
 import type { Vec3, Vec4 } from "../model";
 import { derived, effect, resolve } from "../reactive";
-import { array, position, struct, u32, vec4f } from "../storage";
+import { array, position, struct, structArray, u32, vec4f } from "../storage";
 import { createLayerPipelines } from "./common";
 
 export type Vertex = {
@@ -25,18 +24,14 @@ export const fill = createLayerType<FillProps>(
   async (context, { vertices, indices }) => {
     const { device, pickRegistry } = context;
 
-    const maxIndices = 300000;
-    const indexData = new Uint32Array(maxIndices);
-
-    const storage = array(vertexStruct, device, {
+    const storage = structArray(vertexStruct, device, {
       usage: GPUBufferUsage.STORAGE,
       initialCapacity: 1024,
     });
-    const indexBuffer = createBuffer(
-      device,
-      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-      new Uint8Array(indexData.buffer),
-    );
+    const indexStorage = array(u32(), device, {
+      usage: GPUBufferUsage.INDEX,
+      initialCapacity: 1024,
+    });
 
     const code = await (
       await fetch(new URL("./fill.wgsl", import.meta.url))
@@ -69,15 +64,15 @@ export const fill = createLayerType<FillProps>(
 
     let vertexCount = 0;
     let indexCount = 0;
-    let indicesDirty = false;
 
     effect(() => {
       const _vertices = resolve(vertices);
       const _indices = resolve(indices);
       vertexCount = _vertices.length;
-      indexCount = Math.min(_indices.length, maxIndices);
+      indexCount = _indices.length;
 
       storage.resize(vertexCount);
+      indexStorage.resize(indexCount);
 
       for (let i = 0; i < vertexCount; i++) {
         const { position, color } = _vertices[i] ?? {};
@@ -88,22 +83,13 @@ export const fill = createLayerType<FillProps>(
         item.color = color;
         item.pickId = pickId;
       }
-      for (let i = 0; i < indexCount; i++) indexData[i] = _indices[i] ?? 0;
-
-      indicesDirty = true;
+      for (let i = 0; i < indexCount; i++)
+        indexStorage.items[i] = _indices[i] ?? 0;
     });
 
     const update = () => {
       storage.flush();
-      if (!indicesDirty || indexCount === 0) return;
-      device.queue.writeBuffer(
-        indexBuffer,
-        0,
-        indexData.buffer,
-        0,
-        indexCount * 4,
-      );
-      indicesDirty = false;
+      indexStorage.flush();
     };
 
     const render = (
@@ -113,7 +99,7 @@ export const fill = createLayerType<FillProps>(
       if (indexCount === 0) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
       pass.setBindGroup(1, bindGroup());
-      pass.setIndexBuffer(indexBuffer, "uint32");
+      pass.setIndexBuffer(indexStorage.buffer(), "uint32");
       pass.drawIndexed(indexCount);
     };
 

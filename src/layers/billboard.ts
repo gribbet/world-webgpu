@@ -7,7 +7,15 @@ import {
   type Properties,
   resolve,
 } from "../reactive";
-import { array, f32, i32, position, struct, u32, vec4f } from "../storage";
+import {
+  f32,
+  i32,
+  position,
+  struct,
+  structArray,
+  u32,
+  vec4f,
+} from "../storage";
 import { createTextureGroup } from "../texture-group";
 import { createLayerPipelines } from "./common";
 
@@ -40,7 +48,7 @@ export const billboard = createLayerType<BillboardProps>(
   async (context, { billboards }) => {
     const { device, pickRegistry } = context;
 
-    const storage = array(billboardStruct, device, {
+    const storage = structArray(billboardStruct, device, {
       usage: GPUBufferUsage.STORAGE,
       initialCapacity: 1024,
     });

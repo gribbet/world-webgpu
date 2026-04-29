@@ -96,13 +96,7 @@ export const terrain = createLayerType<TerrainProps>(
 
     const timer = setInterval(() => void updateTextures(), 100);
 
-    onCleanup(() => {
-      clearInterval(timer);
-      computePipeline.destroy();
-      pipeline.destroy();
-      tilesBuffer.destroy();
-      countBuffer.destroy();
-    });
+    onCleanup(() => clearInterval(timer));
 
     return {
       compute,
