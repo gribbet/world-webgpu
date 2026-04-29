@@ -1,15 +1,28 @@
-import { colorData, createLayerType, positionData } from "../common";
-import { createBuffer } from "../device";
+import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import {
   createSignal,
   derived,
   effect,
+  onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
+import { array, f32, i32, position, struct, u32, vec4f } from "../storage";
 import { createTextureGroup } from "../texture-group";
 import { createLayerPipelines } from "./common";
+
+const billboardStruct = struct({
+  position: position(),
+  size: f32(),
+  color: vec4f(),
+  texture: i32(),
+  width: u32(),
+  height: u32(),
+  minScale: f32(),
+  maxScale: f32(),
+  pickId: u32(),
+});
 
 export type Billboard = {
   image: string;
@@ -28,14 +41,11 @@ export const billboard = createLayerType<BillboardProps>(
   async (context, { billboards }) => {
     const { device, pickRegistry } = context;
 
-    const maxBillboards = 10000;
-    const stride = 64;
-    const billboardData = new Uint8Array(maxBillboards * stride);
-    const billboardsBuffer = createBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      billboardData,
-    );
+    const storage = array(billboardStruct, device, {
+      usage: GPUBufferUsage.STORAGE,
+      initialCapacity: 1024,
+    });
+    onCleanup(() => storage.destroy());
 
     const [imageMetadata, setImageMetadata] = createSignal<{
       [url: string]:
@@ -96,7 +106,7 @@ export const billboard = createLayerType<BillboardProps>(
       device.createBindGroup({
         layout: bindGroupLayout,
         entries: [
-          { binding: 0, resource: { buffer: billboardsBuffer } },
+          { binding: 0, resource: { buffer: storage.buffer() } },
           { binding: 1, resource: textureGroup.texture().createView() },
           { binding: 2, resource: sampler },
         ],
@@ -104,50 +114,40 @@ export const billboard = createLayerType<BillboardProps>(
     );
 
     let count = 0;
-    let dirty = false;
     effect(() => {
       const list = resolve(billboards);
-      count = Math.min(list.length, maxBillboards);
+      count = list.length;
+      storage.setCount(count);
 
       for (let i = 0; i < count; i++) {
         const billboard = list[i];
         if (!billboard) continue;
 
-        const offset = i * stride;
+        const item = storage.items[i];
+        if (!item) continue;
         const { position, color, image, size, minScale, maxScale } = billboard;
 
         const metadata = derived(() => imageMetadata()[resolve(image)]);
         const pickId = pickRegistry.allocate();
         effect(() => {
-          const view = new DataView(billboardData.buffer, offset);
           const data = metadata();
-          view.setInt32(32, data?.index ?? -1, true);
-          view.setUint32(36, data?.width ?? 0, true);
-          view.setUint32(40, data?.height ?? 0, true);
-          view.setUint32(52, pickId, true);
-          dirty = true;
+          item.texture = data?.index ?? -1;
+          item.width = data?.width ?? 0;
+          item.height = data?.height ?? 0;
+          item.pickId = pickId;
         });
         effect(() => {
-          const view = new DataView(billboardData.buffer, offset);
-          view.setFloat32(12, resolve(size), true);
-          dirty = true;
+          item.size = resolve(size);
         });
         effect(() => {
-          positionData(resolve(position), billboardData.subarray(offset));
-          dirty = true;
+          item.position = resolve(position);
         });
         effect(() => {
-          colorData(
-            resolve(color) ?? [1, 1, 1, 1],
-            billboardData.subarray(offset + 16),
-          );
-          dirty = true;
+          item.color = resolve(color) ?? [1, 1, 1, 1];
         });
         effect(() => {
-          const view = new DataView(billboardData.buffer, offset);
-          view.setFloat32(44, resolve(minScale) ?? -Infinity, true);
-          view.setFloat32(48, resolve(maxScale) ?? Infinity, true);
-          dirty = true;
+          item.minScale = resolve(minScale) ?? -Infinity;
+          item.maxScale = resolve(maxScale) ?? Infinity;
         });
       }
     });
@@ -158,15 +158,7 @@ export const billboard = createLayerType<BillboardProps>(
           .map(_ => resolve(_.image))
           .filter(_ => !!_),
       );
-      if (count > 0 && dirty)
-        device.queue.writeBuffer(
-          billboardsBuffer,
-          0,
-          billboardData,
-          0,
-          count * stride,
-        );
-      dirty = false;
+      storage.flush();
     };
 
     const render = (
@@ -176,7 +168,7 @@ export const billboard = createLayerType<BillboardProps>(
       if (count === 0) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
       pass.setBindGroup(1, bindGroup());
-      pass.draw(4, Math.min(count, maxBillboards), 0, 0);
+      pass.draw(4, count, 0, 0);
     };
 
     return {
