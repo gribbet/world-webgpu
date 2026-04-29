@@ -32,8 +32,8 @@ fn vertex(input: VertexInput) -> VertexOutput {
     let xy = tileXY + offset;
     let skirt = select(0.0, -0.1 * tileSize * CIRCUMFERENCE / ONE, input.uvw.z > 0);
     let world = Position(xy.x, xy.y, alt + skirt);
-    let local = transform(world, center, projection);
-    output.position = projection * vec4<f32>(local, 1.0);
+    let local = transform(world, view.center, view.projection);
+    output.position = view.projection * vec4<f32>(local, 1.0);
     output.instanceIndex = input.instanceIndex;
     output.uv = uv;
     output.local = local;

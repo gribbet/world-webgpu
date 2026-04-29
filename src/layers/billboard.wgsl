@@ -30,7 +30,7 @@ fn vertex(
 ) -> VertexOutput {
     let billboard = billboards[instanceIndex];
 
-    let local = transform(billboard.position, center, projection);
+    let local = transform(billboard.position, view.center, view.projection);
 
     let corners = array(
         vec2(-1.0, 1.0),
@@ -45,12 +45,12 @@ fn vertex(
     let uv = (corners[vertexIndex] * 0.5 + 0.5) * uvScale;
 
     let aspect = width / height;
-    let screenAspect = screenSize.x / screenSize.y;
+    let screenAspect = view.screenSize.x / view.screenSize.y;
 
-    let clip = projection * vec4(local, 1.0);
-    var scale = clamp(billboard.size / clip.w / height * screenSize.y, billboard.minScale, billboard.maxScale);
-    let offset = corners[vertexIndex] * vec2(aspect / screenAspect, -1.0) * scale * height / screenSize.y;
-    let position = projection * vec4(local, 1.0) + vec4(offset * clip.w, 0.0, 0.0);
+    let clip = view.projection * vec4(local, 1.0);
+    var scale = clamp(billboard.size / clip.w / height * view.screenSize.y, billboard.minScale, billboard.maxScale);
+    let offset = corners[vertexIndex] * vec2(aspect / screenAspect, -1.0) * scale * height / view.screenSize.y;
+    let position = view.projection * vec4(local, 1.0) + vec4(offset * clip.w, 0.0, 0.0);
 
 
     var output: VertexOutput;

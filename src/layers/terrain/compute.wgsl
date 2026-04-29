@@ -28,8 +28,8 @@ fn projectTile(tile: vec3<u32>) -> vec4<f32> {
     let y = tile.y << shift;
     let elevation = tileElevation(tile);
     let position = Position(x, y, elevation);
-    let local = transform(position, center, projection);
-    let value = projection * vec4<f32>(local, 1.0);
+    let local = transform(position, view.center, view.projection);
+    let value = view.projection * vec4<f32>(local, 1.0);
     return value;
 }
 
@@ -54,7 +54,7 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
         let z = tile.z;
 
         let shift = 31u - z;
-        let inside = (center.x >> shift) == x && (center.y >> shift) == y;
+        let inside = (view.center.x >> shift) == x && (view.center.y >> shift) == y;
 
         let c1 = projectTile(tile);
         let c2 = projectTile(vec3<u32>(x + 1, y, z));
@@ -83,7 +83,7 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
             let n_min = min(min(n1, n2), min(n3, n4));
 
             let span = n_max - n_min;
-            let pixels = span.xy * screenSize / 2.0;
+            let pixels = span.xy * view.screenSize / 2.0;
             subdivide = length(pixels) > 512.0;
         }
 

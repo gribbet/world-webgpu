@@ -16,9 +16,9 @@ struct VertexOutput {
 @vertex
 fn vertex(@builtin(vertex_index) index: u32) -> VertexOutput {
     let v = vertices[index];
-    let local = transform(v.position, center, projection);
+    let local = transform(v.position, view.center, view.projection);
     var out: VertexOutput;
-    out.position = projection * vec4(local, 1.0);
+    out.position = view.projection * vec4(local, 1.0);
     out.color = v.color;
     out.local = local;
     out.id = v.pickId;

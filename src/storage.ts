@@ -1,6 +1,6 @@
-import type { Vec3, Vec4 } from "./model";
+import type { Vec2, Vec3, Vec4 } from "./model";
 import type { Accessor } from "./reactive";
-import { createSignal } from "./reactive";
+import { createSignal, onCleanup } from "./reactive";
 
 type Field<T> = {
   readonly align: number;
@@ -13,6 +13,98 @@ type ValueOfField<F> = F extends Field<infer T> ? T : never;
 export type ItemView<S extends Shape> = { [K in keyof S]: ValueOfField<S[K]> };
 
 const alignTo = (n: number, a: number) => Math.ceil(n / a) * a;
+
+type BackingStore = {
+  readonly view: () => DataView;
+  readonly buffer: Accessor<GPUBuffer>;
+  markDirty(from: number, to: number): void;
+  ensureCapacity(minByteLength: number): void;
+  flush(): void;
+};
+
+type ItemWriterStore = Pick<BackingStore, "view" | "markDirty">;
+
+const createItemFactory = <S extends Shape>(
+  shape: S,
+  store: ItemWriterStore,
+) => {
+  const { offsets } = struct(shape);
+
+  return (baseOffset = 0): ItemView<S> => {
+    const item = {} as ItemView<S>;
+    for (const k in shape) {
+      const { write, size } = shape[k]!;
+      const abs = baseOffset + offsets[k]!;
+      Object.defineProperty(item, k, {
+        enumerable: true,
+        set(value: unknown) {
+          write(store.view(), abs, value);
+          store.markDirty(abs, abs + size);
+        },
+      });
+    }
+    return item;
+  };
+};
+
+const createBackingStore = (
+  device: GPUDevice,
+  usage: GPUBufferUsageFlags,
+  initialByteLength: number,
+): BackingStore => {
+  const bufferUsage = usage | GPUBufferUsage.COPY_DST;
+  let bytes = new Uint8Array(initialByteLength);
+  let view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let gpuBuffer = device.createBuffer({
+    size: bytes.byteLength,
+    usage: bufferUsage,
+  });
+  const [buffer, setBuffer] = createSignal(gpuBuffer);
+  let dirtyFrom = Infinity;
+  let dirtyTo = 0;
+
+  const markDirty = (from: number, to: number) => {
+    dirtyFrom = Math.min(dirtyFrom, from);
+    dirtyTo = Math.max(dirtyTo, to);
+  };
+
+  const ensureCapacity = (minByteLength: number) => {
+    if (bytes.byteLength >= minByteLength) return;
+    const nextBytes = new Uint8Array(minByteLength);
+    nextBytes.set(bytes);
+    gpuBuffer.destroy();
+    gpuBuffer = device.createBuffer({
+      size: nextBytes.byteLength,
+      usage: bufferUsage,
+    });
+    bytes = nextBytes;
+    view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    setBuffer(gpuBuffer);
+  };
+
+  const flush = () => {
+    if (dirtyFrom >= dirtyTo) return;
+    device.queue.writeBuffer(
+      gpuBuffer,
+      dirtyFrom,
+      bytes,
+      dirtyFrom,
+      dirtyTo - dirtyFrom,
+    );
+    dirtyFrom = Infinity;
+    dirtyTo = 0;
+  };
+
+  onCleanup(() => gpuBuffer.destroy());
+
+  return {
+    view: () => view,
+    buffer,
+    markDirty,
+    ensureCapacity,
+    flush,
+  };
+};
 
 export const f32 = (): Field<number> => ({
   align: 4,
@@ -30,6 +122,23 @@ export const u32 = (): Field<number> => ({
   align: 4,
   size: 4,
   write: (v, o, x) => v.setUint32(o, x, true),
+});
+
+export const vec2f = (): Field<Vec2> => ({
+  align: 8,
+  size: 8,
+  write: (v, o, [x, y]) => {
+    v.setFloat32(o, x, true);
+    v.setFloat32(o + 4, y, true);
+  },
+});
+
+export const mat4f = (): Field<Float32Array> => ({
+  align: 16,
+  size: 64,
+  write: (v, o, x) => {
+    for (let i = 0; i < 16; i++) v.setFloat32(o + i * 4, x[i]!, true);
+  },
 });
 
 export const vec4f = (): Field<Vec4> => ({
@@ -79,13 +188,32 @@ export const struct = <S extends Shape>(shape: S): StructDef<S> => {
   return { stride: alignTo(cursor, maxAlign), shape, offsets };
 };
 
+export type StructBuffer<S extends Shape> = {
+  readonly item: ItemView<S>;
+  readonly buffer: Accessor<GPUBuffer>;
+  flush(): void;
+};
+
+export const buffer = <S extends Shape>(
+  shape: S,
+  device: GPUDevice,
+  options: { usage: GPUBufferUsageFlags },
+): StructBuffer<S> => {
+  const { stride } = struct(shape);
+  const store = createBackingStore(device, options.usage, stride);
+  const { buffer: gpuBuffer, flush, markDirty, view } = store;
+  const makeItem = createItemFactory(shape, { markDirty, view });
+  const item = makeItem();
+
+  return { item, buffer: gpuBuffer, flush };
+};
+
 export type StructArray<S extends Shape> = {
   readonly stride: number;
   readonly items: ItemView<S>[];
   readonly buffer: Accessor<GPUBuffer>;
-  setCount(n: number): void;
+  resize(n: number): void;
   flush(): void;
-  destroy(): void;
 };
 
 export const array = <S extends Shape>(
@@ -93,76 +221,27 @@ export const array = <S extends Shape>(
   device: GPUDevice,
   options: { usage: GPUBufferUsageFlags; initialCapacity?: number },
 ): StructArray<S> => {
-  const { stride, shape, offsets } = def;
-  const usage = options.usage | GPUBufferUsage.COPY_DST;
+  const { stride, shape } = def;
   let capacity = Math.max(1, options.initialCapacity ?? 1);
   let count = 0;
-  let dirtyFrom = Infinity;
-  let dirtyTo = 0;
-  let bytes = new Uint8Array(capacity * stride);
-  let gpuBuffer = device.createBuffer({ size: bytes.byteLength, usage });
-
-  const [buffer, setBuffer] = createSignal(gpuBuffer);
+  const store = createBackingStore(device, options.usage, capacity * stride);
   const items: ItemView<S>[] = [];
-
-  const makeItem = (baseOffset: number): ItemView<S> => {
-    const item = {} as ItemView<S>;
-    for (const k in shape) {
-      const { write } = shape[k]!;
-      const abs = baseOffset + offsets[k]!;
-      Object.defineProperty(item, k, {
-        enumerable: true,
-        set(value: unknown) {
-          write(
-            new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength),
-            abs,
-            value,
-          );
-          dirtyFrom = Math.min(dirtyFrom, baseOffset);
-          dirtyTo = Math.max(dirtyTo, baseOffset + stride);
-        },
-      });
-    }
-    return item;
-  };
+  const makeItem = createItemFactory(shape, store);
 
   const grow = (required: number) => {
     let next = capacity;
     while (next < required) next *= 2;
-    const nextBytes = new Uint8Array(next * stride);
-    nextBytes.set(bytes);
-    gpuBuffer.destroy();
-    gpuBuffer = device.createBuffer({ size: nextBytes.byteLength, usage });
-    bytes = nextBytes;
+    store.ensureCapacity(next * stride);
     capacity = next;
-    setBuffer(gpuBuffer);
-    dirtyFrom = 0;
-    dirtyTo = count * stride;
+    store.markDirty(0, count * stride);
   };
 
-  const setCount = (n: number) => {
+  const resize = (n: number) => {
     const next = Math.max(0, n);
     if (next > capacity) grow(next);
     count = next;
     while (items.length < count) items.push(makeItem(items.length * stride));
   };
 
-  const flush = () => {
-    if (dirtyFrom >= dirtyTo) return;
-    device.queue.writeBuffer(
-      gpuBuffer,
-      dirtyFrom,
-      bytes,
-      dirtyFrom,
-      dirtyTo - dirtyFrom,
-    );
-    dirtyFrom = Infinity;
-    dirtyTo = 0;
-  };
-
-  const destroy = () => {
-    gpuBuffer.destroy();
-  };
-
-  return { stride, items, buffer, setCount, flush, destroy };
+  return { stride, items, buffer: store.buffer, resize, flush: store.flush };
 };

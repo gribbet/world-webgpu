@@ -25,14 +25,16 @@ export const createLayerType =
 
 export const viewLayout = (device: GPUDevice) =>
   device.createBindGroupLayout({
-    entries: [0, 1, 2].map(binding => ({
-      binding,
-      visibility:
-        GPUShaderStage.VERTEX |
-        GPUShaderStage.FRAGMENT |
-        GPUShaderStage.COMPUTE,
-      buffer: { type: "uniform" },
-    })),
+    entries: [
+      {
+        binding: 0,
+        visibility:
+          GPUShaderStage.VERTEX |
+          GPUShaderStage.FRAGMENT |
+          GPUShaderStage.COMPUTE,
+        buffer: { type: "uniform" },
+      },
+    ],
   });
 
 export const positionData = ([lon, lat, alt]: Vec3, data: Uint8Array) => {

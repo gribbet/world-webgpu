@@ -1,14 +1,26 @@
-import { colorData, createLayerType, positionData } from "../common";
+import { createLayerType } from "../common";
 import { createBuffer } from "../device";
 import type { Vec2, Vec3, Vec4 } from "../model";
 import {
   createSignal,
+  derived,
   effect,
   onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
+import { array, f32, position, struct, u32, vec4f } from "../storage";
 import { createLayerPipelines } from "./common";
+
+const instanceStruct = struct({
+  position: position(),
+  orientation: vec4f(),
+  scale: f32(),
+  minScalePixels: f32(),
+  maxScalePixels: f32(),
+  color: vec4f(),
+  pickId: u32(),
+});
 
 export type Vertex = {
   position: Vec3;
@@ -40,14 +52,10 @@ export const mesh = createLayerType<MeshProps>(
   async (context, { mesh, instances }) => {
     const { device, pickRegistry } = context;
 
-    const maxInstances = 10000;
-    const stride = 80;
-    const instanceData = new Uint8Array(maxInstances * stride);
-    const instancesBuffer = createBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      instanceData,
-    );
+    const storage = array(instanceStruct, device, {
+      usage: GPUBufferUsage.STORAGE,
+      initialCapacity: 1024,
+    });
 
     const code = await (
       await fetch(new URL("./mesh.wgsl", import.meta.url))
@@ -81,10 +89,12 @@ export const mesh = createLayerType<MeshProps>(
       ],
     });
 
-    const bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: instancesBuffer } }],
-    });
+    const bindGroup = derived(() =>
+      device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{ binding: 0, resource: { buffer: storage.buffer() } }],
+      }),
+    );
 
     type MeshBuffers = {
       vertex: GPUBuffer;
@@ -128,19 +138,19 @@ export const mesh = createLayerType<MeshProps>(
       });
     });
 
-    onCleanup(() => instancesBuffer.destroy());
-
     let count = 0;
-    let dirty = false;
     effect(() => {
       const list = resolve(instances);
-      count = Math.min(list.length, maxInstances);
+      count = list.length;
+      storage.resize(count);
 
       for (let i = 0; i < count; i++) {
         const instance = list[i];
         if (!instance) continue;
 
-        const offset = i * stride;
+        const item = storage.items[i];
+        if (!item) continue;
+
         const {
           position,
           orientation,
@@ -149,52 +159,22 @@ export const mesh = createLayerType<MeshProps>(
           maxScalePixels,
           color,
         } = instance;
+        item.pickId = pickRegistry.allocate();
 
-        const pickId = pickRegistry.allocate();
-        const view = new DataView(instanceData.buffer, offset);
-        view.setUint32(64, pickId, true);
-
+        effect(() => void (item.position = resolve(position)));
+        effect(
+          () => void (item.orientation = resolve(orientation) ?? [0, 0, 0, 1]),
+        );
         effect(() => {
-          positionData(resolve(position), instanceData.subarray(offset));
-          dirty = true;
+          item.scale = resolve(scale) ?? 1;
+          item.minScalePixels = resolve(minScalePixels) ?? -1;
+          item.maxScalePixels = resolve(maxScalePixels) ?? -1;
         });
-        effect(() => {
-          const view = new DataView(instanceData.buffer, offset);
-          const [x, y, z, w] = resolve(orientation) ?? [0, 0, 0, 1];
-          view.setFloat32(16, x, true);
-          view.setFloat32(20, y, true);
-          view.setFloat32(24, z, true);
-          view.setFloat32(28, w, true);
-          dirty = true;
-        });
-        effect(() => {
-          const view = new DataView(instanceData.buffer, offset);
-          view.setFloat32(32, resolve(scale) ?? 1, true);
-          view.setFloat32(36, resolve(minScalePixels) ?? -1, true);
-          view.setFloat32(40, resolve(maxScalePixels) ?? -1, true);
-          dirty = true;
-        });
-        effect(() => {
-          colorData(
-            resolve(color) ?? [1, 1, 1, 1],
-            instanceData.subarray(offset + 48),
-          );
-          dirty = true;
-        });
+        effect(() => void (item.color = resolve(color) ?? [1, 1, 1, 1]));
       }
     });
 
-    const update = () => {
-      if (count > 0 && dirty)
-        device.queue.writeBuffer(
-          instancesBuffer,
-          0,
-          instanceData,
-          0,
-          count * stride,
-        );
-      dirty = false;
-    };
+    const update = () => storage.flush();
 
     const render = (
       pass: GPURenderPassEncoder,
@@ -203,10 +183,10 @@ export const mesh = createLayerType<MeshProps>(
       const buffers = meshBuffers();
       if (count === 0 || !buffers) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
-      pass.setBindGroup(1, bindGroup);
+      pass.setBindGroup(1, bindGroup());
       pass.setVertexBuffer(0, buffers.vertex);
       pass.setIndexBuffer(buffers.indices, "uint32");
-      pass.drawIndexed(buffers.indexCount, Math.min(count, maxInstances));
+      pass.drawIndexed(buffers.indexCount, count);
     };
 
     return {

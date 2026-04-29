@@ -24,9 +24,9 @@ struct OutVertex {
 @group(1) @binding(3) var<uniform> nodeCount: u32;
 
 fn pixelsPerUnit(local: vec3<f32>) -> f32 {
-    let f = length(vec3(projection[0][1], projection[1][1], projection[2][1]));
-    let clipPos = projection * vec4(local, 1.0);
-    return f * screenSize.y * 0.5 / max(abs(clipPos.w), 1e-6);
+    let f = length(vec3(view.projection[0][1], view.projection[1][1], view.projection[2][1]));
+    let clipPos = view.projection * vec4(local, 1.0);
+    return f * view.screenSize.y * 0.5 / max(abs(clipPos.w), 1e-6);
 }
 
 fn safeNormalize(v: vec2<f32>) -> vec2<f32> {
@@ -38,7 +38,7 @@ fn safeNormalize(v: vec2<f32>) -> vec2<f32> {
 }
 
 fn toScreen(clip: vec4<f32>) -> vec2<f32> {
-    let halfScreen = screenSize * 0.5;
+    let halfScreen = view.screenSize * 0.5;
     return (clip.xy / max(abs(clip.w), 1e-6)) * halfScreen;
 }
 
@@ -98,17 +98,17 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     let current = points[node.current];
     let next = points[node.next];
 
-    let localPrev = transform(prev.position, center, projection);
-    let localCurrent = transform(current.position, center, projection);
-    let localNext = transform(next.position, center, projection);
+    let localPrev = transform(prev.position, view.center, view.projection);
+    let localCurrent = transform(current.position, view.center, view.projection);
+    let localNext = transform(next.position, view.center, view.projection);
 
-    let clipPrev = projection * vec4(localPrev, 1.0);
-    let clipCurrent = projection * vec4(localCurrent, 1.0);
-    let clipNext = projection * vec4(localNext, 1.0);
+    let clipPrev = view.projection * vec4(localPrev, 1.0);
+    let clipCurrent = view.projection * vec4(localCurrent, 1.0);
+    let clipNext = view.projection * vec4(localNext, 1.0);
 
     let halfPx = current.width * 0.5 * pixelsPerUnit(localCurrent);
 
-    let halfScreen = screenSize * 0.5;
+    let halfScreen = view.screenSize * 0.5;
     let screenPrev = toScreen(clipPrev);
     let screenCurrent = toScreen(clipCurrent);
     let screenNext = toScreen(clipNext);

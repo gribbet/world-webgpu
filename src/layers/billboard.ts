@@ -4,7 +4,6 @@ import {
   createSignal,
   derived,
   effect,
-  onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
@@ -45,7 +44,6 @@ export const billboard = createLayerType<BillboardProps>(
       usage: GPUBufferUsage.STORAGE,
       initialCapacity: 1024,
     });
-    onCleanup(() => storage.destroy());
 
     const [imageMetadata, setImageMetadata] = createSignal<{
       [url: string]:
@@ -117,7 +115,7 @@ export const billboard = createLayerType<BillboardProps>(
     effect(() => {
       const list = resolve(billboards);
       count = list.length;
-      storage.setCount(count);
+      storage.resize(count);
 
       for (let i = 0; i < count; i++) {
         const billboard = list[i];
@@ -136,15 +134,9 @@ export const billboard = createLayerType<BillboardProps>(
           item.height = data?.height ?? 0;
           item.pickId = pickId;
         });
-        effect(() => {
-          item.size = resolve(size);
-        });
-        effect(() => {
-          item.position = resolve(position);
-        });
-        effect(() => {
-          item.color = resolve(color) ?? [1, 1, 1, 1];
-        });
+        effect(() => void (item.size = resolve(size)));
+        effect(() => void (item.position = resolve(position)));
+        effect(() => void (item.color = resolve(color) ?? [1, 1, 1, 1]));
         effect(() => {
           item.minScale = resolve(minScale) ?? -Infinity;
           item.maxScale = resolve(maxScale) ?? Infinity;

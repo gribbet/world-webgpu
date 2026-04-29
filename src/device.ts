@@ -1,3 +1,5 @@
+import { onCleanup } from "./reactive";
+
 export const createBuffer = (
   device: GPUDevice,
   usage: GPUBufferUsageFlags,
@@ -12,5 +14,6 @@ export const createBuffer = (
     new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
   );
   buffer.unmap();
+  onCleanup(() => buffer.destroy());
   return buffer;
 };

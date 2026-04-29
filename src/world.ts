@@ -1,15 +1,15 @@
 import { mat4 } from "wgpu-matrix";
 
 import type { LayerDescriptor } from "./common";
-import { positionData, viewLayout } from "./common";
+import { viewLayout } from "./common";
 import { createContainerLayer } from "./container";
 import type { Context } from "./context";
-import { createBuffer } from "./device";
 import type { View } from "./model";
 import { createOutline } from "./outline";
 import { createPicker } from "./picker";
 import { effect, onCleanup, type Properties, resolve } from "./reactive";
 import { createRenderer } from "./renderer";
+import { buffer, mat4f, position, vec2f } from "./storage";
 
 export type World = Awaited<ReturnType<typeof createWorld>>;
 
@@ -29,35 +29,20 @@ export const createWorld = async (
   const picker = createPicker(context);
   const { pick, positionView, pickView, depthView: pickDepthView } = picker;
 
-  const centerBuffer = createBuffer(
+  const viewUniform = buffer(
+    { center: position(), projection: mat4f(), screenSize: vec2f() },
     device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Uint8Array(16),
-  );
-
-  const projectionBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Float32Array(16),
-  );
-
-  const sizeBuffer = createBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Float32Array(2),
+    { usage: GPUBufferUsage.UNIFORM },
   );
 
   const layout = viewLayout(device);
 
   const bindGroup = device.createBindGroup({
     layout,
-    entries: [centerBuffer, projectionBuffer, sizeBuffer].map(
-      (buffer, binding) => ({ binding, resource: { buffer } }),
-    ),
+    entries: [{ binding: 0, resource: { buffer: viewUniform.buffer() } }],
   });
 
   const projection = mat4.identity();
-  const centerData = new Uint8Array(16);
   effect(() => {
     const [width, height] = size();
     const {
@@ -77,15 +62,9 @@ export const createWorld = async (
     mat4.rotateY(projection, roll, projection);
     mat4.rotateZ(projection, -yaw, projection);
 
-    device.queue.writeBuffer(centerBuffer, 0, positionData(center, centerData));
-    device.queue.writeBuffer(projectionBuffer, 0, projection);
-    device.queue.writeBuffer(sizeBuffer, 0, new Float32Array([width, height]));
-  });
-
-  onCleanup(() => {
-    centerBuffer.destroy();
-    projectionBuffer.destroy();
-    sizeBuffer.destroy();
+    viewUniform.item.center = center;
+    viewUniform.item.projection = projection;
+    viewUniform.item.screenSize = [width, height];
   });
 
   const root = createContainerLayer(context, { layers });
@@ -95,6 +74,7 @@ export const createWorld = async (
   let running = true;
   const frame = () => {
     if (!running) return;
+    viewUniform.flush();
 
     const encoder = device.createCommandEncoder();
 

@@ -1,7 +1,3 @@
-@group(0) @binding(0) var<uniform> center: Position;
-@group(0) @binding(1) var<uniform> projection: mat4x4<f32>;
-@group(0) @binding(2) var<uniform> screenSize: vec2<f32>;
-
 const PI = radians(180.);
 const ONE = 2147483648.0;
 const RADIUS = 6371000.0;
@@ -12,6 +8,14 @@ struct Position {
     y: u32, // Mercator [0, 2^31)
     z: f32, // Altitude in meters
 };
+
+struct View {
+    center: Position,
+    projection: mat4x4<f32>,
+    screenSize: vec2<f32>,
+};
+
+@group(0) @binding(0) var<uniform> view: View;
 
 fn transformFlat(position: Position, center: Position) -> vec3<f32> {
     let di = bitcast<vec2<i32>>(vec2<u32>(position.x, position.y) - vec2<u32>(center.x, center.y));

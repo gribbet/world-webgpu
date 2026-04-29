@@ -24,9 +24,9 @@ fn rotateQuat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
 }
 
 fn computePixelsPerUnit(origin: vec3<f32>) -> f32 {
-    let f = length(vec3(projection[0][1], projection[1][1], projection[2][1]));
-    let clipPos = projection * vec4(origin, 1.0);
-    return f * screenSize.y * 0.5 / clipPos.w;
+    let f = length(vec3(view.projection[0][1], view.projection[1][1], view.projection[2][1]));
+    let clipPos = view.projection * vec4(origin, 1.0);
+    return f * view.screenSize.y * 0.5 / clipPos.w;
 }
 
 fn computeScale(instance: Instance, pixelsPerUnit: f32) -> f32 {
@@ -46,14 +46,14 @@ fn vertex(
 ) -> VertexOutput {
     let instance = instances[instanceIndex];
 
-    let origin = transform(instance.position, center, projection);
+    let origin = transform(instance.position, view.center, view.projection);
     let pixelsPerUnit = computePixelsPerUnit(origin);
     let s = computeScale(instance, pixelsPerUnit);
 
     let local = origin + rotateQuat(position * s, instance.orientation);
 
     var output: VertexOutput;
-    output.position = projection * vec4(local, 1.0);
+    output.position = view.projection * vec4(local, 1.0);
     output.color = color * instance.color;
     output.uv = uv;
     output.normal = rotateQuat(normal, instance.orientation);
