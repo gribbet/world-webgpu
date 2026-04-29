@@ -3,15 +3,7 @@ import { createBuffer } from "../../device";
 import { createResizableBuffer } from "../../device";
 import type { Vec3, Vec4 } from "../../model";
 import { derived, effect, resolve } from "../../reactive";
-import {
-  array,
-  f32,
-  position,
-  struct,
-  structArray,
-  u32,
-  vec4f,
-} from "../../storage";
+import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
 import { createLayerPipelines } from "../common";
 
 export type LinePoint = {
@@ -27,8 +19,6 @@ export type Line = {
 export type LineProps = {
   lines: Line[];
 };
-
-const OUT_VERTEX_STRIDE = 64; // 4 x vec4
 
 const pointStruct = struct({
   position: position(),
@@ -54,14 +44,15 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     usage: GPUBufferUsage.STORAGE,
     initialCapacity: 1024,
   });
-  const outVerticesBuffer = createResizableBuffer(
+
+  const indexBuffer = createResizableBuffer(
     device,
-    GPUBufferUsage.STORAGE,
-    1024 * 4 * OUT_VERTEX_STRIDE,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX,
+    1024 * 12 * 4,
   );
 
-  const ensureOutVerticesCapacity = (requiredNodes: number) => {
-    outVerticesBuffer.ensureSize(requiredNodes * 4 * OUT_VERTEX_STRIDE);
+  const ensureIndexCapacity = (requiredNodes: number) => {
+    indexBuffer.ensureSize(requiredNodes * 12 * 4);
   };
   const nodeCountData = new Uint32Array(1);
   const nodeCountBuffer = createBuffer(
@@ -70,19 +61,19 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     nodeCountData,
   );
 
-  const indexStorage = array(u32(), device, {
-    usage: GPUBufferUsage.INDEX,
-    initialCapacity: 4096,
-  });
-
   const renderCode = await (
-    await fetch(new URL("./line.wgsl", import.meta.url))
+    await fetch(new URL("./render.wgsl", import.meta.url))
   ).text();
 
   const renderBindGroupLayout = device.createBindGroupLayout({
     entries: [
       {
         binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 1,
         visibility: GPUShaderStage.VERTEX,
         buffer: { type: "read-only-storage" },
       },
@@ -99,7 +90,8 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     device.createBindGroup({
       layout: renderBindGroupLayout,
       entries: [
-        { binding: 0, resource: { buffer: outVerticesBuffer.buffer() } },
+        { binding: 0, resource: { buffer: pointsStorage.buffer() } },
+        { binding: 1, resource: { buffer: nodesStorage.buffer() } },
       ],
     }),
   );
@@ -124,17 +116,12 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
       {
         binding: 1,
         visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "read-only-storage" },
+        buffer: { type: "uniform" },
       },
       {
         binding: 2,
         visibility: GPUShaderStage.COMPUTE,
         buffer: { type: "storage" },
-      },
-      {
-        binding: 3,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "uniform" },
       },
     ],
   });
@@ -143,17 +130,16 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     layout: device.createPipelineLayout({
       bindGroupLayouts: [viewLayout(device), computeBindGroupLayout],
     }),
-    compute: { module: computeModule, entryPoint: "main" },
+    compute: { module: computeModule, entryPoint: "generateIndices" },
   });
 
   const computeBindGroup = derived(() =>
     device.createBindGroup({
       layout: computeBindGroupLayout,
       entries: [
-        { binding: 0, resource: { buffer: pointsStorage.buffer() } },
-        { binding: 1, resource: { buffer: nodesStorage.buffer() } },
-        { binding: 2, resource: { buffer: outVerticesBuffer.buffer() } },
-        { binding: 3, resource: { buffer: nodeCountBuffer } },
+        { binding: 0, resource: { buffer: nodesStorage.buffer() } },
+        { binding: 1, resource: { buffer: nodeCountBuffer } },
+        { binding: 2, resource: { buffer: indexBuffer.buffer() } },
       ],
     }),
   );
@@ -168,8 +154,6 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
 
     let pi = 0;
     let ni = 0;
-    let ii = 0;
-
     for (let li = 0; li < list.length; li++) {
       const pts = list[li]?.points;
       if (!pts || pts.length < 2) continue;
@@ -195,7 +179,6 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
       const written = pi - startIndex;
       if (written < 2) continue;
 
-      const nodeStart = ni;
       for (let k = 0; k < written; k++) {
         const prev = startIndex + Math.max(0, k - 1);
         const current = startIndex + k;
@@ -209,28 +192,13 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
         item.pickId = pickId;
         ni++;
       }
-
-      const nodeWritten = ni - nodeStart;
-      const quadCount = Math.max(0, 2 * nodeWritten - 1);
-      const vertexStart = nodeStart * 4;
-      for (let k = 0; k < quadCount; k++) {
-        const a = vertexStart + k * 2;
-        const b = a + 1;
-        const c = a + 2;
-        const d = a + 3;
-        indexStorage.resize(ii + 6);
-        indexStorage.items[ii++] = a;
-        indexStorage.items[ii++] = c;
-        indexStorage.items[ii++] = b;
-        indexStorage.items[ii++] = b;
-        indexStorage.items[ii++] = c;
-        indexStorage.items[ii++] = d;
-      }
     }
 
     nodeCount = ni;
-    indexCount = ii;
-    ensureOutVerticesCapacity(nodeCount);
+    // The compute index pass writes 2 quads (12 indices) per node. At line ends,
+    // bridge quads are emitted as degenerates, so drawing nodeCount*12 is safe.
+    indexCount = nodeCount * 12;
+    ensureIndexCapacity(nodeCount);
     nodeCountData[0] = nodeCount;
     dirty = true;
   });
@@ -239,7 +207,6 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     if (!dirty) return;
     pointsStorage.flush();
     nodesStorage.flush();
-    indexStorage.flush();
     device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
     dirty = false;
   };
@@ -258,7 +225,7 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     if (indexCount === 0) return;
     pass.setPipeline(pick ? pickPipeline : pipeline);
     pass.setBindGroup(1, renderBindGroup());
-    pass.setIndexBuffer(indexStorage.buffer(), "uint32");
+    pass.setIndexBuffer(indexBuffer.buffer(), "uint32");
     pass.drawIndexed(indexCount);
   };
 
