@@ -156,7 +156,9 @@ export const mesh = createLayerType<MeshProps>(
         } = instance;
         item.pickId = pickRegistry.allocate();
 
-        effect(() => void (item.position = resolve(position)));
+        effect(() => {
+          item.position = resolve(position);
+        });
         effect(
           () => void (item.orientation = resolve(orientation) ?? [0, 0, 0, 1]),
         );
@@ -165,7 +167,9 @@ export const mesh = createLayerType<MeshProps>(
           item.minScalePixels = resolve(minScalePixels) ?? -1;
           item.maxScalePixels = resolve(maxScalePixels) ?? -1;
         });
-        effect(() => void (item.color = resolve(color) ?? [1, 1, 1, 1]));
+        effect(() => {
+          item.color = resolve(color) ?? [1, 1, 1, 1];
+        });
       }
     });
 

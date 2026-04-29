@@ -142,9 +142,15 @@ export const billboard = createLayerType<BillboardProps>(
           item.height = data?.height ?? 0;
           item.pickId = pickId;
         });
-        effect(() => void (item.size = resolve(size)));
-        effect(() => void (item.position = resolve(position)));
-        effect(() => void (item.color = resolve(color) ?? [1, 1, 1, 1]));
+        effect(() => {
+          item.size = resolve(size);
+        });
+        effect(() => {
+          item.position = resolve(position);
+        });
+        effect(() => {
+          item.color = resolve(color) ?? [1, 1, 1, 1];
+        });
         effect(() => {
           item.minScale = resolve(minScale) ?? -Infinity;
           item.maxScale = resolve(maxScale) ?? Infinity;
