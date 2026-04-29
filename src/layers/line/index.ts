@@ -2,6 +2,7 @@ import { createLayerType, viewLayout } from "../../common";
 import { createBuffer } from "../../device";
 import { createResizableBuffer } from "../../device";
 import type { Vec3, Vec4 } from "../../model";
+import type { Properties } from "../../reactive";
 import { derived, effect, resolve } from "../../reactive";
 import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
 import { createLayerPipelines } from "../common";
@@ -13,11 +14,11 @@ export type LinePoint = {
 };
 
 export type Line = {
-  points: LinePoint[];
+  points: Properties<LinePoint>[];
 };
 
 export type LineProps = {
-  lines: Line[];
+  lines: Properties<Line>[];
 };
 
 const pointStruct = struct({
@@ -155,8 +156,10 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     let pi = 0;
     let ni = 0;
     for (let li = 0; li < list.length; li++) {
-      const pts = list[li]?.points;
-      if (!pts || pts.length < 2) continue;
+      const lineProps = list[li];
+      if (!lineProps) continue;
+      const pts = resolve(lineProps.points);
+      if (pts.length < 2) continue;
 
       let pickId = linePickIds[li];
       if (pickId === undefined) {
@@ -166,7 +169,9 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
       const startIndex = pi;
 
       for (const point of pts) {
-        const { position, color, width } = point;
+        const position = resolve(point.position);
+        const color = resolve(point.color);
+        const width = resolve(point.width);
         pointsStorage.resize(pi + 1);
         const item = pointsStorage.items[pi];
         if (!item) continue;
