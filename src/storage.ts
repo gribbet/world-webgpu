@@ -1,6 +1,6 @@
+import { createResizableBuffer } from "./device";
 import type { Vec2, Vec3, Vec4 } from "./model";
 import type { Accessor } from "./reactive";
-import { createSignal, onCleanup } from "./reactive";
 
 type Field<T> = {
   readonly align: number;
@@ -61,11 +61,7 @@ const createBackingStore = (
   const bufferUsage = usage | GPUBufferUsage.COPY_DST;
   let bytes = new Uint8Array(initialByteLength);
   let view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let gpuBuffer = device.createBuffer({
-    size: bytes.byteLength,
-    usage: bufferUsage,
-  });
-  const [buffer, setBuffer] = createSignal(gpuBuffer);
+  const gpu = createResizableBuffer(device, bufferUsage, bytes.byteLength);
   let dirtyFrom = Infinity;
   let dirtyTo = 0;
 
@@ -78,20 +74,15 @@ const createBackingStore = (
     if (bytes.byteLength >= minByteLength) return;
     const nextBytes = new Uint8Array(minByteLength);
     nextBytes.set(bytes);
-    gpuBuffer.destroy();
-    gpuBuffer = device.createBuffer({
-      size: nextBytes.byteLength,
-      usage: bufferUsage,
-    });
     bytes = nextBytes;
     view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    setBuffer(gpuBuffer);
+    gpu.ensureSize(nextBytes.byteLength);
   };
 
   const flush = () => {
     if (dirtyFrom >= dirtyTo) return;
     device.queue.writeBuffer(
-      gpuBuffer,
+      gpu.buffer(),
       dirtyFrom,
       bytes,
       dirtyFrom,
@@ -101,11 +92,9 @@ const createBackingStore = (
     dirtyTo = 0;
   };
 
-  onCleanup(() => gpuBuffer.destroy());
-
   return {
     view: () => view,
-    buffer,
+    buffer: gpu.buffer,
     markDirty,
     ensureCapacity,
     flush,

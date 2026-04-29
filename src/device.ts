@@ -1,4 +1,4 @@
-import { onCleanup } from "./reactive";
+import { createSignal, onCleanup } from "./reactive";
 
 export const createBuffer = (
   device: GPUDevice,
@@ -16,4 +16,34 @@ export const createBuffer = (
   buffer.unmap();
   onCleanup(() => buffer.destroy());
   return buffer;
+};
+
+export const createResizableBuffer = (
+  device: GPUDevice,
+  usage: GPUBufferUsageFlags,
+  initialSize: number,
+) => {
+  let size = Math.max(4, (initialSize + 3) & ~3);
+  let buffer = device.createBuffer({ size, usage });
+  const [accessor, setBuffer] = createSignal(buffer);
+
+  const ensureSize = (requiredSize: number) => {
+    const required = Math.max(4, (requiredSize + 3) & ~3);
+    if (required <= size) return;
+
+    let next = size;
+    while (next < required) next *= 2;
+
+    buffer.destroy();
+    buffer = device.createBuffer({ size: next, usage });
+    size = next;
+    setBuffer(buffer);
+  };
+
+  onCleanup(() => buffer.destroy());
+
+  return {
+    buffer: accessor,
+    ensureSize,
+  };
 };
