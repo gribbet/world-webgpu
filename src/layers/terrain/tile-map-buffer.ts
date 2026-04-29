@@ -1,6 +1,5 @@
 import { createBuffer } from "../../device";
 import type { Vec3 } from "../../model";
-import { onCleanup } from "../../reactive";
 
 export type TileMapBuffer = ReturnType<typeof createTileMapBuffer>;
 
@@ -66,8 +65,6 @@ export const createTileMapBuffer = (device: GPUDevice) => {
     const h = (Math.imul(x, p1) ^ Math.imul(y, p2) ^ Math.imul(z, p3)) >>> 0;
     return h % size;
   };
-
-  onCleanup(() => buffer.destroy());
 
   return { set, clear, update, buffer };
 };
