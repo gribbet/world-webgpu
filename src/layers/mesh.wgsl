@@ -64,7 +64,7 @@ fn vertex(
 
 @fragment
 fn render(input: VertexOutput) -> @location(0) vec4<f32> {
-    if input.color.a < 0.1 {
+    if input.color.a < 0.01 {
         discard;
     }
     return input.color;
@@ -72,7 +72,7 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn pick(input: VertexOutput) -> PickOutput {
-    if input.color.a < 0.1 {
+    if input.color.a < 0.01 {
         discard;
     }
     return packPick(input.local, input.id);

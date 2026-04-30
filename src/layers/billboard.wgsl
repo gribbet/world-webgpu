@@ -66,7 +66,7 @@ fn vertex(
 @fragment
 fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     let color = textureSampleBias(textures, sample, input.uv, input.texture, -1.0) * input.color;
-    if color.a < 0.1 {
+    if color.a < 0.01 {
         discard;
     }
     return color;
@@ -75,7 +75,7 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn pick(input: VertexOutput) -> PickOutput {
     let color = textureSampleBias(textures, sample, input.uv, input.texture, -1.0);
-    if color.a * input.color.a < 0.1 {
+    if color.a * input.color.a < 0.01 {
         discard;
     }
     return packPick(input.local, input.id);
