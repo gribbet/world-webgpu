@@ -1,6 +1,6 @@
+import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
 import { terrainDownsample } from "../../configuration";
-import { createBuffer } from "../../device";
 import { derived, onCleanup, resolve } from "../../reactive";
 import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
@@ -16,13 +16,13 @@ export const terrain = createLayerType<TerrainProps>(
   async (context, { imageryUrl, elevationUrl }) => {
     const { device, pickRegistry } = context;
 
-    const tilesBuffer = createBuffer(
+    const tilesBuffer = createDataBuffer(
       device,
       GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
       new Uint32Array(new Array(1024 * 8).fill(0)),
     );
 
-    const countBuffer = createBuffer(
+    const countBuffer = createDataBuffer(
       device,
       GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
       new Uint32Array([0]),

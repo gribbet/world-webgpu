@@ -1,5 +1,5 @@
+import { createDataBuffer } from "../buffer";
 import { createLayerType } from "../common";
-import { createBuffer } from "../device";
 import type { Vec2, Vec3, Vec4 } from "../model";
 import {
   createSignal,
@@ -115,9 +115,13 @@ export const mesh = createLayerType<MeshProps>(
         vertexData.set(v.normal ?? [0, 0, 1], offset + 9);
       });
 
-      const vertex = createBuffer(device, GPUBufferUsage.VERTEX, vertexData);
+      const vertex = createDataBuffer(
+        device,
+        GPUBufferUsage.VERTEX,
+        vertexData,
+      );
       const indicesData = new Uint32Array(mesh_.indices.flat());
-      const indices = createBuffer(
+      const indices = createDataBuffer(
         device,
         GPUBufferUsage.INDEX,
         new Uint8Array(

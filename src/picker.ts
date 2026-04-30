@@ -1,47 +1,51 @@
+import { createBuffer } from "./buffer";
 import { createLock } from "./common";
 import type { Context } from "./context";
 import { lonLatFromMercator } from "./math";
-import { derived, onCleanup } from "./reactive";
+import { derived } from "./reactive";
+import { createTexture } from "./texture";
 
 export const createPicker = (context: Context) => {
   const { device, size, devicePixelRatio } = context;
 
-  const createTexture = (
-    format: GPUTextureFormat,
-    usage: GPUTextureUsageFlags,
-  ) =>
-    derived(() => {
-      const [width, height] = size();
-      const textureSize = [width * devicePixelRatio, height * devicePixelRatio];
-      const texture = device.createTexture({
-        size: textureSize,
-        format,
-        usage,
-      });
-      onCleanup(() => texture.destroy());
-      return texture;
-    });
+  const textureSize = derived(() => {
+    const [width, height] = size();
+    return [width * devicePixelRatio, height * devicePixelRatio] as const;
+  });
 
-  const xyTexture = createTexture(
-    "rg32uint",
-    GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+  const xyTexture = derived(() =>
+    createTexture(device, {
+      size: textureSize(),
+      format: "rg32uint",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+    }),
   );
 
-  const zTexture = createTexture(
-    "r32float",
-    GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+  const zTexture = derived(() =>
+    createTexture(device, {
+      size: textureSize(),
+      format: "r32float",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+    }),
   );
 
-  const idTexture = createTexture(
-    "r32uint",
-    GPUTextureUsage.RENDER_ATTACHMENT |
-      GPUTextureUsage.COPY_SRC |
-      GPUTextureUsage.TEXTURE_BINDING,
+  const idTexture = derived(() =>
+    createTexture(device, {
+      size: textureSize(),
+      format: "r32uint",
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.TEXTURE_BINDING,
+    }),
   );
 
-  const depthTexture = createTexture(
-    "depth24plus",
-    GPUTextureUsage.RENDER_ATTACHMENT,
+  const depthTexture = derived(() =>
+    createTexture(device, {
+      size: textureSize(),
+      format: "depth24plus",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    }),
   );
 
   const xyView = () => xyTexture().createView();
@@ -49,17 +53,17 @@ export const createPicker = (context: Context) => {
   const idView = () => idTexture().createView();
   const depthView = () => depthTexture().createView();
 
-  const xyReadBuffer = device.createBuffer({
+  const xyReadBuffer = createBuffer(device, {
     size: 256,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
 
-  const zReadBuffer = device.createBuffer({
+  const zReadBuffer = createBuffer(device, {
     size: 256,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
 
-  const idReadBuffer = device.createBuffer({
+  const idReadBuffer = createBuffer(device, {
     size: 256,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
@@ -120,12 +124,6 @@ export const createPicker = (context: Context) => {
       release();
     }
   };
-
-  onCleanup(() => {
-    xyReadBuffer.destroy();
-    zReadBuffer.destroy();
-    idReadBuffer.destroy();
-  });
 
   return {
     pick,

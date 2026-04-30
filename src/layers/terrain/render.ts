@@ -1,5 +1,5 @@
+import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
-import { createBuffer } from "../../device";
 import { derived } from "../../reactive";
 import { createLayerPipelines } from "../common";
 
@@ -53,7 +53,7 @@ export const createRenderPipeline = async ({
     ],
   });
 
-  const pickBuffer = createBuffer(
+  const pickBuffer = createDataBuffer(
     device,
     GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     new Uint32Array([pickId]),
@@ -88,12 +88,12 @@ export const createRenderPipeline = async ({
         ]),
     );
   const indexCount = count ** 2 * 6;
-  const indirectBuffer = createBuffer(
+  const indirectBuffer = createDataBuffer(
     device,
     GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_DST,
     new Uint32Array([indexCount, 0, 0, 0, 0]),
   );
-  const verticesBuffer = createBuffer(
+  const verticesBuffer = createDataBuffer(
     device,
     GPUBufferUsage.VERTEX,
     new Uint32Array(vertices),
@@ -105,7 +105,7 @@ export const createRenderPipeline = async ({
       return [i, i + (count + 2), i + (count + 1), i, i + 1, i + (count + 2)];
     }),
   );
-  const indicesBuffer = createBuffer(
+  const indicesBuffer = createDataBuffer(
     device,
     GPUBufferUsage.INDEX,
     new Uint32Array(indices),

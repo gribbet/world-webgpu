@@ -1,11 +1,11 @@
-import { createBuffer } from "../../device";
+import { createBuffer, createDataBuffer } from "../../buffer";
 import type { Vec3 } from "../../model";
 
 export type TileMapBuffer = ReturnType<typeof createTileMapBuffer>;
 
 export const createTileMapBuffer = (device: GPUDevice) => {
   const size = 4096;
-  const buffer = createBuffer(
+  const buffer = createDataBuffer(
     device,
     GPUBufferUsage.STORAGE,
     new Uint32Array(new Array(4 * size).fill(0xffffffff)),
@@ -28,7 +28,7 @@ export const createTileMapBuffer = (device: GPUDevice) => {
     data.set([...xyz, index], i * 4);
   };
 
-  const stagingBuffer = device.createBuffer({
+  const stagingBuffer = createBuffer(device, {
     size: data.byteLength,
     usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
   });

@@ -1,4 +1,4 @@
-import { createResizableBuffer } from "./device";
+import { createResizableBuffer } from "./buffer";
 import { mercatorFromLonLat } from "./math";
 import type { Vec2, Vec3, Vec4 } from "./model";
 import type { Accessor } from "./reactive";

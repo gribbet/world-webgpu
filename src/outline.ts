@@ -1,3 +1,4 @@
+import { createBuffer } from "./buffer";
 import type { Context } from "./context";
 
 const width = 1.5;
@@ -48,7 +49,7 @@ export const createOutline = async (context: Context) => {
     multisample: { count: 1 },
   });
 
-  const widthBuffer = device.createBuffer({
+  const widthBuffer = createBuffer(device, {
     size: 4,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });

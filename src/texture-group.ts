@@ -3,6 +3,7 @@ import type { Context } from "./context";
 import { createImageLoad } from "./image-load";
 import { createLru } from "./lru";
 import { createSignal, onCleanup } from "./reactive";
+import { createTexture } from "./texture";
 
 export const createTextureGroup = ({
   context,
@@ -17,8 +18,8 @@ export const createTextureGroup = ({
 }) => {
   const { device, textureLoader } = context;
 
-  const createTexture = (width: number, height: number) =>
-    device.createTexture({
+  const createGroupTexture = (width: number, height: number) =>
+    createTexture(device, {
       size: [width, height, layers],
       format: "rgba8unorm",
       mipLevelCount,
@@ -28,7 +29,9 @@ export const createTextureGroup = ({
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-  const [texture, setTexture] = createSignal<GPUTexture>(createTexture(8, 8));
+  const [texture, setTexture] = createSignal<GPUTexture>(
+    createGroupTexture(8, 8),
+  );
 
   const available = new Array(layers).fill(0).map((_, i) => i);
 
@@ -45,8 +48,7 @@ export const createTextureGroup = ({
 
   const reset = (width: number, height: number) => {
     mapping.clear();
-    texture().destroy();
-    setTexture(createTexture(width, height));
+    setTexture(createGroupTexture(width, height));
   };
 
   const ensureSize = (w: number, h: number) => {
@@ -119,7 +121,6 @@ export const createTextureGroup = ({
 
   onCleanup(() => {
     mapping.clear();
-    texture().destroy();
   });
 
   return {

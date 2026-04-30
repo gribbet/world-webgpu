@@ -1,6 +1,5 @@
+import { createDataBuffer, createResizableBuffer } from "../../buffer";
 import { createLayerType, viewLayout } from "../../common";
-import { createBuffer } from "../../device";
-import { createResizableBuffer } from "../../device";
 import type { Vec3, Vec4 } from "../../model";
 import type { Properties } from "../../reactive";
 import { derived, effect, resolve } from "../../reactive";
@@ -56,7 +55,7 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     indexBuffer.ensureSize(requiredNodes * 12 * 4);
   };
   const nodeCountData = new Uint32Array(1);
-  const nodeCountBuffer = createBuffer(
+  const nodeCountBuffer = createDataBuffer(
     device,
     GPUBufferUsage.UNIFORM,
     nodeCountData,

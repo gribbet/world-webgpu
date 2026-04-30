@@ -1,7 +1,7 @@
+import { createBuffer, createDataBuffer } from "../../buffer";
 import { viewLayout } from "../../common";
-import { createBuffer } from "../../device";
 import type { Accessor } from "../../reactive";
-import { derived, onCleanup } from "../../reactive";
+import { derived } from "../../reactive";
 
 export const createComputePipeline = async ({
   device,
@@ -71,18 +71,18 @@ export const createComputePipeline = async ({
     },
   });
 
-  const countReadBuffer = createBuffer(
+  const countReadBuffer = createDataBuffer(
     device,
     GPUBufferUsage.MAP_READ,
     new Uint32Array([0]),
   );
 
-  const buffer = device.createBuffer({
+  const buffer = createBuffer(device, {
     size: tilesBuffer.size,
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
-  const elevationCacheBuffer = createBuffer(
+  const elevationCacheBuffer = createDataBuffer(
     device,
     GPUBufferUsage.STORAGE,
     new Uint32Array(new Array(4 * 16376).fill(0xffffffff)),
@@ -144,8 +144,6 @@ export const createComputePipeline = async ({
           ] satisfies [number, number, number],
       );
   };
-
-  onCleanup(() => buffer.destroy());
 
   return {
     compute,
