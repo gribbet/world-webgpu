@@ -224,7 +224,7 @@ export const createApp = () =>
               position,
               size: 6000,
               font: "sans-serif",
-              fontSize: 1024,
+              fontSize: 256,
               color: [1, 1, 1, 1] as const,
               minScale: 0,
               maxScale: Infinity,

@@ -1,66 +1,53 @@
 import { createLock } from "./common";
 import type { Context } from "./context";
 import { lonLatFromMercator } from "./math";
-import type { Vec2 } from "./model";
-import { effect, onCleanup } from "./reactive";
+import { derived, onCleanup } from "./reactive";
 
 export const createPicker = (context: Context) => {
   const { device, size, devicePixelRatio } = context;
 
-  const createXyTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      format: "rg32uint",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+  const createTexture = (
+    format: GPUTextureFormat,
+    usage: GPUTextureUsageFlags,
+  ) =>
+    derived(() => {
+      const [width, height] = size();
+      const textureSize = [width * devicePixelRatio, height * devicePixelRatio];
+      const texture = device.createTexture({
+        size: textureSize,
+        format,
+        usage,
+      });
+      onCleanup(() => texture.destroy());
+      return texture;
     });
 
-  const createZTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      format: "r32float",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-    });
+  const xyTexture = createTexture(
+    "rg32uint",
+    GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+  );
 
-  const createIdTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      format: "r32uint",
-      usage:
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.TEXTURE_BINDING,
-    });
+  const zTexture = createTexture(
+    "r32float",
+    GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+  );
 
-  const createDepthTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
+  const idTexture = createTexture(
+    "r32uint",
+    GPUTextureUsage.RENDER_ATTACHMENT |
+      GPUTextureUsage.COPY_SRC |
+      GPUTextureUsage.TEXTURE_BINDING,
+  );
 
-  let xyTexture = createXyTexture([1, 1]);
-  let zTexture = createZTexture([1, 1]);
-  let idTexture = createIdTexture([1, 1]);
-  let depthTexture = createDepthTexture([1, 1]);
+  const depthTexture = createTexture(
+    "depth24plus",
+    GPUTextureUsage.RENDER_ATTACHMENT,
+  );
 
-  const xyView = () => xyTexture.createView();
-  const zView = () => zTexture.createView();
-  const idView = () => idTexture.createView();
-  const depthView = () => depthTexture.createView();
-
-  effect(() => {
-    const [width, height] = size();
-    const w = width * devicePixelRatio;
-    const h = height * devicePixelRatio;
-    xyTexture.destroy();
-    zTexture.destroy();
-    idTexture.destroy();
-    depthTexture.destroy();
-    xyTexture = createXyTexture([w, h]);
-    zTexture = createZTexture([w, h]);
-    idTexture = createIdTexture([w, h]);
-    depthTexture = createDepthTexture([w, h]);
-  });
+  const xyView = () => xyTexture().createView();
+  const zView = () => zTexture().createView();
+  const idView = () => idTexture().createView();
+  const depthView = () => depthTexture().createView();
 
   const xyReadBuffer = device.createBuffer({
     size: 256,
@@ -94,17 +81,17 @@ export const createPicker = (context: Context) => {
 
       const encoder = device.createCommandEncoder();
       encoder.copyTextureToBuffer(
-        { texture: xyTexture, origin },
+        { texture: xyTexture(), origin },
         { buffer: xyReadBuffer, bytesPerRow: 256 },
         [1, 1, 1],
       );
       encoder.copyTextureToBuffer(
-        { texture: zTexture, origin },
+        { texture: zTexture(), origin },
         { buffer: zReadBuffer, bytesPerRow: 256 },
         [1, 1, 1],
       );
       encoder.copyTextureToBuffer(
-        { texture: idTexture, origin },
+        { texture: idTexture(), origin },
         { buffer: idReadBuffer, bytesPerRow: 256 },
         [1, 1, 1],
       );
@@ -135,10 +122,6 @@ export const createPicker = (context: Context) => {
   };
 
   onCleanup(() => {
-    xyTexture.destroy();
-    zTexture.destroy();
-    idTexture.destroy();
-    depthTexture.destroy();
     xyReadBuffer.destroy();
     zReadBuffer.destroy();
     idReadBuffer.destroy();

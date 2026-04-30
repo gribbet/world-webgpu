@@ -1,46 +1,36 @@
 import type { Context } from "./context";
-import type { Vec2 } from "./model";
-import { effect, onCleanup } from "./reactive";
+import { derived, onCleanup } from "./reactive";
 
 export const createRenderer = (context: Context) => {
   const { device, size, devicePixelRatio, format, sampleCount } = context;
 
-  const createRenderTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      sampleCount,
-      format,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  const createTexture = (
+    format: GPUTextureFormat,
+    usage: GPUTextureUsageFlags,
+  ) =>
+    derived(() => {
+      const [width, height] = size();
+      const texture = device.createTexture({
+        size: [width * devicePixelRatio, height * devicePixelRatio],
+        sampleCount,
+        format,
+        usage,
+      });
+      onCleanup(() => texture.destroy());
+      return texture;
     });
 
-  const createDepthTexture = (size: Vec2) =>
-    device.createTexture({
-      size,
-      format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-      sampleCount,
-    });
+  const renderTexture = createTexture(
+    format,
+    GPUTextureUsage.RENDER_ATTACHMENT,
+  );
+  const depthTexture = createTexture(
+    "depth24plus",
+    GPUTextureUsage.RENDER_ATTACHMENT,
+  );
 
-  let renderTexture = createRenderTexture([1, 1]);
-  let depthTexture = createDepthTexture([1, 1]);
-
-  effect(() => {
-    const [width, height] = size();
-    const w = width * devicePixelRatio;
-    const h = height * devicePixelRatio;
-    renderTexture.destroy();
-    depthTexture.destroy();
-    renderTexture = createRenderTexture([w, h]);
-    depthTexture = createDepthTexture([w, h]);
-  });
-
-  const renderView = () => renderTexture.createView();
-  const depthView = () => depthTexture.createView();
-
-  onCleanup(() => {
-    renderTexture.destroy();
-    depthTexture.destroy();
-  });
+  const renderView = () => renderTexture().createView();
+  const depthView = () => depthTexture().createView();
 
   return {
     renderView,
