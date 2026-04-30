@@ -1,7 +1,7 @@
 import { createBuffer } from "./buffer";
 import type { Context } from "./context";
 
-const width = 1.5;
+const width = 1.25;
 
 export const createOutline = async (context: Context) => {
   const { device, format, devicePixelRatio } = context;
