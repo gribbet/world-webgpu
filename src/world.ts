@@ -94,7 +94,6 @@ export const createWorld = async (
           resolveTarget: context.context.getCurrentTexture().createView(),
           loadOp: "clear",
           storeOp: "discard",
-          clearValue: { r: 0, g: 0, b: 0, a: 1 },
         },
       ],
       depthStencilAttachment: {
@@ -115,19 +114,16 @@ export const createWorld = async (
           view: xyView(),
           loadOp: "clear",
           storeOp: "store",
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
         },
         {
           view: zView(),
           loadOp: "clear",
           storeOp: "store",
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
         },
         {
           view: idView(),
           loadOp: "clear",
           storeOp: "store",
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
         },
       ],
       depthStencilAttachment: {
