@@ -57,6 +57,21 @@ fn transform(position: Position, center: Position, projection: mat4x4<f32>) -> v
     return transformSpherical(position, center);
 }
 
+fn positionFromFlatLocal(local: vec3<f32>, center: Position) -> Position {
+    let lat = atan(sinh((f32(center.y) / ONE - 0.5) * (-2.0 * PI)));
+    let cosLat = max(1e-6, cos(lat));
+
+    let mercatorDelta = local.xy / (CIRCUMFERENCE * cosLat * vec2<f32>(1.0, -1.0));
+    let deltaI = vec2<i32>(round(mercatorDelta * ONE));
+    let centerI = bitcast<vec2<i32>>(vec2<u32>(center.x, center.y));
+    let xy = bitcast<vec2<u32>>(centerI + deltaI);
+
+    let drop = dot(local.xy, local.xy) / (2.0 * RADIUS);
+    let z = local.z + center.z + drop;
+
+    return Position(xy.x, xy.y, z);
+}
+
 
 
 struct Tile {
@@ -78,10 +93,17 @@ fn sampleElevation(elevationTextures: texture_2d_array<f32>, tile: vec3<u32>, uv
 }
 
 struct PickOutput {
-    @location(0) position: vec4<f32>,
-    @location(1) id: u32,
+    @location(0) xy: vec2<u32>,
+    @location(1) z: f32,
+    @location(2) id: u32,
 }
 
-fn packPick(position: vec3<f32>, id: u32) -> PickOutput {
-    return PickOutput(vec4<f32>(position, 1.0), id);
+fn packPick(local: vec3<f32>, id: u32) -> PickOutput {
+    let p = positionFromFlatLocal(local, view.center);
+    let xy = vec2<u32>(clamp(
+        vec2<f32>(vec2<u32>(p.x, p.y)),
+        vec2<f32>(0.0),
+        vec2<f32>(ONE - 1.0),
+    ));
+    return PickOutput(xy, p.z, id);
 }

@@ -127,31 +127,9 @@ export const createApp = () =>
     };
     requestAnimationFrame(animate);
 
-    const textEntries = new Array(100).fill(0).map((_, i) => {
-      const [x, y, z] = [
-        (Math.random() - 0.5) * 2.0 * 1.0 - 122.4194,
-        (Math.random() - 0.5) * 2.0 * 1.0 + 37.7749,
-        10000 + Math.random() * 10000,
-      ];
-      const position = derived<Vec3>(() => [
-        x + Math.sin(time() * 0.00001 + i),
-        y + Math.cos(time() * 0.00001 + i),
-        z,
-      ]);
-      const text = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-      const color = [Math.random(), Math.random(), Math.random(), 1.0] as const;
+    const [items, setItems] = createSignal<{ position: Vec3 }[]>([]);
 
-      return {
-        position,
-        size: 1000000,
-        text,
-        color,
-        font: "sans-serif",
-        fontSize: 48,
-        minScale: 0,
-        maxScale: 1,
-      };
-    });
+    const appendItem = (position: Vec3) => setItems([...items(), { position }]);
 
     const cubeMesh = createCubeMesh();
     const cubeSize = 1000; // 50 km half-extent
@@ -239,7 +217,20 @@ export const createApp = () =>
       view,
       layers: [
         terrain({ imageryUrl, elevationUrl }),
-        text({ entries: textEntries }),
+        text({
+          entries: derived(() =>
+            items().map(({ position }) => ({
+              text: "◎",
+              position,
+              size: 6000,
+              font: "sans-serif",
+              fontSize: 1024,
+              color: [1, 1, 1, 1] as const,
+              minScale: 0,
+              maxScale: Infinity,
+            })),
+          ),
+        }),
         line({ lines: lineExamples }),
         fill({
           vertices: [
@@ -265,9 +256,12 @@ export const createApp = () =>
       ],
     });
 
-    document.addEventListener("click", async ({ x, y }) =>
-      console.log(await world.pick(x, y)),
-    );
+    document.addEventListener("click", async ({ x, y }) => {
+      const { position, id } = await world.pick(x, y);
+      console.log(position);
+      if (id === 0xffffffff) return;
+      appendItem(position);
+    });
 
     createControl({ element, world, view, setView });
 

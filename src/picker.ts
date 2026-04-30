@@ -1,19 +1,27 @@
 import { createLock } from "./common";
 import type { Context } from "./context";
+import { lonLatFromMercator } from "./math";
 import type { Vec2 } from "./model";
 import { effect, onCleanup } from "./reactive";
 
 export const createPicker = (context: Context) => {
   const { device, size, devicePixelRatio } = context;
 
-  const createPositionTexture = (size: Vec2) =>
+  const createXyTexture = (size: Vec2) =>
     device.createTexture({
       size,
-      format: "rgba32float",
+      format: "rg32uint",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     });
 
-  const createPickTexture = (size: Vec2) =>
+  const createZTexture = (size: Vec2) =>
+    device.createTexture({
+      size,
+      format: "r32float",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+    });
+
+  const createIdTexture = (size: Vec2) =>
     device.createTexture({
       size,
       format: "r32uint",
@@ -30,33 +38,42 @@ export const createPicker = (context: Context) => {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-  let positionTexture = createPositionTexture([1, 1]);
-  let pickTexture = createPickTexture([1, 1]);
+  let xyTexture = createXyTexture([1, 1]);
+  let zTexture = createZTexture([1, 1]);
+  let idTexture = createIdTexture([1, 1]);
   let depthTexture = createDepthTexture([1, 1]);
 
-  const positionView = () => positionTexture.createView();
-  const pickView = () => pickTexture.createView();
+  const xyView = () => xyTexture.createView();
+  const zView = () => zTexture.createView();
+  const idView = () => idTexture.createView();
   const depthView = () => depthTexture.createView();
 
   effect(() => {
     const [width, height] = size();
     const w = width * devicePixelRatio;
     const h = height * devicePixelRatio;
-    positionTexture.destroy();
-    pickTexture.destroy();
+    xyTexture.destroy();
+    zTexture.destroy();
+    idTexture.destroy();
     depthTexture.destroy();
-    positionTexture = createPositionTexture([w, h]);
-    pickTexture = createPickTexture([w, h]);
+    xyTexture = createXyTexture([w, h]);
+    zTexture = createZTexture([w, h]);
+    idTexture = createIdTexture([w, h]);
     depthTexture = createDepthTexture([w, h]);
   });
 
-  const positionReadBuffer = device.createBuffer({
-    size: 16,
+  const xyReadBuffer = device.createBuffer({
+    size: 256,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
 
-  const pickReadBuffer = device.createBuffer({
-    size: 4,
+  const zReadBuffer = device.createBuffer({
+    size: 256,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+
+  const idReadBuffer = device.createBuffer({
+    size: 256,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
 
@@ -65,59 +82,73 @@ export const createPicker = (context: Context) => {
     const release = await lock();
 
     try {
+      const [width, height] = size();
+      const maxX = Math.max(0, Math.floor(width * devicePixelRatio) - 1);
+      const maxY = Math.max(0, Math.floor(height * devicePixelRatio) - 1);
+
       const origin = [
-        Math.floor(px * devicePixelRatio),
-        Math.floor(py * devicePixelRatio),
+        Math.min(Math.max(0, Math.floor(px * devicePixelRatio)), maxX),
+        Math.min(Math.max(0, Math.floor(py * devicePixelRatio)), maxY),
         0,
       ] as const;
 
       const encoder = device.createCommandEncoder();
       encoder.copyTextureToBuffer(
-        { texture: positionTexture, origin },
-        { buffer: positionReadBuffer, bytesPerRow: 256 },
+        { texture: xyTexture, origin },
+        { buffer: xyReadBuffer, bytesPerRow: 256 },
         [1, 1, 1],
       );
       encoder.copyTextureToBuffer(
-        { texture: pickTexture, origin },
-        { buffer: pickReadBuffer, bytesPerRow: 256 },
+        { texture: zTexture, origin },
+        { buffer: zReadBuffer, bytesPerRow: 256 },
+        [1, 1, 1],
+      );
+      encoder.copyTextureToBuffer(
+        { texture: idTexture, origin },
+        { buffer: idReadBuffer, bytesPerRow: 256 },
         [1, 1, 1],
       );
       device.queue.submit([encoder.finish()]);
 
       await Promise.all([
-        positionReadBuffer.mapAsync(GPUMapMode.READ),
-        pickReadBuffer.mapAsync(GPUMapMode.READ),
+        xyReadBuffer.mapAsync(GPUMapMode.READ),
+        zReadBuffer.mapAsync(GPUMapMode.READ),
+        idReadBuffer.mapAsync(GPUMapMode.READ),
       ]);
 
-      const [x = 0, y = 0, z = 0] = new Float32Array(
-        positionReadBuffer.getMappedRange(),
-      );
-
+      const [x = 0, y = 0] = new Uint32Array(xyReadBuffer.getMappedRange(0, 8));
+      const [z = 0] = new Float32Array(zReadBuffer.getMappedRange(0, 4));
       const [id = 0xffffffff] = new Uint32Array(
-        pickReadBuffer.getMappedRange(),
+        idReadBuffer.getMappedRange(0, 4),
       );
 
-      positionReadBuffer.unmap();
-      pickReadBuffer.unmap();
+      const [lon, lat] = lonLatFromMercator(x, y);
 
-      return { position: [x, y, z] as const, id };
+      xyReadBuffer.unmap();
+      zReadBuffer.unmap();
+      idReadBuffer.unmap();
+
+      return { position: [lon, lat, z] as const, id };
     } finally {
       release();
     }
   };
 
   onCleanup(() => {
-    positionTexture.destroy();
-    pickTexture.destroy();
+    xyTexture.destroy();
+    zTexture.destroy();
+    idTexture.destroy();
     depthTexture.destroy();
-    positionReadBuffer.destroy();
-    pickReadBuffer.destroy();
+    xyReadBuffer.destroy();
+    zReadBuffer.destroy();
+    idReadBuffer.destroy();
   });
 
   return {
     pick,
-    positionView,
-    pickView,
+    xyView,
+    zView,
+    idView,
     depthView,
   };
 };

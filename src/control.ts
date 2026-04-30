@@ -1,3 +1,4 @@
+import { enuFromPosition, move } from "./math";
 import type { Vec3, View } from "./model";
 import { type Accessor, onCleanup } from "./reactive";
 import type { World } from "./world";
@@ -18,16 +19,16 @@ export const createControl = ({
 
   const recenter = async () => {
     const { width, height } = element.getBoundingClientRect();
-    const {
-      position: [x, y, z],
-    } = await world.pick(width / 2, height / 2);
+    const { position } = await world.pick(width / 2, height / 2);
 
-    const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
     const { center, distance, orientation } = view();
+
+    const [x, y, z] = enuFromPosition(center, position);
+    const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
 
     setView({
       orientation,
-      center: move(center, [x, y, z]),
+      center: position,
       distance: distance - d * (z > 0 ? 1 : -1),
     });
   };
@@ -87,18 +88,4 @@ export const createControl = ({
   });
 
   onCleanup(() => abortController.abort());
-};
-
-const move = (center: Vec3, enu: readonly [number, number, number]): Vec3 => {
-  const [lon, lat, alt] = center;
-  const [x, y, z] = enu;
-
-  const radius = 6378137.0;
-  const r = radius + alt;
-  const latRad = (lat * Math.PI) / 180;
-
-  const lonDelta = (x / (r * Math.cos(latRad))) * (180 / Math.PI);
-  const latDelta = (y / r) * (180 / Math.PI);
-
-  return [lon + lonDelta, lat + latDelta, alt + z];
 };

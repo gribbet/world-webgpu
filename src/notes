@@ -52,3 +52,6 @@ Pick to mouse events
 
 Review line more
 Fix outline
+Rework manual destroeis
+createLayerPipelines replaced by createLayerType entry?
+Restructure createXyTexture with signals

@@ -1,4 +1,5 @@
 import { createResizableBuffer } from "./device";
+import { mercatorFromLonLat } from "./math";
 import type { Vec2, Vec3, Vec4 } from "./model";
 import type { Accessor } from "./reactive";
 
@@ -151,12 +152,9 @@ export const position = (): Field<Vec3> => ({
   align: 4,
   size: 12,
   write: (view, offset, [lon, lat, alt]) => {
-    const latRad = (lat * Math.PI) / 180;
-    const mx = (lon + 180) / 360;
-    const my =
-      0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
-    view.setUint32(offset, Math.floor(mx * 2 ** 31), true);
-    view.setUint32(offset + 4, Math.floor(my * 2 ** 31), true);
+    const [x, y] = mercatorFromLonLat(lon, lat);
+    view.setUint32(offset, x, true);
+    view.setUint32(offset + 4, y, true);
     view.setFloat32(offset + 8, alt, true);
   },
 });

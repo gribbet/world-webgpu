@@ -27,7 +27,7 @@ export const createWorld = async (
   const renderer = createRenderer(context);
   const { renderView, depthView } = renderer;
   const picker = createPicker(context);
-  const { pick, positionView, pickView, depthView: pickDepthView } = picker;
+  const { pick, xyView, zView, idView, depthView: pickDepthView } = picker;
 
   const viewUniform = buffer(
     { center: position(), projection: mat4f(), screenSize: vec2f() },
@@ -112,13 +112,19 @@ export const createWorld = async (
     const pickPass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: positionView(),
+          view: xyView(),
           loadOp: "clear",
           storeOp: "store",
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
         },
         {
-          view: pickView(),
+          view: zView(),
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+        },
+        {
+          view: idView(),
           loadOp: "clear",
           storeOp: "store",
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
@@ -145,7 +151,7 @@ export const createWorld = async (
         },
       ],
     });
-    outline.render(outlinePass, pickView());
+    outline.render(outlinePass, idView());
     outlinePass.end();
 
     device.queue.submit([encoder.finish()]);
