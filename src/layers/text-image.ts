@@ -42,8 +42,13 @@ const renderTextImage = async ({
     const fontString = `${fontSize}px ${font}`;
     context.font = fontString;
     const metrics = context.measureText(text);
-    const width = Math.ceil(metrics.width);
-    const height = fontSize;
+    const padding = 1;
+    const ascent = Math.ceil(metrics.actualBoundingBoxAscent);
+    const descent = Math.ceil(metrics.actualBoundingBoxDescent);
+    const width = Math.max(1, Math.ceil(metrics.width) + padding * 2);
+    const height = Math.max(1, ascent + descent + padding * 2);
+    const x = width / 2;
+    const y = padding + ascent;
 
     canvas.width = width;
     canvas.height = height;
@@ -51,10 +56,10 @@ const renderTextImage = async ({
     context.font = fontString;
     context.fillStyle = "white";
     context.textAlign = "center";
-    context.textBaseline = "middle";
+    context.textBaseline = "alphabetic";
     context.clearRect(0, 0, width, height);
-    context.strokeText(text, width / 2, height / 2);
-    context.fillText(text, width / 2, height / 2);
+    context.strokeText(text, x, y);
+    context.fillText(text, x, y);
 
     const blob = await canvas.convertToBlob({ type: "image/png" });
 
