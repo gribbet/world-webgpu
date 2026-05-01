@@ -213,47 +213,51 @@ export const createApp = () =>
       ];
     });
 
+    const textEntries = derived(() =>
+      items().map(({ position }) => ({
+        text: "◎",
+        position,
+        size: 6000,
+        font: "sans-serif",
+        fontSize: 128,
+        color: [1, 1, 1, 1] as const,
+        minScale: 0.25,
+        maxScale: 1.0,
+      })),
+    );
+
+    const showLineLayer = derived(() => Math.floor(time() / 1000) % 2 === 0);
+
+    const layers = derived(() => [
+      terrain({ imageryUrl, elevationUrl }),
+      text({ entries: textEntries }),
+      ...(showLineLayer() ? [line({ lines: lineExamples })] : []),
+      fill({
+        vertices: [
+          { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
+          { position: [-122.3, 37.7, 10000], color: [0, 1, 0, 0.5] },
+          { position: [-122.3, 37.9, 10000], color: [0, 0, 1, 0.5] },
+          { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
+        ],
+        indices: [0, 1, 2, 0, 2, 3],
+      }),
+      mesh({
+        mesh: cubeMesh,
+        instances: [
+          {
+            position: [-122.4194, 37.7749, 10000],
+            scale: cubeSize,
+            minScalePixels: 24,
+            maxScalePixels: 96,
+            orientation: spin,
+          },
+        ],
+      }),
+    ]);
+
     const world = await createWorld(context, {
       view,
-      layers: [
-        terrain({ imageryUrl, elevationUrl }),
-        text({
-          entries: derived(() =>
-            items().map(({ position }) => ({
-              text: "◎",
-              position,
-              size: 6000,
-              font: "sans-serif",
-              fontSize: 128,
-              color: [1, 1, 1, 1] as const,
-              minScale: 0.25,
-              maxScale: 1.0,
-            })),
-          ),
-        }),
-        line({ lines: lineExamples }),
-        fill({
-          vertices: [
-            { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
-            { position: [-122.3, 37.7, 10000], color: [0, 1, 0, 0.5] },
-            { position: [-122.3, 37.9, 10000], color: [0, 0, 1, 0.5] },
-            { position: [-122.5, 37.9, 10000], color: [1, 1, 0, 0.5] },
-          ],
-          indices: [0, 1, 2, 0, 2, 3],
-        }),
-        mesh({
-          mesh: cubeMesh,
-          instances: [
-            {
-              position: [-122.4194, 37.7749, 10000],
-              scale: cubeSize,
-              minScalePixels: 24,
-              maxScalePixels: 96,
-              orientation: spin,
-            },
-          ],
-        }),
-      ],
+      layers,
     });
 
     document.addEventListener("click", async ({ x, y }) => {

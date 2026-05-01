@@ -100,12 +100,14 @@ export const map = <T, U>(
         cache.delete(item);
       } else {
         const [index, setIndex] = createSignal(i);
-        const value = mapper(item, index);
-        entry = createRoot(dispose => ({
-          value,
-          setIndex,
-          dispose,
-        }));
+        entry = createRoot(dispose => {
+          const value = mapper(item, index);
+          return {
+            value,
+            setIndex,
+            dispose,
+          };
+        });
       }
       return [item, entry] as const;
     });
