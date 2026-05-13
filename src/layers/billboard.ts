@@ -1,5 +1,6 @@
 import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
+import type { PickHandlers } from "../pick-registry";
 import {
   createSignal,
   derived,
@@ -33,7 +34,7 @@ const billboardStruct = struct({
   pickId: u32(),
 });
 
-export type Billboard = {
+export type Billboard = PickHandlers & {
   image: string;
   size: number;
   position: Vec3;
@@ -127,7 +128,7 @@ export const billboard = createLayerType<BillboardProps>(
 
       const { position, color, image, size, minScale, maxScale } = billboard;
       const metadata = derived(() => imageMetadata()[resolve(image)]);
-      const pickId = pickRegistry.allocate();
+      const pickId = pickRegistry.allocate(billboard);
 
       effect(() => {
         const data = metadata();

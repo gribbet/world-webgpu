@@ -6,6 +6,7 @@ import { type Mesh, mesh, type Vertex } from "./layers/mesh";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
+import type { PickEvent } from "./pick-registry";
 import { createRoot, createSignal, derived, map } from "./reactive";
 import { vec4Transition } from "./transition";
 import { createWorld } from "./world";
@@ -137,7 +138,7 @@ export const createApp = () =>
       setItems([...items(), { id, position, test: false }]);
       setTimeout(() => {
         setItems(items().filter(i => i.id !== id));
-      }, 5000);
+      }, 50000);
     };
 
     const cubeMesh = createCubeMesh();
@@ -225,6 +226,8 @@ export const createApp = () =>
       waypointsLine,
     ]);
 
+    const onTerrainClick = ({ position }: PickEvent) => appendItem(position);
+
     const textEntries = map(
       items,
       item => {
@@ -234,6 +237,14 @@ export const createApp = () =>
         );
         const position = derived(() => item().position);
         const color = vec4Transition(targetColor);
+        const updatePosition = (nextPosition: Vec3) => {
+          const { id } = item();
+          setItems(
+            items().map(entry =>
+              entry.id === id ? { ...entry, position: nextPosition } : entry,
+            ),
+          );
+        };
 
         return {
           text: "◎",
@@ -244,13 +255,14 @@ export const createApp = () =>
           color,
           minScale: 0.25,
           maxScale: 1.0,
+          onDrag: (event: PickEvent) => updatePosition(event.position),
         };
       },
       { key: _ => _.id },
     );
 
     const layers = derived(() => [
-      terrain({ imageryUrl, elevationUrl }),
+      terrain({ imageryUrl, elevationUrl, onClick: onTerrainClick }),
       text({ entries: textEntries }),
       line({ lines: staticLineExamples }),
       line({ lines: lineExamples }),
@@ -280,13 +292,6 @@ export const createApp = () =>
     const world = await createWorld(context, {
       view,
       layers,
-    });
-
-    document.addEventListener("click", async ({ x, y }) => {
-      const { position, id } = await world.pick(x, y);
-      console.log(position);
-      if (id === 0xffffffff) return;
-      appendItem(position);
     });
 
     createControl({ element, world, view, setView });

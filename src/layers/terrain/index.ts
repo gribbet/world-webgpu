@@ -1,107 +1,107 @@
 import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
 import { terrainDownsample } from "../../configuration";
+import type { PickHandlers } from "../../pick-registry";
 import { derived, onCleanup, resolve } from "../../reactive";
 import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
 import { createTileMapBuffer } from "./tile-map-buffer";
 import { createTileTextureGroup } from "./tile-texture-group";
 
-export type TerrainProps = {
+export type TerrainProps = PickHandlers & {
   imageryUrl: string;
   elevationUrl: string;
 };
 
-export const terrain = createLayerType<TerrainProps>(
-  async (context, { imageryUrl, elevationUrl }) => {
-    const { device, pickRegistry } = context;
+export const terrain = createLayerType<TerrainProps>(async (context, props) => {
+  const { imageryUrl, elevationUrl } = props;
+  const { device, pickRegistry } = context;
 
-    const tilesBuffer = createDataBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      new Uint32Array(new Array(1024 * 8).fill(0)),
-    );
+  const tilesBuffer = createDataBuffer(
+    device,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    new Uint32Array(new Array(1024 * 8).fill(0)),
+  );
 
-    const countBuffer = createDataBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      new Uint32Array([0]),
-    );
+  const countBuffer = createDataBuffer(
+    device,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    new Uint32Array([0]),
+  );
 
-    const imageryMap = createTileMapBuffer(device);
+  const imageryMap = createTileMapBuffer(device);
 
-    const imagery = derived(() =>
-      createTileTextureGroup({
-        context,
-        map: imageryMap,
-        urlPattern: resolve(imageryUrl),
-      }),
-    );
-
-    const imageryTextures = derived(() => imagery().texture());
-
-    const elevationMap = createTileMapBuffer(device);
-
-    const elevation = derived(() =>
-      createTileTextureGroup({
-        context,
-        map: elevationMap,
-        urlPattern: resolve(elevationUrl),
-        initialDownsample: terrainDownsample,
-      }),
-    );
-
-    const elevationTextures = derived(() => elevation().texture());
-
-    const pickId = pickRegistry.allocate();
-
-    const computePipeline = await createComputePipeline({
-      device,
-      tilesBuffer,
-      countBuffer,
-      imageryMapBuffer: imageryMap.buffer,
-      elevationMapBuffer: elevationMap.buffer,
-      elevationTextures,
-    });
-
-    const pipeline = await createRenderPipeline({
+  const imagery = derived(() =>
+    createTileTextureGroup({
       context,
-      tilesBuffer,
-      countBuffer,
-      imageryTextures,
-      elevationTextures,
-      pickId,
-    });
+      map: imageryMap,
+      urlPattern: resolve(imageryUrl),
+    }),
+  );
 
-    const compute = (pass: GPUComputePassEncoder) =>
-      computePipeline.compute(pass);
+  const imageryTextures = derived(() => imagery().texture());
 
-    const update = (encoder: GPUCommandEncoder) => {
-      imageryMap.update(encoder);
-      elevationMap.update(encoder);
-      pipeline.update(encoder);
-    };
+  const elevationMap = createTileMapBuffer(device);
 
-    const render = (
-      pass: GPURenderPassEncoder,
-      { pick }: { pick?: boolean } = {},
-    ) => pipeline.render(pass, { pick });
+  const elevation = derived(() =>
+    createTileTextureGroup({
+      context,
+      map: elevationMap,
+      urlPattern: resolve(elevationUrl),
+      initialDownsample: terrainDownsample,
+    }),
+  );
 
-    const updateTextures = async () => {
-      const tiles = await computePipeline.read();
-      if (!tiles) return;
-      imagery().ensure(tiles);
-      elevation().ensure(tiles);
-    };
+  const elevationTextures = derived(() => elevation().texture());
 
-    const timer = setInterval(() => void updateTextures(), 100);
+  const pickId = pickRegistry.allocate(props);
 
-    onCleanup(() => clearInterval(timer));
+  const computePipeline = await createComputePipeline({
+    device,
+    tilesBuffer,
+    countBuffer,
+    imageryMapBuffer: imageryMap.buffer,
+    elevationMapBuffer: elevationMap.buffer,
+    elevationTextures,
+  });
 
-    return {
-      compute,
-      update,
-      render,
-    };
-  },
-);
+  const pipeline = await createRenderPipeline({
+    context,
+    tilesBuffer,
+    countBuffer,
+    imageryTextures,
+    elevationTextures,
+    pickId,
+  });
+
+  const compute = (pass: GPUComputePassEncoder) =>
+    computePipeline.compute(pass);
+
+  const update = (encoder: GPUCommandEncoder) => {
+    imageryMap.update(encoder);
+    elevationMap.update(encoder);
+    pipeline.update(encoder);
+  };
+
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => pipeline.render(pass, { pick });
+
+  const updateTextures = async () => {
+    const tiles = await computePipeline.read();
+    if (!tiles) return;
+    imagery().ensure(tiles);
+    elevation().ensure(tiles);
+  };
+
+  const timer = setInterval(() => void updateTextures(), 100);
+
+  onCleanup(() => clearInterval(timer));
+
+  return {
+    compute,
+    update,
+    render,
+  };
+});

@@ -1,6 +1,7 @@
 import { createDataBuffer, createResizableBuffer } from "../../buffer";
 import { createLayerType, viewLayout } from "../../common";
 import type { Vec3, Vec4 } from "../../model";
+import type { PickHandlers } from "../../pick-registry";
 import type { Properties } from "../../reactive";
 import { derived, effect, resolve } from "../../reactive";
 import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
@@ -12,7 +13,7 @@ export type LinePoint = {
   width: number;
 };
 
-export type Line = {
+export type Line = PickHandlers & {
   points: Properties<LinePoint>[];
 };
 
@@ -153,18 +154,23 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
 
   effect(() => {
     const list = resolve(lines);
-    const resolved = list.map(lineProps => resolve(lineProps.points));
-    const nextTopologyKey = resolved.map(pts => pts.length).join(",");
+    const resolved = list.map(props => ({
+      props,
+      points: resolve(props.points),
+    }));
+    const nextTopologyKey = resolved
+      .map(({ points }) => points.length)
+      .join(",");
     const topologyChanged = nextTopologyKey !== topologyKey;
     topologyKey = nextTopologyKey;
 
     let pointCount = 0;
-    for (const pts of resolved) pointCount += pts.length;
+    for (const { points } of resolved) pointCount += points.length;
     pointsStorage.resize(pointCount);
 
     let pi = 0;
-    for (const pts of resolved)
-      for (const point of pts) {
+    for (const { points } of resolved)
+      for (const point of points) {
         const item = pointsStorage.items[pi];
         if (!item) continue;
         item.position = resolve(point.position);
@@ -179,14 +185,14 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
 
     let ni = 0;
     let startIndex = 0;
-    for (const pts of resolved) {
-      const written = pts.length;
+    for (const { props, points } of resolved) {
+      const written = points.length;
       if (written < 2) {
         startIndex += written;
         continue;
       }
 
-      const pickId = pickRegistry.allocate();
+      const pickId = pickRegistry.allocate(props);
       for (let k = 0; k < written; k++) {
         nodesStorage.resize(ni + 1);
         const item = nodesStorage.items[ni];

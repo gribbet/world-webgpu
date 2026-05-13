@@ -22,7 +22,6 @@ export const createControl = ({
     const { position } = await world.pick(width / 2, height / 2);
 
     const { center, distance, orientation } = view();
-
     const [x, y, z] = enuFromPosition(center, position);
     const d = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
 
@@ -33,11 +32,20 @@ export const createControl = ({
     });
   };
 
-  element.addEventListener("pointerdown", recenter, { signal });
+  element.addEventListener(
+    "pointerdown",
+    () => {
+      if (world.isDragging()) return;
+      void recenter();
+    },
+    { signal },
+  );
 
   element.addEventListener(
     "pointermove",
-    ({ buttons, movementX, movementY }) => {
+    event => {
+      if (world.isDragging()) return;
+      const { buttons, movementX, movementY } = event;
       if (buttons === 0) return;
       const { center, distance, orientation } = view();
       const [lon, lat, alt] = center;
@@ -72,6 +80,7 @@ export const createControl = ({
   element.addEventListener(
     "wheel",
     event => {
+      if (world.isDragging()) return;
       event.preventDefault();
       const { center, distance, orientation } = view();
       setView({

@@ -55,3 +55,10 @@ Fix outline
 createLayerPipelines replaced by createLayerType entry?
 
 onCleanup broken?
+
+Mouse handlers
+Recursive Properties
+Cleanup slots
+
+line should use indices like fill? 
+Move control internal? 

@@ -5,9 +5,12 @@ import { lonLatFromMercator } from "./math";
 import { derived } from "./reactive";
 import { createTexture } from "./texture";
 
-export const createPicker = (context: Context) => {
-  const { device, size, devicePixelRatio } = context;
+export type Picker = ReturnType<typeof createPicker>;
 
+export const createPicker = (
+  context: Pick<Context, "device" | "size" | "devicePixelRatio">,
+) => {
+  const { device, size, devicePixelRatio } = context;
   const textureSize = derived(() => {
     const [width, height] = size();
     return [width * devicePixelRatio, height * devicePixelRatio] as const;

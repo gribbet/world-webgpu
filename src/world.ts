@@ -1,10 +1,10 @@
 import { mat4 } from "wgpu-matrix";
 
-import type { LayerDescriptor } from "./common";
-import { viewLayout } from "./common";
+import { type LayerDescriptor, viewLayout } from "./common";
 import { createContainerLayer } from "./container";
 import type { Context } from "./context";
 import type { View } from "./model";
+import { createMouse } from "./mouse";
 import { createOutline } from "./outline";
 import { createPicker } from "./picker";
 import { effect, onCleanup, type Properties, resolve } from "./reactive";
@@ -22,12 +22,13 @@ export const createWorld = async (
   context: Context,
   { view, layers }: Properties<WorldProperties>,
 ) => {
-  const { device, size, textureLoader } = context;
+  const { device, size, textureLoader, element, pickRegistry } = context;
 
   const renderer = createRenderer(context);
   const { renderView, depthView } = renderer;
   const picker = createPicker(context);
-  const { pick, xyView, zView, idView, depthView: pickDepthView } = picker;
+  const { xyView, zView, idView, depthView: pickDepthView } = picker;
+  const mouse = createMouse({ element, picker, pickRegistry });
 
   const viewUniform = buffer(
     { center: position(), projection: mat4f(), screenSize: vec2f() },
@@ -161,6 +162,7 @@ export const createWorld = async (
   });
 
   return {
-    pick,
+    pick: picker.pick,
+    isDragging: mouse.isDragging,
   };
 };

@@ -1,6 +1,7 @@
 import { createDataBuffer } from "../buffer";
 import { createLayerType } from "../common";
 import type { Vec2, Vec3, Vec4 } from "../model";
+import type { PickHandlers } from "../pick-registry";
 import {
   createSignal,
   derived,
@@ -42,7 +43,7 @@ export type Mesh = {
   indices: Vec3[];
 };
 
-export type Instance = {
+export type Instance = PickHandlers & {
   position: Vec3;
   orientation?: Vec4;
   scale?: number;
@@ -158,7 +159,7 @@ export const mesh = createLayerType<MeshProps>(
         maxScalePixels,
         color,
       } = instance;
-      item.pickId = pickRegistry.allocate();
+      item.pickId = pickRegistry.allocate(instance);
 
       effect(() => {
         item.position = resolve(position);
