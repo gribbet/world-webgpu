@@ -1,7 +1,7 @@
 import { createResizableBuffer } from "./buffer";
 import { mercatorFromLonLat } from "./math";
 import type { Vec2, Vec3, Vec4 } from "./model";
-import type { Accessor } from "./reactive";
+import { type Accessor, createSignal } from "./reactive";
 
 type Field<T> = {
   readonly align: number;
@@ -35,13 +35,20 @@ const createStructItemFactory = <S extends Shape>(
   def: StructDef<S>,
   store: ItemWriterStore,
 ) => {
-  const { shape, offsets } = def;
+  const entries = Object.entries(def.shape).map(([k, field]) => ({
+    k,
+    field,
+    offset: def.offsets[k] ?? 0,
+  }));
 
   return (baseOffset = 0): ItemView<S> => {
     const item = {} as ItemView<S>;
-    for (const k in shape) {
-      const { write, size } = shape[k]!;
-      const abs = baseOffset + offsets[k]!;
+    for (const {
+      k,
+      field: { write, size },
+      offset,
+    } of entries) {
+      const abs = baseOffset + offset;
       Object.defineProperty(item, k, {
         enumerable: true,
         set(value: unknown) {
@@ -133,7 +140,7 @@ export const mat4f = (): Field<Float32Array> => ({
   align: 16,
   size: 64,
   write: (v, o, x) => {
-    for (let i = 0; i < 16; i++) v.setFloat32(o + i * 4, x[i]!, true);
+    for (let i = 0; i < 16; i++) v.setFloat32(o + i * 4, x[i] ?? 0, true);
   },
 });
 
@@ -164,8 +171,7 @@ export const struct = <S extends Shape>(shape: S): StructDef<S> => {
   let cursor = 0;
   let maxAlign = 1;
 
-  for (const k in shape) {
-    const { align, size } = shape[k]!;
+  for (const [k, { align, size }] of Object.entries(shape)) {
     cursor = alignTo(cursor, align);
     offsets[k] = cursor;
     cursor += size;
@@ -259,6 +265,93 @@ const createStructArray = <S extends Shape>(
 };
 
 export const structArray = createStructArray;
+
+export type SlotAllocator<S extends Shape> = {
+  readonly count: Accessor<number>;
+  readonly buffer: Accessor<GPUBuffer>;
+  allocate(): [item: ItemView<S>, release: () => void];
+  flush(): void;
+};
+
+export const createSlotAllocator = <S extends Shape>(
+  def: StructDef<S>,
+  device: GPUDevice,
+  options: { usage: GPUBufferUsageFlags; initialCapacity?: number },
+): SlotAllocator<S> => {
+  const { stride } = def;
+  const store = createBackingStore(
+    device,
+    options.usage,
+    (options.initialCapacity ?? 16) * stride,
+  );
+
+  const [count, setCount] = createSignal(0);
+  let liveCount = 0;
+  const movers = new Map<number, (slot: number) => void>();
+
+  const entries = Object.entries(def.shape).map(([k, field]) => ({
+    k,
+    field,
+    offset: def.offsets[k] ?? 0,
+  }));
+
+  const allocate = (): [ItemView<S>, () => void] => {
+    const slot = liveCount;
+    const [getSlot, setSlot] = createSignal(slot);
+    movers.set(slot, setSlot);
+    liveCount++;
+    setCount(liveCount);
+    store.ensureCapacity(liveCount * stride);
+
+    const item = {} as ItemView<S>;
+    for (const {
+      k,
+      field: { write, size },
+      offset,
+    } of entries)
+      Object.defineProperty(item, k, {
+        enumerable: true,
+        set(value: unknown) {
+          const abs = getSlot() * stride + offset;
+          write(store.view(), abs, value);
+          store.markDirty(abs, abs + size);
+        },
+      });
+
+    const release = () => {
+      const slot = getSlot();
+      liveCount--;
+      setCount(liveCount);
+
+      if (slot !== liveCount) {
+        const view = store.view();
+        const bytes = new Uint8Array(
+          view.buffer,
+          view.byteOffset,
+          view.byteLength,
+        );
+        bytes.copyWithin(
+          slot * stride,
+          liveCount * stride,
+          (liveCount + 1) * stride,
+        );
+        store.markDirty(slot * stride, (slot + 1) * stride);
+
+        const mover = movers.get(liveCount);
+        if (mover) {
+          mover(slot);
+          movers.set(slot, mover);
+        }
+      }
+
+      movers.delete(liveCount);
+    };
+
+    return [item, release];
+  };
+
+  return { count, buffer: store.buffer, allocate, flush: store.flush };
+};
 
 export const array = <T>(
   field: Field<T>,

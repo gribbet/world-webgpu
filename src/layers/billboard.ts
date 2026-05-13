@@ -4,15 +4,17 @@ import {
   createSignal,
   derived,
   effect,
+  map,
+  onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
 import {
+  createSlotAllocator,
   f32,
   i32,
   position,
   struct,
-  structArray,
   u32,
   vec4f,
 } from "../storage";
@@ -48,9 +50,9 @@ export const billboard = createLayerType<BillboardProps>(
   async (context, { billboards }) => {
     const { device, pickRegistry } = context;
 
-    const storage = structArray(billboardStruct, device, {
+    const slots = createSlotAllocator(billboardStruct, device, {
       usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 1024,
+      initialCapacity: 16,
     });
 
     const [imageMetadata, setImageMetadata] = createSignal<{
@@ -112,50 +114,41 @@ export const billboard = createLayerType<BillboardProps>(
       device.createBindGroup({
         layout: bindGroupLayout,
         entries: [
-          { binding: 0, resource: { buffer: storage.buffer() } },
+          { binding: 0, resource: { buffer: slots.buffer() } },
           { binding: 1, resource: textureGroup.texture().createView() },
           { binding: 2, resource: sampler },
         ],
       }),
     );
 
-    let count = 0;
-    effect(() => {
-      const list = resolve(billboards);
-      count = list.length;
-      storage.resize(count);
+    map(billboards, billboard => {
+      const [item, release] = slots.allocate();
+      onCleanup(release);
 
-      for (let i = 0; i < count; i++) {
-        const billboard = list[i];
-        if (!billboard) continue;
+      const { position, color, image, size, minScale, maxScale } = billboard;
+      const metadata = derived(() => imageMetadata()[resolve(image)]);
+      const pickId = pickRegistry.allocate();
 
-        const item = storage.items[i];
-        if (!item) continue;
-        const { position, color, image, size, minScale, maxScale } = billboard;
-
-        const metadata = derived(() => imageMetadata()[resolve(image)]);
-        const pickId = pickRegistry.allocate();
-        effect(() => {
-          const data = metadata();
-          item.texture = data?.index ?? -1;
-          item.width = data?.width ?? 0;
-          item.height = data?.height ?? 0;
-          item.pickId = pickId;
-        });
-        effect(() => {
-          item.size = resolve(size);
-        });
-        effect(() => {
-          item.position = resolve(position);
-        });
-        effect(() => {
-          item.color = resolve(color) ?? [1, 1, 1, 1];
-        });
-        effect(() => {
-          item.minScale = resolve(minScale) ?? -Infinity;
-          item.maxScale = resolve(maxScale) ?? Infinity;
-        });
-      }
+      effect(() => {
+        const data = metadata();
+        item.texture = data?.index ?? -1;
+        item.width = data?.width ?? 0;
+        item.height = data?.height ?? 0;
+        item.pickId = pickId;
+      });
+      effect(() => {
+        item.size = resolve(size);
+      });
+      effect(() => {
+        item.position = resolve(position);
+      });
+      effect(() => {
+        item.color = resolve(color) ?? [1, 1, 1, 1];
+      });
+      effect(() => {
+        item.minScale = resolve(minScale) ?? -Infinity;
+        item.maxScale = resolve(maxScale) ?? Infinity;
+      });
     });
 
     const update = () => {
@@ -164,13 +157,14 @@ export const billboard = createLayerType<BillboardProps>(
           .map(_ => resolve(_.image))
           .filter(_ => !!_),
       );
-      storage.flush();
+      slots.flush();
     };
 
     const render = (
       pass: GPURenderPassEncoder,
       { pick }: { pick?: boolean } = {},
     ) => {
+      const count = slots.count();
       if (count === 0) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
       pass.setBindGroup(1, bindGroup());

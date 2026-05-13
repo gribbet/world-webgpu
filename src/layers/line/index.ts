@@ -146,56 +146,59 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
 
   let nodeCount = 0;
   let indexCount = 0;
-  let dirty = false;
-  const linePickIds: number[] = [];
+  let pointsDirty = false;
+  let nodesDirty = false;
+  let indicesDirty = false;
+  let topologyKey = "";
 
   effect(() => {
     const list = resolve(lines);
+    const resolved = list.map(lineProps => resolve(lineProps.points));
+    const nextTopologyKey = resolved.map(pts => pts.length).join(",");
+    const topologyChanged = nextTopologyKey !== topologyKey;
+    topologyKey = nextTopologyKey;
+
+    let pointCount = 0;
+    for (const pts of resolved) pointCount += pts.length;
+    pointsStorage.resize(pointCount);
 
     let pi = 0;
-    let ni = 0;
-    for (let li = 0; li < list.length; li++) {
-      const lineProps = list[li];
-      if (!lineProps) continue;
-      const pts = resolve(lineProps.points);
-      if (pts.length < 2) continue;
-
-      let pickId = linePickIds[li];
-      if (pickId === undefined) {
-        pickId = pickRegistry.allocate();
-        linePickIds[li] = pickId;
-      }
-      const startIndex = pi;
-
+    for (const pts of resolved)
       for (const point of pts) {
-        const position = resolve(point.position);
-        const color = resolve(point.color);
-        const width = resolve(point.width);
-        pointsStorage.resize(pi + 1);
         const item = pointsStorage.items[pi];
         if (!item) continue;
-        item.position = position;
-        item.width = width;
-        item.color = color;
+        item.position = resolve(point.position);
+        item.width = resolve(point.width);
+        item.color = resolve(point.color);
         pi++;
       }
 
-      const written = pi - startIndex;
-      if (written < 2) continue;
+    pointsDirty = true;
 
+    if (!topologyChanged) return;
+
+    let ni = 0;
+    let startIndex = 0;
+    for (const pts of resolved) {
+      const written = pts.length;
+      if (written < 2) {
+        startIndex += written;
+        continue;
+      }
+
+      const pickId = pickRegistry.allocate();
       for (let k = 0; k < written; k++) {
-        const prev = startIndex + Math.max(0, k - 1);
-        const current = startIndex + k;
-        const next = startIndex + Math.min(written - 1, k + 1);
         nodesStorage.resize(ni + 1);
         const item = nodesStorage.items[ni];
         if (!item) continue;
-        item.prev = prev;
-        item.current = current;
-        item.next = next;
+        item.prev = startIndex + Math.max(0, k - 1);
+        item.current = startIndex + k;
+        item.next = startIndex + Math.min(written - 1, k + 1);
         item.pickId = pickId;
         ni++;
       }
+
+      startIndex += written;
     }
 
     nodeCount = ni;
@@ -204,22 +207,29 @@ export const line = createLayerType<LineProps>(async (context, { lines }) => {
     indexCount = nodeCount * 12;
     ensureIndexCapacity(nodeCount);
     nodeCountData[0] = nodeCount;
-    dirty = true;
+    nodesDirty = true;
+    indicesDirty = true;
   });
 
   const update = () => {
-    if (!dirty) return;
-    pointsStorage.flush();
-    nodesStorage.flush();
-    device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
-    dirty = false;
+    if (!pointsDirty && !nodesDirty) return;
+    if (pointsDirty) {
+      pointsStorage.flush();
+      pointsDirty = false;
+    }
+    if (nodesDirty) {
+      nodesStorage.flush();
+      device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
+      nodesDirty = false;
+    }
   };
 
   const compute = (pass: GPUComputePassEncoder) => {
-    if (nodeCount === 0) return;
+    if (nodeCount === 0 || !indicesDirty) return;
     pass.setPipeline(computePipeline);
     pass.setBindGroup(1, computeBindGroup());
     pass.dispatchWorkgroups(Math.ceil(nodeCount / 64));
+    indicesDirty = false;
   };
 
   const render = (

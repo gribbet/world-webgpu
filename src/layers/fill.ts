@@ -62,29 +62,26 @@ export const fill = createLayerType<FillProps>(
 
     const pickId = pickRegistry.allocate();
 
-    let vertexCount = 0;
     let indexCount = 0;
 
     effect(() => {
       const _vertices = resolve(vertices);
       const _indices = resolve(indices);
-      vertexCount = _vertices.length;
       indexCount = _indices.length;
 
-      storage.resize(vertexCount);
-      indexStorage.resize(indexCount);
-
-      for (let i = 0; i < vertexCount; i++) {
-        const { position, color } = _vertices[i] ?? {};
-        if (!position || !color) continue;
-        const item = storage.items[i];
-        if (!item) continue;
-        item.position = position;
-        item.color = color;
+      storage.resize(_vertices.length);
+      storage.items.forEach((item, i) => {
+        const v = _vertices[i];
+        if (!v) return;
+        item.position = v.position;
+        item.color = v.color;
         item.pickId = pickId;
-      }
-      for (let i = 0; i < indexCount; i++)
-        indexStorage.items[i] = _indices[i] ?? 0;
+      });
+
+      indexStorage.resize(_indices.length);
+      _indices.forEach((v, i) => {
+        indexStorage.items[i] = v;
+      });
     });
 
     const update = () => {

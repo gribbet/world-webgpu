@@ -5,10 +5,19 @@ import {
   createSignal,
   derived,
   effect,
+  map,
+  onCleanup,
   type Properties,
   resolve,
 } from "../reactive";
-import { f32, position, struct, structArray, u32, vec4f } from "../storage";
+import {
+  createSlotAllocator,
+  f32,
+  position,
+  struct,
+  u32,
+  vec4f,
+} from "../storage";
 import { createLayerPipelines } from "./common";
 
 const instanceStruct = struct({
@@ -51,9 +60,9 @@ export const mesh = createLayerType<MeshProps>(
   async (context, { mesh, instances }) => {
     const { device, pickRegistry } = context;
 
-    const storage = structArray(instanceStruct, device, {
+    const slots = createSlotAllocator(instanceStruct, device, {
       usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 1024,
+      initialCapacity: 16,
     });
 
     const code = await (
@@ -91,7 +100,7 @@ export const mesh = createLayerType<MeshProps>(
     const bindGroup = derived(() =>
       device.createBindGroup({
         layout: bindGroupLayout,
-        entries: [{ binding: 0, resource: { buffer: storage.buffer() } }],
+        entries: [{ binding: 0, resource: { buffer: slots.buffer() } }],
       }),
     );
 
@@ -137,53 +146,44 @@ export const mesh = createLayerType<MeshProps>(
       });
     });
 
-    let count = 0;
-    effect(() => {
-      const list = resolve(instances);
-      count = list.length;
-      storage.resize(count);
+    map(instances, instance => {
+      const [item, release] = slots.allocate();
+      onCleanup(release);
 
-      for (let i = 0; i < count; i++) {
-        const instance = list[i];
-        if (!instance) continue;
+      const {
+        position,
+        orientation,
+        scale,
+        minScalePixels,
+        maxScalePixels,
+        color,
+      } = instance;
+      item.pickId = pickRegistry.allocate();
 
-        const item = storage.items[i];
-        if (!item) continue;
-
-        const {
-          position,
-          orientation,
-          scale,
-          minScalePixels,
-          maxScalePixels,
-          color,
-        } = instance;
-        item.pickId = pickRegistry.allocate();
-
-        effect(() => {
-          item.position = resolve(position);
-        });
-        effect(
-          () => void (item.orientation = resolve(orientation) ?? [0, 0, 0, 1]),
-        );
-        effect(() => {
-          item.scale = resolve(scale) ?? 1;
-          item.minScalePixels = resolve(minScalePixels) ?? -1;
-          item.maxScalePixels = resolve(maxScalePixels) ?? -1;
-        });
-        effect(() => {
-          item.color = resolve(color) ?? [1, 1, 1, 1];
-        });
-      }
+      effect(() => {
+        item.position = resolve(position);
+      });
+      effect(
+        () => void (item.orientation = resolve(orientation) ?? [0, 0, 0, 1]),
+      );
+      effect(() => {
+        item.scale = resolve(scale) ?? 1;
+        item.minScalePixels = resolve(minScalePixels) ?? -1;
+        item.maxScalePixels = resolve(maxScalePixels) ?? -1;
+      });
+      effect(() => {
+        item.color = resolve(color) ?? [1, 1, 1, 1];
+      });
     });
 
-    const update = () => storage.flush();
+    const update = () => slots.flush();
 
     const render = (
       pass: GPURenderPassEncoder,
       { pick }: { pick?: boolean } = {},
     ) => {
       const buffers = meshBuffers();
+      const count = slots.count();
       if (count === 0 || !buffers) return;
       pass.setPipeline(pick ? pickPipeline : pipeline);
       pass.setBindGroup(1, bindGroup());

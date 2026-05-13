@@ -6,7 +6,8 @@ import { type Mesh, mesh, type Vertex } from "./layers/mesh";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
-import { createRoot, createSignal, derived } from "./reactive";
+import { createRoot, createSignal, derived, map } from "./reactive";
+import { vec4Transition } from "./transition";
 import { createWorld } from "./world";
 
 const createCubeMesh = (): Mesh => {
@@ -127,9 +128,17 @@ export const createApp = () =>
     };
     requestAnimationFrame(animate);
 
-    const [items, setItems] = createSignal<{ position: Vec3 }[]>([]);
+    const [items, setItems] = createSignal<
+      { id: string; position: Vec3; test: boolean }[]
+    >([]);
 
-    const appendItem = (position: Vec3) => setItems([...items(), { position }]);
+    const appendItem = (position: Vec3) => {
+      const id = Math.random().toString();
+      setItems([...items(), { id, position, test: false }]);
+      setTimeout(() => {
+        setItems(items().filter(i => i.id !== id));
+      }, 5000);
+    };
 
     const cubeMesh = createCubeMesh();
     const cubeSize = 1000; // 50 km half-extent
@@ -138,7 +147,57 @@ export const createApp = () =>
       return [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
     });
 
-    const lineExamples = derived<Line[]>(() => {
+    // Static lines that don't animate
+    const redOrangeLine: Line = {
+      points: Array.from({ length: 1000 }, (_, i) => {
+        const t = i / 999;
+        const lon = -122.58 + t * (-122.16 - -122.58);
+        const lat = 37.69 + Math.sin(t * Math.PI) * 0.17;
+        const alt = 2000 + Math.sin(t * Math.PI * 4) * 1500 + t * 2000;
+        const r = 1.0;
+        const g = t < 0.5 ? 0.2 + t * 1.6 : 1.0;
+        const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
+        const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
+        return {
+          position: [lon, lat, alt] as Vec3,
+          color: [r, g, b, 0.95] as Vec4,
+          width: w,
+        };
+      }),
+    };
+
+    const waypointsLine: Line = {
+      points: [
+        {
+          position: [-122.52, 37.92, 2000],
+          color: [0.3, 0.9, 1.0, 0.85],
+          width: 1800,
+        },
+        {
+          position: [-122.45, 37.86, 7000],
+          color: [0.2, 0.8, 1.0, 0.85],
+          width: 1800,
+        },
+        {
+          position: [-122.38, 37.92, 2000],
+          color: [0.1, 0.7, 1.0, 0.85],
+          width: 1800,
+        },
+        {
+          position: [-122.31, 37.86, 7000],
+          color: [0.1, 0.6, 1.0, 0.85],
+          width: 1800,
+        },
+        {
+          position: [-122.24, 37.92, 2000],
+          color: [0.1, 0.5, 1.0, 0.85],
+          width: 1800,
+        },
+      ],
+    };
+
+    // Animated ring line that depends on time
+    const animatedRingLine = derived<Line>(() => {
       const pulse = 800 + Math.sin(time() * 0.002) * 400;
       const centerLon = -122.4194;
       const centerLat = 37.7749;
@@ -156,82 +215,45 @@ export const createApp = () =>
           width: pulse,
         };
       });
-
-      const count2 = 1000;
-      const redOrangePoints = Array.from({ length: count2 }, (_, i) => {
-        const t = i / (count2 - 1);
-        const lon = -122.58 + t * (-122.16 - -122.58);
-        const lat = 37.69 + Math.sin(t * Math.PI) * 0.17;
-        const alt = 2000 + Math.sin(t * Math.PI * 4) * 1500 + t * 2000;
-        const r = 1.0;
-        const g = t < 0.5 ? 0.2 + t * 1.6 : 1.0;
-        const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
-        const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
-        return {
-          position: [lon, lat, alt] as Vec3,
-          color: [r, g, b, 0.95] as Vec4,
-          width: w,
-        };
-      });
-
-      return [
-        {
-          points: redOrangePoints,
-        },
-        {
-          points: [
-            {
-              position: [-122.52, 37.92, 2000],
-              color: [0.3, 0.9, 1.0, 0.85],
-              width: 1800,
-            },
-            {
-              position: [-122.45, 37.86, 7000],
-              color: [0.2, 0.8, 1.0, 0.85],
-              width: 1800,
-            },
-            {
-              position: [-122.38, 37.92, 2000],
-              color: [0.1, 0.7, 1.0, 0.85],
-              width: 1800,
-            },
-            {
-              position: [-122.31, 37.86, 7000],
-              color: [0.1, 0.6, 1.0, 0.85],
-              width: 1800,
-            },
-            {
-              position: [-122.24, 37.92, 2000],
-              color: [0.1, 0.5, 1.0, 0.85],
-              width: 1800,
-            },
-          ],
-        },
-        {
-          points: ringPoints,
-        },
-      ];
+      return { points: ringPoints };
     });
 
-    const textEntries = derived(() =>
-      items().map(({ position }) => ({
-        text: "◎",
-        position,
-        size: 6000,
-        font: "sans-serif",
-        fontSize: 128,
-        color: [1, 1, 1, 1] as const,
-        minScale: 0.25,
-        maxScale: 1.0,
-      })),
-    );
+    const lineExamples = derived<Line[]>(() => [animatedRingLine()]);
 
-    const showLineLayer = derived(() => Math.floor(time() / 1000) % 2 === 0);
+    const staticLineExamples = derived<Line[]>(() => [
+      redOrangeLine,
+      waypointsLine,
+    ]);
+
+    const textEntries = map(
+      items,
+      item => {
+        const targetColor = derived(
+          (): Vec4 =>
+            item().test ? [1.0, 0.35, 0.35, 1.0] : [1.0, 1.0, 1.0, 1.0],
+        );
+        const position = derived(() => item().position);
+        const color = vec4Transition(targetColor);
+
+        return {
+          text: "◎",
+          position,
+          size: 6000,
+          font: "sans-serif",
+          fontSize: 128,
+          color,
+          minScale: 0.25,
+          maxScale: 1.0,
+        };
+      },
+      { key: _ => _.id },
+    );
 
     const layers = derived(() => [
       terrain({ imageryUrl, elevationUrl }),
       text({ entries: textEntries }),
-      ...(showLineLayer() ? [line({ lines: lineExamples })] : []),
+      line({ lines: staticLineExamples }),
+      line({ lines: lineExamples }),
       fill({
         vertices: [
           { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
