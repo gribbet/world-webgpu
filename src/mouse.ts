@@ -63,7 +63,10 @@ export const createMouse = ({
           startX: x,
           startY: y,
           dragging: false,
-          allowDrag: button === 0,
+          allowDrag:
+            button === 0 &&
+            (pickRegistry.hasHandler(picked.id, "onDragStart") ||
+              pickRegistry.hasHandler(picked.id, "onDrag")),
         });
       });
     },

@@ -1,5 +1,5 @@
 import { enuFromPosition, move } from "./math";
-import type { Vec3, View } from "./model";
+import type { View } from "./model";
 import { type Accessor, onCleanup } from "./reactive";
 import type { World } from "./world";
 
@@ -48,8 +48,8 @@ export const createControl = ({
       const { buttons, movementX, movementY } = event;
       if (buttons === 0) return;
       const { center, distance, orientation } = view();
+      const [yaw, pitch, roll] = orientation;
       const [lon, lat, alt] = center;
-      const [pitch, yaw, roll] = orientation;
 
       if (buttons === 1) {
         const metersPerPixel = distance / 1000;
@@ -59,19 +59,20 @@ export const createControl = ({
         const dx = cos * movementX - sin * movementY;
         const dy = sin * movementX + cos * movementY;
 
-        const center = move(
+        const newCenter = move(
           [lon, lat, alt],
           [-dx * metersPerPixel, dy * metersPerPixel, 0],
         );
 
-        setView({ center, distance, orientation });
+        setView({ center: newCenter, distance, orientation });
       } else if (buttons === 2) {
-        const orientation = [
-          pitch + movementY * 0.01,
-          yaw - movementX * 0.01,
-          roll,
-        ] satisfies Vec3;
-        setView({ center, distance, orientation });
+        const newPitch = pitch + movementY * 0.01;
+        const newYaw = yaw - movementX * 0.01;
+        setView({
+          center,
+          distance,
+          orientation: [newYaw, newPitch, roll],
+        });
       }
     },
     { signal },

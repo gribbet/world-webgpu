@@ -66,5 +66,8 @@ export const createPickRegistry = () => {
     onDragEnd: createDispatch("onDragEnd"),
   };
 
-  return { allocate, ...dispatch };
+  const hasHandler = (id: number, type: PickEventType) =>
+    resolve(handlers.get(id)?.[type]) !== undefined;
+
+  return { allocate, hasHandler, ...dispatch };
 };

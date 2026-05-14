@@ -8,7 +8,7 @@ import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
 import type { PickEvent } from "./pick-registry";
 import { createRoot, createSignal, derived, map } from "./reactive";
-import { vec4Transition } from "./transition";
+import { createViewTransition, vec4Transition } from "./transition";
 import { createWorld } from "./world";
 
 const createCubeMesh = (): Mesh => {
@@ -116,11 +116,23 @@ export const createApp = () =>
 
     const context = await createContext(element);
 
-    const [view, setView] = createSignal<View>({
-      center: [-122.4194, 37.7749, 0], // SF
-      distance: 100000,
+    const [targetView, setTargetView] = createSignal<View>({
+      center: [0, 0, 0], // SF
+      distance: 100000000, // Start zoomed way out
       orientation: [0, 0, 0],
     });
+
+    // Zoom in after a short delay
+    setTimeout(() => {
+      setTargetView({
+        center: [-122.4194, 37.7749, 0],
+        distance: 100000,
+        orientation: [0, 0, 0],
+      });
+    }, 1000);
+
+    const view = createViewTransition(() => targetView());
+    const setView = (newView: View) => setTargetView(newView);
 
     const [time, setTime] = createSignal(0);
     const animate = (t: number) => {
@@ -247,7 +259,7 @@ export const createApp = () =>
         };
 
         return {
-          text: "◎",
+          text: "■",
           position,
           size: 6000,
           font: "sans-serif",
@@ -294,7 +306,7 @@ export const createApp = () =>
       layers,
     });
 
-    createControl({ element, world, view, setView });
+    createControl({ element, world, view: targetView, setView });
 
     return {
       dispose,

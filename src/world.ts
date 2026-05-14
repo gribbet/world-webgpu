@@ -46,11 +46,8 @@ export const createWorld = async (
   const projection = mat4.identity();
   effect(() => {
     const [width, height] = size();
-    const {
-      center,
-      distance,
-      orientation: [pitch, yaw, roll],
-    } = resolve(view);
+    const { center, distance, orientation } = resolve(view);
+    const [yaw, pitch, roll] = orientation;
 
     const aspect = width / height;
     const fov = (45 / 180) * Math.PI;
@@ -59,8 +56,8 @@ export const createWorld = async (
 
     mat4.perspective(fov, aspect, near, far, projection);
     mat4.translate(projection, [0, 0, -distance], projection);
-    mat4.rotateX(projection, pitch, projection);
     mat4.rotateY(projection, roll, projection);
+    mat4.rotateX(projection, pitch, projection);
     mat4.rotateZ(projection, -yaw, projection);
 
     viewUniform.item.center = center;
