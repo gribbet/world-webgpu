@@ -2,7 +2,7 @@ import { createContext } from "./context";
 import { createControl } from "./control";
 import { fill } from "./layers/fill";
 import { type Line, line } from "./layers/line/index";
-import { type Mesh, mesh, type Vertex } from "./layers/mesh";
+import { type Mesh, object, type Vertex } from "./layers/object";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
@@ -279,7 +279,7 @@ export const createApp = () =>
         ],
         indices: [0, 1, 2, 0, 2, 3],
       }),
-      mesh({
+      object({
         mesh: cubeMesh,
         instances: [
           {

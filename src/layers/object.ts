@@ -52,12 +52,12 @@ export type Instance = PickHandlers & {
   color?: Vec4;
 };
 
-export type MeshProps = {
+export type ObjectProps = {
   mesh: Mesh;
   instances: Properties<Instance>[];
 };
 
-export const mesh = createLayerType<MeshProps>(
+export const object = createLayerType<ObjectProps>(
   async (context, { mesh, instances }) => {
     const { device, pickRegistry } = context;
 
