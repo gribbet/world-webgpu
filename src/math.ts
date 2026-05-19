@@ -1,6 +1,6 @@
 import type { Vec2, Vec3, Vec4 } from "./model";
 
-const EARTH_CIRCUMFERENCE = 40075017; // meters
+export const EARTH_CIRCUMFERENCE = 40075017; // meters
 
 export const vec3Distance = (a: Vec3, b: Vec3): number => {
   const dx = a[0] - b[0];

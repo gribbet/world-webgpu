@@ -13,6 +13,7 @@ struct View {
     center: Position,
     projection: mat4x4<f32>,
     screenSize: vec2<f32>,
+    distance: f32,
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -51,7 +52,7 @@ fn transformSpherical(position: Position, center: Position) -> vec3<f32> {
 }
 
 fn transform(position: Position, center: Position, projection: mat4x4<f32>) -> vec3<f32> {
-    if abs(projection[3][3]) < 10000.0 {
+    if view.distance < 10000.0 {
         return transformFlat(position, center);
     }
     return transformSpherical(position, center);

@@ -9,7 +9,7 @@ import { createOutline } from "./outline";
 import { createPicker } from "./picker";
 import { effect, onCleanup, type Properties, resolve } from "./reactive";
 import { createRenderer } from "./renderer";
-import { buffer, mat4f, position, vec2f } from "./storage";
+import { buffer, f32, mat4f, position, vec2f } from "./storage";
 
 export type World = Awaited<ReturnType<typeof createWorld>>;
 
@@ -31,7 +31,12 @@ export const createWorld = async (
   const mouse = createMouse({ element, picker, pickRegistry });
 
   const viewUniform = buffer(
-    { center: position(), projection: mat4f(), screenSize: vec2f() },
+    {
+      center: position(),
+      projection: mat4f(),
+      screenSize: vec2f(),
+      distance: f32(),
+    },
     device,
     { usage: GPUBufferUsage.UNIFORM },
   );
@@ -46,16 +51,19 @@ export const createWorld = async (
   const projection = mat4.identity();
   effect(() => {
     const [width, height] = size();
-    const { center, distance, orientation } = resolve(view);
+    const { center, distance, orientation, fieldOfView } = resolve(view);
     const [yaw, pitch, roll] = orientation;
 
     const aspect = width / height;
-    const fov = (45 / 180) * Math.PI;
-    const near = distance / 100;
-    const far = distance * 100;
+    const fov = (fieldOfView / 180) * Math.PI;
+    const fieldScale = Math.tan(Math.PI / 8) / Math.tan(fov / 2);
+    const translateDist = distance * fieldScale;
+    const near = Math.max(translateDist - distance, distance * 0.001);
+    const far = Math.hypot(translateDist, distance * 100);
 
     mat4.perspective(fov, aspect, near, far, projection);
-    mat4.translate(projection, [0, 0, -distance], projection);
+
+    mat4.translate(projection, [0, 0, -translateDist], projection);
     mat4.rotateY(projection, roll, projection);
     mat4.rotateX(projection, pitch, projection);
     mat4.rotateZ(projection, -yaw, projection);
@@ -63,6 +71,7 @@ export const createWorld = async (
     viewUniform.item.center = center;
     viewUniform.item.projection = projection;
     viewUniform.item.screenSize = [width, height];
+    viewUniform.item.distance = distance;
   });
 
   const root = createContainerLayer(context, { layers });

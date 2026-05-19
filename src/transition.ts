@@ -122,6 +122,7 @@ export const createViewTransition = transition<View>(
         lerp(Math.log(current.distance), Math.log(targetDistance), q),
       ),
       orientation: lerpOrientation(current.orientation, target.orientation, q),
+      fieldOfView: lerp(current.fieldOfView, target.fieldOfView, q),
     };
   },
 );

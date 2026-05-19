@@ -6,4 +6,5 @@ export type View = {
   center: Vec3;
   distance: number;
   orientation: Vec3;
+  fieldOfView: number;
 };
