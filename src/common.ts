@@ -22,6 +22,12 @@ export const createLayerType =
   <R>(apply: <Q>(factory: LayerFactory<Q>, properties: Properties<Q>) => R) =>
     apply(factory, properties);
 
+export const createLayer = (
+  context: Context,
+  descriptor: LayerDescriptor,
+): Layer | Promise<Layer> =>
+  descriptor((factory, properties) => factory(context, properties));
+
 export const viewLayout = (device: GPUDevice) =>
   device.createBindGroupLayout({
     entries: [

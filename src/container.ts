@@ -1,4 +1,9 @@
-import type { Layer, LayerDescriptor, LayerFactory } from "./common";
+import {
+  createLayerType,
+  type Layer,
+  type LayerDescriptor,
+  type LayerFactory,
+} from "./common";
 import type { Context } from "./context";
 import {
   createSignal,
@@ -104,3 +109,6 @@ export const createContainerLayer = (
     render,
   };
 };
+
+export const container =
+  createLayerType<ContainerProperties>(createContainerLayer);

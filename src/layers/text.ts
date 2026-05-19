@@ -1,5 +1,4 @@
-import { createLayerType } from "../common";
-import { createContainerLayer } from "../container";
+import { createLayer, createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import { type PickHandlers } from "../pick-registry";
 import {
@@ -45,7 +44,5 @@ export const text = createLayerType<TextProps>((context, { entries }) => {
     return { ...rest, image };
   });
 
-  return createContainerLayer(context, {
-    layers: [billboard({ billboards })],
-  });
+  return createLayer(context, billboard({ billboards }));
 });

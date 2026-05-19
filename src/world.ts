@@ -1,7 +1,7 @@
 import { mat4 } from "wgpu-matrix";
 
-import { type LayerDescriptor, viewLayout } from "./common";
-import { createContainerLayer } from "./container";
+import { createLayer, type LayerDescriptor, viewLayout } from "./common";
+import { container } from "./container";
 import type { Context } from "./context";
 import type { View } from "./model";
 import { createMouse } from "./mouse";
@@ -74,7 +74,7 @@ export const createWorld = async (
     viewUniform.item.distance = distance;
   });
 
-  const root = createContainerLayer(context, { layers });
+  const root = await createLayer(context, container({ layers }));
 
   const outline = await createOutline(context);
 
