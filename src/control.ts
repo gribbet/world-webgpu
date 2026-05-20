@@ -1,6 +1,6 @@
 import { enuFromPosition, move } from "./math";
 import type { View } from "./model";
-import { type Accessor, onCleanup } from "./reactive";
+import { type Accessor, onCleanup } from "signals.ts";
 import type { World } from "./world";
 
 export const createControl = ({

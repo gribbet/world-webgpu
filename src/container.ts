@@ -1,11 +1,4 @@
 import {
-  createLayerType,
-  type Layer,
-  type LayerDescriptor,
-  type LayerFactory,
-} from "./common";
-import type { Context } from "./context";
-import {
   createSignal,
   derived,
   effect,
@@ -13,7 +6,15 @@ import {
   onCleanup,
   type Properties,
   resolve,
-} from "./reactive";
+} from "signals.ts";
+
+import {
+  createLayerType,
+  type Layer,
+  type LayerDescriptor,
+  type LayerFactory,
+} from "./common";
+import type { Context } from "./context";
 
 export type ContainerProperties = {
   layers: LayerDescriptor[];

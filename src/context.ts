@@ -1,7 +1,7 @@
 import { tileTextureLayers } from "./configuration";
 import type { Vec2 } from "./model";
 import { createPickRegistry } from "./pick-registry";
-import { createSignal, onCleanup } from "./reactive";
+import { createSignal, onCleanup } from "signals.ts";
 import { createTextureLoader } from "./texture-loader";
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

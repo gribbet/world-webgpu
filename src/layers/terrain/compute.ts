@@ -1,7 +1,8 @@
+import type { Accessor } from "signals.ts";
+import { derived } from "signals.ts";
+
 import { createBuffer, createDataBuffer } from "../../buffer";
 import { viewLayout } from "../../common";
-import type { Accessor } from "../../reactive";
-import { derived } from "../../reactive";
 
 export const createComputePipeline = async ({
   device,

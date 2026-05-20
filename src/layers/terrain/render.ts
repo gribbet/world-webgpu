@@ -1,6 +1,6 @@
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
-import { derived } from "../../reactive";
+import { derived } from "signals.ts";
 import { createLayerPipelines } from "../common";
 
 export const createRenderPipeline = async ({

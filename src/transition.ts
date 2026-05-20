@@ -1,6 +1,6 @@
 import { slerp } from "./math";
 import type { Vec3, View } from "./model";
-import { type Accessor, createSignal, derived } from "./reactive";
+import { type Accessor, createSignal, derived } from "signals.ts";
 
 let defaultNowSignal: Accessor<number> | undefined = undefined;
 

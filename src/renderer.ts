@@ -1,5 +1,5 @@
 import type { Context } from "./context";
-import { derived } from "./reactive";
+import { derived } from "signals.ts";
 import { createTexture } from "./texture";
 
 export const createRenderer = (context: Context) => {

@@ -1,7 +1,7 @@
 import { createResizableBuffer } from "./buffer";
 import { mercatorFromLonLat } from "./math";
 import type { Vec2, Vec3, Vec4 } from "./model";
-import { type Accessor, createSignal } from "./reactive";
+import { type Accessor, createSignal } from "signals.ts";
 
 type Field<T> = {
   readonly align: number;

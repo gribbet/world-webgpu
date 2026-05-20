@@ -2,7 +2,7 @@ import { mipLevelCount, tileTextureLayers } from "./configuration";
 import type { Context } from "./context";
 import { createImageLoad } from "./image-load";
 import { createLru } from "./lru";
-import { createSignal, onCleanup } from "./reactive";
+import { createSignal, onCleanup } from "signals.ts";
 import { createTexture } from "./texture";
 
 export const createTextureGroup = ({

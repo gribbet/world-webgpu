@@ -1,7 +1,7 @@
 import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import type { PickHandlers } from "../pick-registry";
-import { derived, effect, resolve } from "../reactive";
+import { derived, effect, resolve } from "signals.ts";
 import { array, position, struct, structArray, u32, vec4f } from "../storage";
 import { createLayerPipelines } from "./common";
 

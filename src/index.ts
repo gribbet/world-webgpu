@@ -1,9 +1,24 @@
-export { createLayerType } from "./common";
+export { createLayer, createLayerType } from "./common";
+export { container } from "./container";
 export { createContext } from "./context";
 export { createControl } from "./control";
+export { billboard } from "./layers/billboard";
+export { fill } from "./layers/fill";
+export type { Line } from "./layers/line";
+export { line } from "./layers/line";
+export type { Mesh, Vertex } from "./layers/object";
 export { object } from "./layers/object";
 export { terrain } from "./layers/terrain";
+export type { TextEntry } from "./layers/text";
+export { text } from "./layers/text";
+export type { Vec2, Vec3, Vec4 } from "./model";
 export type { View } from "./model";
-export { createRoot, createSignal } from "./reactive";
-export { createViewTransition, vec4Transition } from "./transition";
+export type { PickEvent } from "./pick-registry";
+export {
+  createViewTransition,
+  quaternionTransition,
+  vec3Transition,
+  vec4Transition,
+} from "./transition";
 export { createWorld } from "./world";
+export { createRoot, createSignal, derived, resolve } from "signals.ts";

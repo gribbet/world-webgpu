@@ -1,6 +1,6 @@
 import type { PickRegistry } from "./pick-registry";
 import type { Picker } from "./picker";
-import { createSignal, onCleanup } from "./reactive";
+import { createSignal, onCleanup } from "signals.ts";
 
 export const createMouse = ({
   element,

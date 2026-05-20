@@ -1,3 +1,4 @@
+import { effect, onCleanup, type Properties, resolve } from "signals.ts";
 import { mat4 } from "wgpu-matrix";
 
 import { createLayer, type LayerDescriptor, viewLayout } from "./common";
@@ -7,7 +8,6 @@ import type { View } from "./model";
 import { createMouse } from "./mouse";
 import { createOutline } from "./outline";
 import { createPicker } from "./picker";
-import { effect, onCleanup, type Properties, resolve } from "./reactive";
 import { createRenderer } from "./renderer";
 import { buffer, f32, mat4f, position, vec2f } from "./storage";
 

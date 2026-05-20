@@ -1,5 +1,5 @@
 import type { Vec3 } from "./model";
-import { onCleanup, type Properties, resolve } from "./reactive";
+import { onCleanup, type Properties, resolve } from "signals.ts";
 
 export type PickEvent = {
   id: number;

@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "./reactive";
+import { createSignal, onCleanup } from "signals.ts";
 
 export const createBuffer = (
   device: GPUDevice,

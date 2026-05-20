@@ -7,6 +7,9 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "sourceMap": true,
-    "types": ["@webgpu/types"]
+    "types": ["@webgpu/types"],
+    "paths": {
+      "signals.ts": ["../signals.ts/src"]
+    }
   }
 }

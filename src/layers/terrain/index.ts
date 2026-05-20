@@ -2,7 +2,7 @@ import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
 import { terrainDownsample } from "../../configuration";
 import type { PickHandlers } from "../../pick-registry";
-import { derived, onCleanup, resolve } from "../../reactive";
+import { derived, onCleanup, resolve } from "signals.ts";
 import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
 import { createTileMapBuffer } from "./tile-map-buffer";

@@ -1,4 +1,4 @@
-import { onCleanup } from "./reactive";
+import { onCleanup } from "signals.ts";
 
 export const createTexture = (
   device: GPUDevice,

@@ -1,13 +1,14 @@
-import { createLayer, createLayerType } from "../common";
-import type { Vec3, Vec4 } from "../model";
-import { type PickHandlers } from "../pick-registry";
 import {
   createSignal,
   effect,
   map,
   type Properties,
   resolve,
-} from "../reactive";
+} from "signals.ts";
+
+import { createLayer, createLayerType } from "../common";
+import type { Vec3, Vec4 } from "../model";
+import { type PickHandlers } from "../pick-registry";
 import { billboard } from "./billboard";
 import { createTextImage } from "./text-image";
 

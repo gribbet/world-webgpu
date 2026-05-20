@@ -2,8 +2,8 @@ import { createDataBuffer, createResizableBuffer } from "../../buffer";
 import { createLayerType, viewLayout } from "../../common";
 import type { Vec3, Vec4 } from "../../model";
 import type { PickHandlers } from "../../pick-registry";
-import type { Properties } from "../../reactive";
-import { derived, effect, resolve } from "../../reactive";
+import type { Properties } from "signals.ts";
+import { derived, effect, resolve } from "signals.ts";
 import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
 import { createLayerPipelines } from "../common";
 

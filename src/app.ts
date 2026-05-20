@@ -1,3 +1,5 @@
+import { createRoot, createSignal, derived, map } from "signals.ts";
+
 import { createContext } from "./context";
 import { createControl } from "./control";
 import { fill } from "./layers/fill";
@@ -7,7 +9,6 @@ import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
 import type { PickEvent } from "./pick-registry";
-import { createRoot, createSignal, derived, map } from "./reactive";
 import { createViewTransition, vec4Transition } from "./transition";
 import { createWorld } from "./world";
 

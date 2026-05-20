@@ -9,7 +9,7 @@ import {
   onCleanup,
   type Properties,
   resolve,
-} from "../reactive";
+} from "signals.ts";
 import {
   createSlotAllocator,
   f32,

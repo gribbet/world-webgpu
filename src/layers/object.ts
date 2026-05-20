@@ -1,7 +1,3 @@
-import { createDataBuffer } from "../buffer";
-import { createLayerType } from "../common";
-import type { Vec2, Vec3, Vec4 } from "../model";
-import type { PickHandlers } from "../pick-registry";
 import {
   createSignal,
   derived,
@@ -10,7 +6,12 @@ import {
   onCleanup,
   type Properties,
   resolve,
-} from "../reactive";
+} from "signals.ts";
+
+import { createDataBuffer } from "../buffer";
+import { createLayerType } from "../common";
+import type { Vec2, Vec3, Vec4 } from "../model";
+import type { PickHandlers } from "../pick-registry";
 import {
   createSlotAllocator,
   f32,
@@ -67,7 +68,7 @@ export const object = createLayerType<ObjectProps>(
     });
 
     const code = await (
-      await fetch(new URL("./mesh.wgsl", import.meta.url))
+      await fetch(new URL("./object.wgsl", import.meta.url))
     ).text();
 
     const bindGroupLayout = device.createBindGroupLayout({
