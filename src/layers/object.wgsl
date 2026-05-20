@@ -6,6 +6,7 @@ struct Instance {
     maxScalePixels: f32,
     color: vec4<f32>,
     pickId: u32,
+    diffuse: vec4<f32>,
 };
 
 @group(1) @binding(0) var<storage, read> instances: array<Instance>;
@@ -17,6 +18,7 @@ struct VertexOutput {
     @location(2) normal: vec3<f32>,
     @location(3) local: vec3<f32>,
     @location(4) @interpolate(flat) id: u32,
+    @location(5) diffuse: vec4<f32>,
 };
 
 fn rotateQuat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
@@ -92,6 +94,7 @@ fn vertex(
     output.normal = basis * rotateQuat(normal, instance.orientation);
     output.local = local;
     output.id = instance.pickId;
+    output.diffuse = instance.diffuse;
     return output;
 }
 
@@ -100,7 +103,8 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     if input.color.a < 0.01 {
         discard;
     }
-    return input.color;
+    let intensity = max(0.0, dot(input.normal, vec3<f32>(0.0, 0.0, 1.0)));
+    return vec4<f32>(input.color.rgb + input.diffuse.rgb * intensity, input.color.a);
 }
 
 @fragment

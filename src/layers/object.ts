@@ -30,6 +30,7 @@ const instanceStruct = struct({
   maxScalePixels: f32(),
   color: vec4f(),
   pickId: u32(),
+  diffuse: vec4f(),
 });
 
 export type Vertex = {
@@ -51,6 +52,7 @@ export type Instance = PickHandlers & {
   minScalePixels?: number;
   maxScalePixels?: number;
   color?: Vec4;
+  diffuse?: Vec4;
 };
 
 export type ObjectProps = CommonLayerProps & {
@@ -161,6 +163,7 @@ export const object = createLayerType<ObjectProps>(
         minScalePixels,
         maxScalePixels,
         color,
+        diffuse,
       } = instance;
       item.pickId = pickRegistry.allocate(instance);
 
@@ -177,6 +180,9 @@ export const object = createLayerType<ObjectProps>(
       });
       effect(() => {
         item.color = resolve(color) ?? [1, 1, 1, 1];
+      });
+      effect(() => {
+        item.diffuse = resolve(diffuse) ?? [1, 1, 1, 1];
       });
     });
 
