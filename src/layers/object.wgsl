@@ -25,9 +25,10 @@ fn rotateQuat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
 
 fn computeLocalBasis(position: Position, center: Position) -> mat3x3<f32> {
     if view.distance < 10000.0 {
+        // X→North, Y→West (−East), Z→Up
         return mat3x3<f32>(
-            vec3<f32>(1.0, 0.0, 0.0),
             vec3<f32>(0.0, 1.0, 0.0),
+            vec3<f32>(-1.0, 0.0, 0.0),
             vec3<f32>(0.0, 0.0, 1.0),
         );
     }
@@ -50,7 +51,8 @@ fn computeLocalBasis(position: Position, center: Position) -> mat3x3<f32> {
         sinLat.y * sinLat.x + cosLat.y * cosLat.x * cosDLon,
     );
     let north = cross(up, east);
-    return mat3x3<f32>(east, north, up);
+    // X→North, Y→West (−East), Z→Up
+    return mat3x3<f32>(north, cross(up, north), up);
 }
 
 fn computePixelsPerUnit(origin: vec3<f32>) -> f32 {

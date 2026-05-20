@@ -167,9 +167,9 @@ export const object = createLayerType<ObjectProps>(
       effect(() => {
         item.position = resolve(position);
       });
-      effect(
-        () => void (item.orientation = resolve(orientation) ?? [0, 0, 0, 1]),
-      );
+      effect(() => {
+        item.orientation = resolve(orientation) ?? [0, 0, 0, 1];
+      });
       effect(() => {
         item.scale = resolve(scale) ?? 1;
         item.minScalePixels = resolve(minScalePixels) ?? -1;
