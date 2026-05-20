@@ -1,5 +1,6 @@
-import type { Context } from "./context";
 import type { Properties } from "signals.ts";
+
+import type { Context } from "./context";
 
 export type Layer = {
   compute?: (pass: GPUComputePassEncoder) => void;
