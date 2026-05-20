@@ -12,6 +12,8 @@ export type LinePoint = {
   position: Vec3;
   color: Vec4;
   width: number;
+  minWidthPixels?: number;
+  maxWidthPixels?: number;
 };
 
 export type Line = PickHandlers & {
@@ -26,6 +28,8 @@ const pointStruct = struct({
   position: position(),
   width: f32(),
   color: vec4f(),
+  minWidthPixels: f32(),
+  maxWidthPixels: f32(),
 });
 
 const nodeStruct = struct({
@@ -151,8 +155,6 @@ export const line = createLayerType<LineProps>(
 
     let nodeCount = 0;
     let indexCount = 0;
-    let pointsDirty = false;
-    let nodesDirty = false;
     let indicesDirty = false;
     let topologyKey = "";
 
@@ -180,10 +182,10 @@ export const line = createLayerType<LineProps>(
           item.position = resolve(point.position);
           item.width = resolve(point.width);
           item.color = resolve(point.color);
+          item.minWidthPixels = resolve(point.minWidthPixels) ?? 0;
+          item.maxWidthPixels = resolve(point.maxWidthPixels) ?? Infinity;
           pi++;
         }
-
-      pointsDirty = true;
 
       if (!topologyChanged) return;
 
@@ -217,21 +219,13 @@ export const line = createLayerType<LineProps>(
       indexCount = nodeCount * 12;
       ensureIndexCapacity(nodeCount);
       nodeCountData[0] = nodeCount;
-      nodesDirty = true;
       indicesDirty = true;
     });
 
     const update = () => {
-      if (!pointsDirty && !nodesDirty) return;
-      if (pointsDirty) {
-        pointsStorage.flush();
-        pointsDirty = false;
-      }
-      if (nodesDirty) {
-        nodesStorage.flush();
-        device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
-        nodesDirty = false;
-      }
+      pointsStorage.flush();
+      nodesStorage.flush();
+      device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
     };
 
     const compute = (pass: GPUComputePassEncoder) => {

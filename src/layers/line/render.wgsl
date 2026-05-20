@@ -2,6 +2,8 @@ struct Point {
     position: Position,
     width: f32,
     color: vec4<f32>,
+    minWidthPixels: f32,
+    maxWidthPixels: f32,
 };
 
 struct Node {
@@ -104,7 +106,9 @@ fn vertex(@builtin(vertex_index) index: u32) -> VertexOutput {
     let clipCurrent = view.projection * vec4(localCurrent, 1.0);
     let clipNext = view.projection * vec4(localNext, 1.0);
 
-    let halfPx = current.width * 0.5 * pixelsPerUnit(localCurrent);
+    var widthPx = current.width * pixelsPerUnit(localCurrent);
+    widthPx = clamp(widthPx, current.minWidthPixels, current.maxWidthPixels);
+    let halfPx = widthPx * 0.5;
     let halfScreen = view.screenSize * 0.5;
     let screenPrev = toScreen(clipPrev);
     let screenCurrent = toScreen(clipCurrent);
