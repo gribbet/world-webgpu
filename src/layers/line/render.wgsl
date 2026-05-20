@@ -151,7 +151,7 @@ fn vertex(@builtin(vertex_index) index: u32) -> VertexOutput {
 @fragment
 fn render(in: VertexOutput) -> @location(0) vec4<f32> {
     if in.color.a < 0.01 { discard; }
-    return vec4(in.color.rgb * in.color.a, in.color.a);
+    return in.color;
 }
 
 @fragment
