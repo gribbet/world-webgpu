@@ -1,8 +1,9 @@
+import { derived } from "signals.ts";
+
 import { createBuffer } from "./buffer";
 import { createLock } from "./common";
 import type { Context } from "./context";
 import { lonLatFromMercator } from "./math";
-import { derived } from "signals.ts";
 import { createTexture } from "./texture";
 
 export type Picker = ReturnType<typeof createPicker>;

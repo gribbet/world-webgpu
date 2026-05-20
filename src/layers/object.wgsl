@@ -106,5 +106,5 @@ fn pick(input: VertexOutput) -> PickOutput {
     if input.color.a < 0.01 {
         discard;
     }
-    return packPick(input.local, input.id);
+    return pickOutput(input.local, input.id);
 }

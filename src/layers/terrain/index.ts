@@ -1,10 +1,11 @@
+import { derived, onCleanup, resolve } from "signals.ts";
+
 import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
 import { terrainDownsample } from "../../configuration";
 import type { PickHandlers } from "../../pick-registry";
-import { derived, onCleanup, resolve } from "signals.ts";
-import { createComputePipeline } from "./compute";
 import { type CommonLayerProps } from "../common";
+import { createComputePipeline } from "./compute";
 import { createRenderPipeline } from "./render";
 import { createTileMapBuffer } from "./tile-map-buffer";
 import { createTileTextureGroup } from "./tile-texture-group";

@@ -17,6 +17,7 @@ struct View {
 };
 
 @group(0) @binding(0) var<uniform> view: View;
+@group(0) @binding(1) var<uniform> excludedPickId: u32;
 
 fn transformFlat(position: Position, center: Position) -> vec3<f32> {
     let di = bitcast<vec2<i32>>(vec2<u32>(position.x, position.y) - vec2<u32>(center.x, center.y));
@@ -107,4 +108,9 @@ fn packPick(local: vec3<f32>, id: u32) -> PickOutput {
         vec2<f32>(ONE - 1.0),
     ));
     return PickOutput(xy, p.z, id);
+}
+
+fn pickOutput(local: vec3<f32>, id: u32) -> PickOutput {
+    if id == excludedPickId { discard; }
+    return packPick(local, id);
 }

@@ -1,7 +1,8 @@
+import { derived } from "signals.ts";
+
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
-import { derived } from "signals.ts";
-import { createLayerPipelines, type CommonLayerProps } from "../common";
+import { type CommonLayerProps, createLayerPipelines } from "../common";
 
 export const createRenderPipeline = async ({
   context,

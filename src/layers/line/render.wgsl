@@ -157,5 +157,5 @@ fn render(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn pick(in: VertexOutput) -> PickOutput {
     if in.color.a < 0.01 { discard; }
-    return packPick(in.local, in.id);
+    return pickOutput(in.local, in.id);
 }

@@ -1,3 +1,4 @@
+export type { LayerDescriptor } from "./common";
 export { createLayer, createLayerType } from "./common";
 export { container } from "./container";
 export { createContext } from "./context";
@@ -8,6 +9,8 @@ export type { Line } from "./layers/line";
 export { line } from "./layers/line";
 export type { Mesh, Vertex } from "./layers/object";
 export { object } from "./layers/object";
+export type { PolygonProps } from "./layers/polygon";
+export { polygon } from "./layers/polygon";
 export { terrain } from "./layers/terrain";
 export type { TextEntry } from "./layers/text";
 export { text } from "./layers/text";

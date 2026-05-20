@@ -1,4 +1,4 @@
-import type { Properties } from "signals.ts";
+import { type Properties } from "signals.ts";
 import { derived, effect, resolve } from "signals.ts";
 
 import { createDataBuffer, createResizableBuffer } from "../../buffer";

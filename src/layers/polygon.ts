@@ -3,12 +3,14 @@ import { createSignal, effect, resolve } from "signals.ts";
 import { createLayer, createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import type { PickHandlers } from "../pick-registry";
+import { type CommonLayerProps } from "./common";
 import { fill } from "./fill";
 
-export type PolygonProps = PickHandlers & {
-  vertices: Vec3[];
-  color: Vec4;
-};
+export type PolygonProps = PickHandlers &
+  CommonLayerProps & {
+    vertices: Vec3[];
+    color: Vec4;
+  };
 
 const area = (p: Vec3[]) =>
   p.reduce((s, a, i) => {
@@ -71,7 +73,7 @@ const earcut = (vertices: Vec3[]) => {
 };
 
 export const polygon = createLayerType<PolygonProps>(
-  (context, { vertices, color, ...pickHandlers }) => {
+  (context, { vertices, color, depth, polygonOffset, ...pickHandlers }) => {
     const [fillVertices, setFillVertices] = createSignal<
       { position: Vec3; color: Vec4 }[]
     >([]);
@@ -87,7 +89,13 @@ export const polygon = createLayerType<PolygonProps>(
 
     return createLayer(
       context,
-      fill({ ...pickHandlers, vertices: fillVertices, indices }),
+      fill({
+        ...pickHandlers,
+        vertices: fillVertices,
+        indices,
+        depth,
+        polygonOffset,
+      }),
     );
   },
 );

@@ -26,13 +26,14 @@ export const createMouse = ({
       allowDrag: boolean;
     }
   >();
-  const [isDragging, setIsDragging] = createSignal(false);
+  const [draggingId, setDraggingId] = createSignal(0);
   let draggingPointers = 0;
 
-  const setPointerDragging = (active: boolean) => {
+  const setPointerDragging = (active: boolean, targetId: number) => {
     draggingPointers += active ? 1 : -1;
     if (draggingPointers < 0) draggingPointers = 0;
-    setIsDragging(draggingPointers > 0);
+    if (active) setDraggingId(targetId);
+    else if (draggingPointers === 0) setDraggingId(0);
   };
 
   const pointerPosition = (event: { clientX: number; clientY: number }) => {
@@ -90,7 +91,7 @@ export const createMouse = ({
 
         if (gesture.allowDrag && !gesture.dragging && moved) {
           gesture.dragging = true;
-          setPointerDragging(true);
+          setPointerDragging(true, gesture.targetId);
           pickRegistry.onDragStart(picked, gesture.targetId);
         }
         if (gesture.dragging) pickRegistry.onDrag(picked, gesture.targetId);
@@ -114,7 +115,7 @@ export const createMouse = ({
       const moved = dx ** 2 + dy ** 2 > dragThresholdSquared;
 
       if (gesture.dragging) {
-        setPointerDragging(false);
+        setPointerDragging(false, gesture.targetId);
         pickRegistry.onDragEnd(picked, gesture.targetId);
       } else if (!moved && picked.id === gesture.targetId)
         pickRegistry.onClick(picked, gesture.targetId);
@@ -128,5 +129,5 @@ export const createMouse = ({
 
   onCleanup(() => abortController.abort());
 
-  return { isDragging };
+  return { draggingId };
 };

@@ -6,7 +6,6 @@ import { container } from "./container";
 import type { Context } from "./context";
 import type { View } from "./model";
 import { createMouse } from "./mouse";
-import { createOutline } from "./outline";
 import { createPicker } from "./picker";
 import { createRenderer } from "./renderer";
 import { buffer, f32, mat4f, position, vec2f } from "./storage";
@@ -41,11 +40,19 @@ export const createWorld = async (
     { usage: GPUBufferUsage.UNIFORM },
   );
 
+  const excludedPickIdBuffer = device.createBuffer({
+    size: 4,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
   const layout = viewLayout(device);
 
   const bindGroup = device.createBindGroup({
     layout,
-    entries: [{ binding: 0, resource: { buffer: viewUniform.buffer() } }],
+    entries: [
+      { binding: 0, resource: { buffer: viewUniform.buffer() } },
+      { binding: 1, resource: { buffer: excludedPickIdBuffer } },
+    ],
   });
 
   const projection = mat4.identity();
@@ -74,9 +81,15 @@ export const createWorld = async (
     viewUniform.item.distance = distance;
   });
 
-  const root = await createLayer(context, container({ layers }));
+  effect(() => {
+    device.queue.writeBuffer(
+      excludedPickIdBuffer,
+      0,
+      new Uint32Array([mouse.draggingId()]),
+    );
+  });
 
-  const outline = await createOutline(context);
+  const root = await createLayer(context, container({ layers }));
 
   let running = true;
   const frame = () => {
@@ -145,18 +158,6 @@ export const createWorld = async (
     root.render(pickPass, { pick: true });
     pickPass.end();
 
-    const outlinePass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: context.context.getCurrentTexture().createView(),
-          loadOp: "load",
-          storeOp: "store",
-        },
-      ],
-    });
-    outline.render(outlinePass, idView());
-    outlinePass.end();
-
     device.queue.submit([encoder.finish()]);
 
     requestAnimationFrame(frame);
@@ -169,6 +170,6 @@ export const createWorld = async (
 
   return {
     pick: picker.pick,
-    isDragging: mouse.isDragging,
+    isDragging: () => mouse.draggingId() !== 0,
   };
 };
