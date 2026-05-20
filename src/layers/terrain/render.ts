@@ -1,7 +1,7 @@
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
 import { derived } from "signals.ts";
-import { createLayerPipelines } from "../common";
+import { createLayerPipelines, type CommonLayerProps } from "../common";
 
 export const createRenderPipeline = async ({
   context,
@@ -10,6 +10,8 @@ export const createRenderPipeline = async ({
   imageryTextures,
   elevationTextures,
   pickId,
+  depth,
+  polygonOffset,
 }: {
   context: Context;
   tilesBuffer: GPUBuffer;
@@ -17,6 +19,8 @@ export const createRenderPipeline = async ({
   imageryTextures: () => GPUTexture;
   elevationTextures: () => GPUTexture;
   pickId: number;
+  depth?: boolean;
+  polygonOffset?: CommonLayerProps["polygonOffset"];
 }) => {
   const { device } = context;
   const code = await (
@@ -70,6 +74,8 @@ export const createRenderPipeline = async ({
     ],
     topology: "triangle-list",
     code,
+    depth,
+    polygonOffset,
   });
 
   const resolution = 21;
@@ -144,7 +150,7 @@ export const createRenderPipeline = async ({
     pass: GPURenderPassEncoder,
     { pick }: { pick?: boolean } = {},
   ) => {
-    pass.setPipeline(pick ? pickPipeline : pipeline);
+    pass.setPipeline(pick ? pickPipeline() : pipeline());
     pass.setVertexBuffer(0, verticesBuffer);
     pass.setIndexBuffer(indicesBuffer, "uint32");
     pass.setBindGroup(1, bindGroup());

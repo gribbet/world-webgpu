@@ -4,17 +4,19 @@ import { terrainDownsample } from "../../configuration";
 import type { PickHandlers } from "../../pick-registry";
 import { derived, onCleanup, resolve } from "signals.ts";
 import { createComputePipeline } from "./compute";
+import { type CommonLayerProps } from "../common";
 import { createRenderPipeline } from "./render";
 import { createTileMapBuffer } from "./tile-map-buffer";
 import { createTileTextureGroup } from "./tile-texture-group";
 
-export type TerrainProps = PickHandlers & {
-  imageryUrl: string;
-  elevationUrl: string;
-};
+export type TerrainProps = PickHandlers &
+  CommonLayerProps & {
+    imageryUrl: string;
+    elevationUrl: string;
+  };
 
 export const terrain = createLayerType<TerrainProps>(async (context, props) => {
-  const { imageryUrl, elevationUrl } = props;
+  const { imageryUrl, elevationUrl, depth, polygonOffset } = props;
   const { device, pickRegistry } = context;
 
   const tilesBuffer = createDataBuffer(
@@ -72,6 +74,8 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
     imageryTextures,
     elevationTextures,
     pickId,
+    depth: resolve(depth) ?? true,
+    polygonOffset: resolve(polygonOffset),
   });
 
   const compute = (pass: GPUComputePassEncoder) =>

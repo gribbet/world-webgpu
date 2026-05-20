@@ -20,7 +20,7 @@ import {
   u32,
   vec4f,
 } from "../storage";
-import { createLayerPipelines } from "./common";
+import { type CommonLayerProps, createLayerPipelines } from "./common";
 
 const instanceStruct = struct({
   position: position(),
@@ -53,13 +53,13 @@ export type Instance = PickHandlers & {
   color?: Vec4;
 };
 
-export type ObjectProps = {
+export type ObjectProps = CommonLayerProps & {
   mesh: Mesh;
   instances: Properties<Instance>[];
 };
 
 export const object = createLayerType<ObjectProps>(
-  async (context, { mesh, instances }) => {
+  async (context, { mesh, instances, depth, polygonOffset }) => {
     const { device, pickRegistry } = context;
 
     const slots = createSlotAllocator(instanceStruct, device, {
@@ -86,6 +86,8 @@ export const object = createLayerType<ObjectProps>(
       code,
       topology: "triangle-list",
       bindGroupLayout,
+      depth,
+      polygonOffset,
       buffers: [
         {
           arrayStride: 48,
@@ -187,7 +189,7 @@ export const object = createLayerType<ObjectProps>(
       const buffers = meshBuffers();
       const count = slots.count();
       if (count === 0 || !buffers) return;
-      pass.setPipeline(pick ? pickPipeline : pipeline);
+      pass.setPipeline(pick ? pickPipeline() : pipeline());
       pass.setBindGroup(1, bindGroup());
       pass.setVertexBuffer(0, buffers.vertex);
       pass.setIndexBuffer(buffers.indices, "uint32");

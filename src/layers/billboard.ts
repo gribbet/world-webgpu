@@ -1,6 +1,3 @@
-import { createLayerType } from "../common";
-import type { Vec3, Vec4 } from "../model";
-import type { PickHandlers } from "../pick-registry";
 import {
   createSignal,
   derived,
@@ -10,6 +7,10 @@ import {
   type Properties,
   resolve,
 } from "signals.ts";
+
+import { createLayerType } from "../common";
+import type { Vec3, Vec4 } from "../model";
+import type { PickHandlers } from "../pick-registry";
 import {
   createSlotAllocator,
   f32,
@@ -20,7 +21,7 @@ import {
   vec4f,
 } from "../storage";
 import { createTextureGroup } from "../texture-group";
-import { createLayerPipelines } from "./common";
+import { type CommonLayerProps, createLayerPipelines } from "./common";
 
 const billboardStruct = struct({
   position: position(),
@@ -43,12 +44,12 @@ export type Billboard = PickHandlers & {
   maxScale?: number;
 };
 
-export type BillboardProps = {
+export type BillboardProps = CommonLayerProps & {
   billboards: Properties<Billboard>[];
 };
 
 export const billboard = createLayerType<BillboardProps>(
-  async (context, { billboards }) => {
+  async (context, { billboards, depth, polygonOffset }) => {
     const { device, pickRegistry } = context;
 
     const slots = createSlotAllocator(billboardStruct, device, {
@@ -109,6 +110,8 @@ export const billboard = createLayerType<BillboardProps>(
       code,
       topology: "triangle-strip",
       bindGroupLayout,
+      depth,
+      polygonOffset,
     });
 
     const bindGroup = derived(() =>
@@ -167,7 +170,7 @@ export const billboard = createLayerType<BillboardProps>(
     ) => {
       const count = slots.count();
       if (count === 0) return;
-      pass.setPipeline(pick ? pickPipeline : pipeline);
+      pass.setPipeline(pick ? pickPipeline() : pipeline());
       pass.setBindGroup(1, bindGroup());
       pass.draw(4, count, 0, 0);
     };

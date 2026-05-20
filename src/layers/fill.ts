@@ -1,19 +1,21 @@
+import { derived, effect, resolve } from "signals.ts";
+
 import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import type { PickHandlers } from "../pick-registry";
-import { derived, effect, resolve } from "signals.ts";
 import { array, position, struct, structArray, u32, vec4f } from "../storage";
-import { createLayerPipelines } from "./common";
+import { type CommonLayerProps, createLayerPipelines } from "./common";
 
 export type Vertex = {
   position: Vec3;
   color: Vec4;
 };
 
-export type FillProps = PickHandlers & {
-  vertices: Vertex[];
-  indices: number[];
-};
+export type FillProps = PickHandlers &
+  CommonLayerProps & {
+    vertices: Vertex[];
+    indices: number[];
+  };
 
 const vertexStruct = struct({
   position: position(),
@@ -22,7 +24,7 @@ const vertexStruct = struct({
 });
 
 export const fill = createLayerType<FillProps>(async (context, props) => {
-  const { vertices, indices } = props;
+  const { vertices, indices, depth, polygonOffset } = props;
   const { device, pickRegistry } = context;
 
   const storage = structArray(vertexStruct, device, {
@@ -52,6 +54,8 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
     context,
     bindGroupLayout,
     code,
+    depth,
+    polygonOffset,
   });
 
   const bindGroup = derived(() =>
@@ -95,7 +99,7 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
     { pick }: { pick?: boolean } = {},
   ) => {
     if (indexCount === 0) return;
-    pass.setPipeline(pick ? pickPipeline : pipeline);
+    pass.setPipeline(pick ? pickPipeline() : pipeline());
     pass.setBindGroup(1, bindGroup());
     pass.setIndexBuffer(indexStorage.buffer(), "uint32");
     pass.drawIndexed(indexCount);
