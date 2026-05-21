@@ -1,14 +1,12 @@
-import { type Properties } from "signals.ts";
 import { derived, effect, resolve } from "signals.ts";
 
-import { createDataBuffer, createResizableBuffer } from "../../buffer";
-import { createLayerType, viewLayout } from "../../common";
+import { createLayerType } from "../../common";
 import type { Vec3, Vec4 } from "../../model";
 import type { PickHandlers } from "../../pick-registry";
 import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
 import { type CommonLayerProps, createLayerPipelines } from "../common";
 
-export type LinePoint = {
+export type Vertex = {
   position: Vec3;
   color: Vec4;
   width: number;
@@ -16,237 +14,102 @@ export type LinePoint = {
   maxWidthPixels?: number;
 };
 
-export type Line = PickHandlers & {
-  points: Properties<LinePoint>[];
-};
+export type LineProps = PickHandlers &
+  CommonLayerProps & {
+    vertices: Vertex[][];
+  };
 
-export type LineProps = CommonLayerProps & {
-  lines: Properties<Line>[];
-};
-
-const pointStruct = struct({
+const vertexStruct = struct({
   position: position(),
   width: f32(),
   color: vec4f(),
   minWidthPixels: f32(),
   maxWidthPixels: f32(),
-});
-
-const nodeStruct = struct({
-  prev: u32(),
-  current: u32(),
-  next: u32(),
+  flags: u32(), // bit 0 = isFirst, bit 1 = isLast
   pickId: u32(),
 });
 
-export const line = createLayerType<LineProps>(
-  async (context, { lines, depth, polygonOffset }) => {
-    const { device, pickRegistry } = context;
+export const line = createLayerType<LineProps>(async (context, props) => {
+  const { vertices, depth, polygonOffset } = props;
+  const { device, pickRegistry } = context;
 
-    const pointsStorage = structArray(pointStruct, device, {
-      usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 1024,
-    });
-    const nodesStorage = structArray(nodeStruct, device, {
-      usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 1024,
-    });
+  const storage = structArray(vertexStruct, device, {
+    usage: GPUBufferUsage.STORAGE,
+    initialCapacity: 1024,
+  });
 
-    const indexBuffer = createResizableBuffer(
-      device,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX,
-      1024 * 12 * 4,
-    );
+  const code = await (
+    await fetch(new URL("./render.wgsl", import.meta.url))
+  ).text();
 
-    const ensureIndexCapacity = (requiredNodes: number) => {
-      indexBuffer.ensureSize(requiredNodes * 12 * 4);
-    };
-    const nodeCountData = new Uint32Array(1);
-    const nodeCountBuffer = createDataBuffer(
-      device,
-      GPUBufferUsage.UNIFORM,
-      nodeCountData,
-    );
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+    ],
+  });
 
-    const renderCode = await (
-      await fetch(new URL("./render.wgsl", import.meta.url))
-    ).text();
+  const { pipeline, pickPipeline } = await createLayerPipelines({
+    context,
+    bindGroupLayout,
+    code,
+    depth,
+    polygonOffset,
+  });
 
-    const renderBindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: "read-only-storage" },
-        },
-      ],
-    });
+  const bindGroup = derived(() =>
+    device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: [{ binding: 0, resource: { buffer: storage.buffer() } }],
+    }),
+  );
 
-    const { pipeline, pickPipeline } = await createLayerPipelines({
-      context,
-      bindGroupLayout: renderBindGroupLayout,
-      code: renderCode,
-      depth,
-      polygonOffset,
-    });
+  const pickId = pickRegistry.allocate(props);
+  let totalVertices = 0;
 
-    const renderBindGroup = derived(() =>
-      device.createBindGroup({
-        layout: renderBindGroupLayout,
-        entries: [
-          { binding: 0, resource: { buffer: pointsStorage.buffer() } },
-          { binding: 1, resource: { buffer: nodesStorage.buffer() } },
-        ],
-      }),
-    );
+  effect(() => {
+    const polylines = resolve(vertices);
+    const id = pickId();
 
-    const commonCode = await (
-      await fetch(new URL("../common.wgsl", import.meta.url))
-    ).text();
-    const computeCode = await (
-      await fetch(new URL("./compute.wgsl", import.meta.url))
-    ).text();
-    const computeModule = device.createShaderModule({
-      code: commonCode + computeCode,
-    });
+    let count = 0;
+    for (const polyline of polylines) count += polyline.length;
+    storage.resize(count);
 
-    const computeBindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage" },
-        },
-      ],
-    });
-
-    const computePipeline = await device.createComputePipelineAsync({
-      layout: device.createPipelineLayout({
-        bindGroupLayouts: [viewLayout(device), computeBindGroupLayout],
-      }),
-      compute: { module: computeModule, entryPoint: "generateIndices" },
-    });
-
-    const computeBindGroup = derived(() =>
-      device.createBindGroup({
-        layout: computeBindGroupLayout,
-        entries: [
-          { binding: 0, resource: { buffer: nodesStorage.buffer() } },
-          { binding: 1, resource: { buffer: nodeCountBuffer } },
-          { binding: 2, resource: { buffer: indexBuffer.buffer() } },
-        ],
-      }),
-    );
-
-    let nodeCount = 0;
-    let indexCount = 0;
-    let indicesDirty = false;
-    let topologyKey = "";
-
-    effect(() => {
-      const list = resolve(lines);
-      const resolved = list.map(props => ({
-        props,
-        points: resolve(props.points),
-      }));
-      const nextTopologyKey = resolved
-        .map(({ points }) => points.length)
-        .join(",");
-      const topologyChanged = nextTopologyKey !== topologyKey;
-      topologyKey = nextTopologyKey;
-
-      let pointCount = 0;
-      for (const { points } of resolved) pointCount += points.length;
-      pointsStorage.resize(pointCount);
-
-      let pi = 0;
-      for (const { points } of resolved)
-        for (const point of points) {
-          const item = pointsStorage.items[pi];
-          if (!item) continue;
-          item.position = resolve(point.position);
-          item.width = resolve(point.width);
-          item.color = resolve(point.color);
-          item.minWidthPixels = resolve(point.minWidthPixels) ?? 0;
-          item.maxWidthPixels = resolve(point.maxWidthPixels) ?? Infinity;
-          pi++;
+    let vi = 0;
+    for (const polyline of polylines) {
+      const len = polyline.length;
+      for (let k = 0; k < len; k++) {
+        const v = polyline[k]!;
+        const item = storage.items[vi];
+        if (item) {
+          item.position = v.position;
+          item.width = v.width;
+          item.color = v.color;
+          item.minWidthPixels = v.minWidthPixels ?? 0;
+          item.maxWidthPixels = v.maxWidthPixels ?? Infinity;
+          item.flags = (k === 0 ? 1 : 0) | (k === len - 1 ? 2 : 0);
+          item.pickId = id;
         }
-
-      if (!topologyChanged) return;
-
-      let ni = 0;
-      let startIndex = 0;
-      for (const { props, points } of resolved) {
-        const written = points.length;
-        if (written < 2) {
-          startIndex += written;
-          continue;
-        }
-
-        const pickId = pickRegistry.allocate(props);
-        for (let k = 0; k < written; k++) {
-          nodesStorage.resize(ni + 1);
-          const item = nodesStorage.items[ni];
-          if (!item) continue;
-          item.prev = startIndex + Math.max(0, k - 1);
-          item.current = startIndex + k;
-          item.next = startIndex + Math.min(written - 1, k + 1);
-          item.pickId = pickId();
-          ni++;
-        }
-
-        startIndex += written;
+        vi++;
       }
+    }
+    totalVertices = count;
+  });
 
-      nodeCount = ni;
-      // The compute index pass writes 2 quads (12 indices) per node. At line ends,
-      // bridge quads are emitted as degenerates, so drawing nodeCount*12 is safe.
-      indexCount = nodeCount * 12;
-      ensureIndexCapacity(nodeCount);
-      nodeCountData[0] = nodeCount;
-      indicesDirty = true;
-    });
+  const update = () => storage.flush();
 
-    const update = () => {
-      pointsStorage.flush();
-      nodesStorage.flush();
-      device.queue.writeBuffer(nodeCountBuffer, 0, nodeCountData);
-    };
+  const render = (
+    pass: GPURenderPassEncoder,
+    { pick }: { pick?: boolean } = {},
+  ) => {
+    if (totalVertices === 0) return;
+    pass.setPipeline(pick ? pickPipeline() : pipeline());
+    pass.setBindGroup(1, bindGroup());
+    pass.draw(12, totalVertices);
+  };
 
-    const compute = (pass: GPUComputePassEncoder) => {
-      if (nodeCount === 0 || !indicesDirty) return;
-      pass.setPipeline(computePipeline);
-      pass.setBindGroup(1, computeBindGroup());
-      pass.dispatchWorkgroups(Math.ceil(nodeCount / 64));
-      indicesDirty = false;
-    };
-
-    const render = (
-      pass: GPURenderPassEncoder,
-      { pick }: { pick?: boolean } = {},
-    ) => {
-      if (indexCount === 0) return;
-      pass.setPipeline(pick ? pickPipeline() : pipeline());
-      pass.setBindGroup(1, renderBindGroup());
-      pass.setIndexBuffer(indexBuffer.buffer(), "uint32");
-      pass.drawIndexed(indexCount);
-    };
-
-    return { compute, update, render };
-  },
-);
+  return { update, render };
+});

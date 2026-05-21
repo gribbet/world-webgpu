@@ -3,8 +3,9 @@ import { createRoot, createSignal, derived, map } from "signals.ts";
 import { createContext } from "./context";
 import { createControl } from "./control";
 import { fill } from "./layers/fill";
-import { type Line, line } from "./layers/line/index";
-import { type Mesh, object, type Vertex } from "./layers/object";
+import { type Vertex as LineVertex } from "./layers/line";
+import { line } from "./layers/line/index";
+import { type Mesh, object, type Vertex as MeshVertex } from "./layers/object";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
@@ -80,7 +81,7 @@ const createCubeMesh = (): Mesh => {
     },
   ];
 
-  const vertices: Vertex[] = [];
+  const vertices: MeshVertex[] = [];
   const indices: Vec3[] = [];
   const faceUvs: Vec2[] = [
     [0, 1],
@@ -154,56 +155,52 @@ export const createApp = () =>
     });
 
     // Static lines that don't animate
-    const redOrangeLine: Line = {
-      points: Array.from({ length: 1000 }, (_, i) => {
-        const t = i / 999;
-        const lon = -122.58 + t * (-122.16 - -122.58);
-        const lat = 37.69 + Math.sin(t * Math.PI) * 0.17;
-        const alt = 2000 + Math.sin(t * Math.PI * 4) * 1500 + t * 2000;
-        const r = 1.0;
-        const g = t < 0.5 ? 0.2 + t * 1.6 : 1.0;
-        const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
-        const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
-        return {
-          position: [lon, lat, alt] as Vec3,
-          color: [r, g, b, 0.95] as Vec4,
-          width: w,
-        };
-      }),
-    };
+    const redOrangeLine = Array.from({ length: 1000 }, (_, i) => {
+      const t = i / 999;
+      const lon = -122.58 + t * (-122.16 - -122.58);
+      const lat = 37.69 + Math.sin(t * Math.PI) * 0.17;
+      const alt = 2000 + Math.sin(t * Math.PI * 4) * 1500 + t * 2000;
+      const r = 1.0;
+      const g = t < 0.5 ? 0.2 + t * 1.6 : 1.0;
+      const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
+      const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
+      return {
+        position: [lon, lat, alt],
+        color: [r, g, b, 0.95],
+        width: w,
+      } satisfies LineVertex;
+    });
 
-    const waypointsLine: Line = {
-      points: [
-        {
-          position: [-122.52, 37.92, 2000],
-          color: [0.3, 0.9, 1.0, 0.85],
-          width: 1800,
-        },
-        {
-          position: [-122.45, 37.86, 7000],
-          color: [0.2, 0.8, 1.0, 0.85],
-          width: 1800,
-        },
-        {
-          position: [-122.38, 37.92, 2000],
-          color: [0.1, 0.7, 1.0, 0.85],
-          width: 1800,
-        },
-        {
-          position: [-122.31, 37.86, 7000],
-          color: [0.1, 0.6, 1.0, 0.85],
-          width: 1800,
-        },
-        {
-          position: [-122.24, 37.92, 2000],
-          color: [0.1, 0.5, 1.0, 0.85],
-          width: 1800,
-        },
-      ],
-    };
+    const waypointsLine = [
+      {
+        position: [-122.52, 37.92, 2000],
+        color: [0.3, 0.9, 1.0, 0.85],
+        width: 1800,
+      },
+      {
+        position: [-122.45, 37.86, 7000],
+        color: [0.2, 0.8, 1.0, 0.85],
+        width: 1800,
+      },
+      {
+        position: [-122.38, 37.92, 2000],
+        color: [0.1, 0.7, 1.0, 0.85],
+        width: 1800,
+      },
+      {
+        position: [-122.31, 37.86, 7000],
+        color: [0.1, 0.6, 1.0, 0.85],
+        width: 1800,
+      },
+      {
+        position: [-122.24, 37.92, 2000],
+        color: [0.1, 0.5, 1.0, 0.85],
+        width: 1800,
+      },
+    ] satisfies LineVertex[];
 
     // Animated ring line that depends on time
-    const animatedRingLine = derived<Line>(() => {
+    const animatedRingLine = derived(() => {
       const pulse = 800 + Math.sin(time() * 0.002) * 400;
       const centerLon = -122.4194;
       const centerLat = 37.7749;
@@ -216,20 +213,17 @@ export const createApp = () =>
             centerLon + Math.cos(t) * ringRadius,
             centerLat + Math.sin(t) * ringRadius,
             3000 + Math.sin(t * 3 + time() * 0.0015) * 1200,
-          ] as Vec3,
-          color: [0.2, 0.9, 1.0, 0.9] as Vec4,
+          ],
+          color: [0.2, 0.9, 1.0, 0.9],
           width: pulse,
-        };
+        } satisfies LineVertex;
       });
-      return { points: ringPoints };
+      return ringPoints;
     });
 
-    const lineExamples = derived<Line[]>(() => [animatedRingLine()]);
+    const lineExamples = derived(() => [animatedRingLine()]);
 
-    const staticLineExamples = derived<Line[]>(() => [
-      redOrangeLine,
-      waypointsLine,
-    ]);
+    const staticLineExamples = [redOrangeLine, waypointsLine];
 
     const onTerrainClick = ({ position }: PickEvent) => appendItem(position);
 
@@ -269,8 +263,8 @@ export const createApp = () =>
     const layers = derived(() => [
       terrain({ imageryUrl, elevationUrl, onClick: onTerrainClick }),
       text({ entries: textEntries }),
-      line({ lines: staticLineExamples }),
-      line({ lines: lineExamples }),
+      line({ vertices: staticLineExamples }),
+      line({ vertices: lineExamples }),
       fill({
         vertices: [
           { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
