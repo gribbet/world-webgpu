@@ -28,7 +28,7 @@ export const createWorld = async (
   const picker = createPicker(context);
   const { xyView, zView, idView, depthView: pickDepthView } = picker;
 
-  createMouse({ element, picker, pickRegistry });
+  createMouse({ element, picker, pickRegistry, view });
 
   const viewUniform = buffer(
     {

@@ -1,5 +1,8 @@
-import { onCleanup } from "signals.ts";
+import type { Accessor } from "signals.ts";
+import { onCleanup, resolve } from "signals.ts";
 
+import { pickFlat } from "./math";
+import type { View } from "./model";
 import type { PickRegistry } from "./pick-registry";
 import type { Picker } from "./picker";
 
@@ -7,10 +10,12 @@ export const createMouse = ({
   element,
   pickRegistry,
   picker,
+  view,
 }: {
   element: HTMLElement;
   pickRegistry: PickRegistry;
   picker: Picker;
+  view: View | Accessor<View>;
 }) => {
   const abortController = new AbortController();
   const { signal } = abortController;
@@ -24,6 +29,8 @@ export const createMouse = ({
       startY: number;
       dragging: boolean;
       allowDrag: boolean;
+      allowDragFlat: boolean;
+      flatAltitude: number;
     }
   >();
 
@@ -59,6 +66,9 @@ export const createMouse = ({
             button === 0 &&
             (pickRegistry.hasHandler(picked.id, "onDragStart") ||
               pickRegistry.hasHandler(picked.id, "onDrag")),
+          allowDragFlat:
+            button === 0 && pickRegistry.hasHandler(picked.id, "onDragFlat"),
+          flatAltitude: picked.position[2],
         });
       });
     },
@@ -80,11 +90,48 @@ export const createMouse = ({
         const dy = y - gesture.startY;
         const moved = dx ** 2 + dy ** 2 > dragThresholdSquared;
 
-        if (gesture.allowDrag && !gesture.dragging && moved) {
+        if (
+          !gesture.dragging &&
+          moved &&
+          (gesture.allowDrag || gesture.allowDragFlat)
+        ) {
           gesture.dragging = true;
-          pickRegistry.onDragStart(picked, gesture.targetId);
+          if (gesture.allowDrag)
+            pickRegistry.onDragStart(picked, gesture.targetId);
+          else if (gesture.allowDragFlat) {
+            const { width, height } = element.getBoundingClientRect();
+            const flatPos = pickFlat(
+              x,
+              y,
+              gesture.flatAltitude,
+              resolve(view),
+              [width, height],
+            );
+            if (flatPos)
+              pickRegistry.onDragStart(
+                { position: flatPos, id: gesture.targetId, x, y },
+                gesture.targetId,
+              );
+          }
         }
-        if (gesture.dragging) pickRegistry.onDrag(picked, gesture.targetId);
+        if (gesture.dragging) {
+          if (gesture.allowDrag) pickRegistry.onDrag(picked, gesture.targetId);
+          if (gesture.allowDragFlat) {
+            const { width, height } = element.getBoundingClientRect();
+            const flatPos = pickFlat(
+              x,
+              y,
+              gesture.flatAltitude,
+              resolve(view),
+              [width, height],
+            );
+            if (flatPos)
+              pickRegistry.onDragFlat(
+                { position: flatPos, id: gesture.targetId, x, y },
+                gesture.targetId,
+              );
+          }
+        }
       });
     },
     { signal },
@@ -104,8 +151,21 @@ export const createMouse = ({
       const dy = y - gesture.startY;
       const moved = dx ** 2 + dy ** 2 > dragThresholdSquared;
 
-      if (gesture.dragging) pickRegistry.onDragEnd(picked, gesture.targetId);
-      else if (!moved && picked.id === gesture.targetId)
+      if (gesture.dragging) {
+        if (gesture.allowDrag) pickRegistry.onDragEnd(picked, gesture.targetId);
+        else if (gesture.allowDragFlat) {
+          const { width, height } = element.getBoundingClientRect();
+          const flatPos = pickFlat(x, y, gesture.flatAltitude, resolve(view), [
+            width,
+            height,
+          ]);
+          if (flatPos)
+            pickRegistry.onDragEnd(
+              { position: flatPos, id: gesture.targetId, x, y },
+              gesture.targetId,
+            );
+        }
+      } else if (!moved && picked.id === gesture.targetId)
         pickRegistry.onClick(picked, gesture.targetId);
 
       gestures.delete(pointerId);

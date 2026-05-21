@@ -24,6 +24,7 @@ export type PickHandlers = {
   onDragStart?: (event: PickEvent) => void;
   onDrag?: (event: PickEvent) => void;
   onDragEnd?: (event: PickEvent) => void;
+  onDragFlat?: (event: PickEvent) => void;
 };
 
 export type PickEventType = Exclude<keyof PickHandlers, "pickable">;
@@ -77,6 +78,7 @@ export const createPickRegistry = () => {
     onDragStart: createDispatch("onDragStart"),
     onDrag: createDispatch("onDrag"),
     onDragEnd: createDispatch("onDragEnd"),
+    onDragFlat: createDispatch("onDragFlat"),
   };
 
   const hasHandler = (id: number, type: PickEventType) =>

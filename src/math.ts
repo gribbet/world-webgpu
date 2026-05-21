@@ -1,4 +1,4 @@
-import type { Vec2, Vec3, Vec4 } from "./model";
+import type { Vec2, Vec3, Vec4, View } from "./model";
 
 export const EARTH_CIRCUMFERENCE = 40075017; // meters
 
@@ -131,4 +131,68 @@ export const slerp = (from: Vec4, to: Vec4, t: number): Vec4 => {
     z1 * s0 + z2 * s1,
     w1 * s0 + w2 * s1,
   ];
+};
+
+// Given a screen pixel (px, py), intersect the camera ray with the horizontal
+// plane at the given altitude (meters) and return the world position.
+// Returns null if the ray is parallel to or pointing away from the plane.
+export const pickFlat = (
+  px: number,
+  py: number,
+  altitude: number,
+  view: View,
+  size: readonly [number, number],
+): Vec3 | null => {
+  const { center, distance, orientation, fieldOfView } = view;
+  const [yaw, pitch, roll] = orientation;
+  const [width, height] = size;
+
+  const fov = (fieldOfView / 180) * Math.PI;
+  const fieldScale = Math.tan(Math.PI / 8) / Math.tan(fov / 2);
+  const d = distance * fieldScale;
+
+  const sinRoll = Math.sin(roll);
+  const cosRoll = Math.cos(roll);
+  const sinPitch = Math.sin(pitch);
+  const cosPitch = Math.cos(pitch);
+  const sinYaw = Math.sin(yaw);
+  const cosYaw = Math.cos(yaw);
+
+  // Camera ENU position = Rz(yaw) * Rx(-pitch) * Ry(-roll) * [0, 0, d]
+  const c1x = -sinRoll * d;
+  const c1y = sinPitch * cosRoll * d;
+  const c1z = cosPitch * cosRoll * d;
+  const camX = cosYaw * c1x - sinYaw * c1y;
+  const camY = sinYaw * c1x + cosYaw * c1y;
+  const camZ = c1z;
+
+  // Ray direction from pixel in view space, then rotate to ENU
+  const nx = (2 * px) / width - 1;
+  const ny = 1 - (2 * py) / height;
+  const aspect = width / height;
+  const tanHalfFov = Math.tan(fov / 2);
+  const rvx = nx * aspect * tanHalfFov;
+  const rvy = ny * tanHalfFov;
+  const rvz = -1;
+
+  // Apply Ry(-roll)
+  const r1x = cosRoll * rvx - sinRoll * rvz;
+  const r1y = rvy;
+  const r1z = sinRoll * rvx + cosRoll * rvz;
+
+  // Apply Rx(-pitch)
+  const r2x = r1x;
+  const r2y = cosPitch * r1y + sinPitch * r1z;
+  const r2z = -sinPitch * r1y + cosPitch * r1z;
+
+  // Apply Rz(yaw)
+  const rdx = cosYaw * r2x - sinYaw * r2y;
+  const rdy = sinYaw * r2x + cosYaw * r2y;
+  const rdz = r2z;
+
+  if (Math.abs(rdz) < 1e-10) return null;
+  const t = (altitude - center[2] - camZ) / rdz;
+  if (t < 0) return null;
+
+  return move(center, [camX + t * rdx, camY + t * rdy, altitude - center[2]]);
 };
