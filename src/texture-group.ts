@@ -1,8 +1,9 @@
+import { createSignal, onCleanup } from "signals.ts";
+
 import { mipLevelCount, tileTextureLayers } from "./configuration";
 import type { Context } from "./context";
 import { createImageLoad } from "./image-load";
 import { createLru } from "./lru";
-import { createSignal, onCleanup } from "signals.ts";
 import { createTexture } from "./texture";
 
 export const createTextureGroup = ({
@@ -103,7 +104,7 @@ export const createTextureGroup = ({
 
   const ensureOne = (url: string) => {
     const current = mapping.get(url);
-    if (current) return mapping.set(url, current);
+    if (current?.index !== undefined) return mapping.set(url, current);
 
     const index = available.shift();
 
