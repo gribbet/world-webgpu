@@ -138,7 +138,9 @@ export const billboard = createLayerType<BillboardProps>(
         item.texture = data?.index ?? -1;
         item.width = data?.width ?? 0;
         item.height = data?.height ?? 0;
-        item.pickId = pickId;
+      });
+      effect(() => {
+        item.pickId = pickId();
       });
       effect(() => {
         item.size = resolve(size);

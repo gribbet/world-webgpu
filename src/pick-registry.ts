@@ -1,4 +1,10 @@
-import { onCleanup, type Properties, resolve } from "signals.ts";
+import {
+  createSignal,
+  derived,
+  onCleanup,
+  type Properties,
+  resolve,
+} from "signals.ts";
 
 import type { Vec3 } from "./model";
 
@@ -10,6 +16,7 @@ export type PickEvent = {
 };
 
 export type PickHandlers = {
+  pickable?: boolean;
   onMouseDown?: (event: PickEvent) => void;
   onMouseMove?: (event: PickEvent) => void;
   onMouseUp?: (event: PickEvent) => void;
@@ -19,7 +26,7 @@ export type PickHandlers = {
   onDragEnd?: (event: PickEvent) => void;
 };
 
-export type PickEventType = keyof PickHandlers;
+export type PickEventType = Exclude<keyof PickHandlers, "pickable">;
 
 type PickDispatch = {
   [K in PickEventType]: (event: PickEvent, targetId?: number) => void;
@@ -31,6 +38,7 @@ export const createPickRegistry = () => {
   let nextId = 1;
   const freeList: number[] = [];
   const handlers = new Map<number, Properties<PickHandlers>>();
+  const [draggingId, setDraggingId] = createSignal(0);
 
   const allocate = (entry: Properties<PickHandlers> = {}) => {
     const id = freeList.length > 0 ? freeList.pop()! : nextId++;
@@ -39,7 +47,9 @@ export const createPickRegistry = () => {
       handlers.delete(id);
       freeList.push(id);
     });
-    return id;
+    return derived(() =>
+      resolve(entry.pickable) !== false && draggingId() !== id ? id : 0,
+    );
   };
 
   const dispatchOne = (
@@ -48,6 +58,8 @@ export const createPickRegistry = () => {
     targetId = event.id,
   ) => {
     const callback = resolve(handlers.get(targetId)?.[type]);
+    if (type === "onDragStart") setDraggingId(targetId);
+    else if (type === "onDragEnd") setDraggingId(0);
     if (!callback) return;
     callback(targetId === event.id ? event : { ...event, id: targetId });
   };
@@ -70,5 +82,7 @@ export const createPickRegistry = () => {
   const hasHandler = (id: number, type: PickEventType) =>
     resolve(handlers.get(id)?.[type]) !== undefined;
 
-  return { allocate, hasHandler, ...dispatch };
+  const isDragging = derived(() => draggingId() !== 0);
+
+  return { allocate, hasHandler, isDragging, ...dispatch };
 };

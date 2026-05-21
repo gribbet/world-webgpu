@@ -165,8 +165,10 @@ export const object = createLayerType<ObjectProps>(
         color,
         diffuse,
       } = instance;
-      item.pickId = pickRegistry.allocate(instance);
-
+      const pickId = pickRegistry.allocate(instance);
+      effect(() => {
+        item.pickId = pickId();
+      });
       effect(() => {
         item.position = resolve(position);
       });

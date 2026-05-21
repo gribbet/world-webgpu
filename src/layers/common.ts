@@ -43,17 +43,15 @@ export const createLayerPipelines = async ({
     primitive: { topology },
   };
 
-  const depthStencil = () => {
+  const depthStencil = derived(() => {
     const depthEnabled = resolve(depth) ?? true;
     return {
       format: "depth24plus" as const,
       depthWriteEnabled: depthEnabled,
-      depthCompare: (depthEnabled ? "less" : "always") as GPUCompareFunction,
+      depthCompare: depthEnabled ? "less" : "always",
       depthBias: resolve(polygonOffset) ?? 0,
-      depthBiasSlopeScale: 0,
-      depthBiasClamp: 0,
-    };
-  };
+    } satisfies GPUDepthStencilState;
+  });
 
   const pipeline = derived(() =>
     device.createRenderPipeline({

@@ -80,7 +80,7 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
       if (!v) return;
       item.position = v.position;
       item.color = v.color;
-      item.pickId = pickId;
+      item.pickId = pickId();
     });
 
     indexStorage.resize(_indices.length);

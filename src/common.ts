@@ -40,11 +40,6 @@ export const viewLayout = (device: GPUDevice) =>
           GPUShaderStage.COMPUTE,
         buffer: { type: "uniform" },
       },
-      {
-        binding: 1,
-        visibility: GPUShaderStage.FRAGMENT,
-        buffer: { type: "uniform" },
-      },
     ],
   });
 

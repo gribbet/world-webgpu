@@ -27,7 +27,8 @@ export const createWorld = async (
   const { renderView, depthView } = renderer;
   const picker = createPicker(context);
   const { xyView, zView, idView, depthView: pickDepthView } = picker;
-  const mouse = createMouse({ element, picker, pickRegistry });
+
+  createMouse({ element, picker, pickRegistry });
 
   const viewUniform = buffer(
     {
@@ -40,19 +41,11 @@ export const createWorld = async (
     { usage: GPUBufferUsage.UNIFORM },
   );
 
-  const excludedPickIdBuffer = device.createBuffer({
-    size: 4,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
-
   const layout = viewLayout(device);
 
   const bindGroup = device.createBindGroup({
     layout,
-    entries: [
-      { binding: 0, resource: { buffer: viewUniform.buffer() } },
-      { binding: 1, resource: { buffer: excludedPickIdBuffer } },
-    ],
+    entries: [{ binding: 0, resource: { buffer: viewUniform.buffer() } }],
   });
 
   const projection = mat4.identity();
@@ -79,14 +72,6 @@ export const createWorld = async (
     viewUniform.item.projection = projection;
     viewUniform.item.screenSize = [width, height];
     viewUniform.item.distance = distance;
-  });
-
-  effect(() => {
-    device.queue.writeBuffer(
-      excludedPickIdBuffer,
-      0,
-      new Uint32Array([mouse.draggingId()]),
-    );
   });
 
   const root = await createLayer(context, container({ layers }));
@@ -170,6 +155,6 @@ export const createWorld = async (
 
   return {
     pick: picker.pick,
-    isDragging: () => mouse.draggingId() !== 0,
+    isDragging: pickRegistry.isDragging,
   };
 };

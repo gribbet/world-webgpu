@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "signals.ts";
+import { onCleanup } from "signals.ts";
 
 import type { PickRegistry } from "./pick-registry";
 import type { Picker } from "./picker";
@@ -15,7 +15,6 @@ export const createMouse = ({
   const abortController = new AbortController();
   const { signal } = abortController;
 
-  const invalidPickId = 0xffffffff;
   const dragThresholdSquared = 6 ** 2;
   const gestures = new Map<
     number,
@@ -27,15 +26,6 @@ export const createMouse = ({
       allowDrag: boolean;
     }
   >();
-  const [draggingId, setDraggingId] = createSignal(0);
-  let draggingPointers = 0;
-
-  const setPointerDragging = (active: boolean, targetId: number) => {
-    draggingPointers += active ? 1 : -1;
-    if (draggingPointers < 0) draggingPointers = 0;
-    if (active) setDraggingId(targetId);
-    else if (draggingPointers === 0) setDraggingId(0);
-  };
 
   const pointerPosition = (event: { clientX: number; clientY: number }) => {
     const { left, top } = element.getBoundingClientRect();
@@ -54,7 +44,7 @@ export const createMouse = ({
       const [x, y] = pointerPosition(event);
       const { pointerId, button } = event;
       void readPickEvent(x, y).then(picked => {
-        if (picked.id === invalidPickId) {
+        if (!picked.id) {
           gestures.delete(pointerId);
           return;
         }
@@ -81,7 +71,7 @@ export const createMouse = ({
       const [x, y] = pointerPosition(event);
       const { pointerId } = event;
       void readPickEvent(x, y).then(picked => {
-        if (picked.id !== invalidPickId) pickRegistry.onMouseMove(picked);
+        if (picked.id) pickRegistry.onMouseMove(picked);
 
         const gesture = gestures.get(pointerId);
         if (!gesture) return;
@@ -92,7 +82,6 @@ export const createMouse = ({
 
         if (gesture.allowDrag && !gesture.dragging && moved) {
           gesture.dragging = true;
-          setPointerDragging(true, gesture.targetId);
           pickRegistry.onDragStart(picked, gesture.targetId);
         }
         if (gesture.dragging) pickRegistry.onDrag(picked, gesture.targetId);
@@ -106,7 +95,7 @@ export const createMouse = ({
     const { pointerId } = event;
 
     void readPickEvent(x, y).then(picked => {
-      if (picked.id !== invalidPickId) pickRegistry.onMouseUp(picked);
+      if (picked.id) pickRegistry.onMouseUp(picked);
 
       const gesture = gestures.get(pointerId);
       if (!gesture) return;
@@ -115,10 +104,8 @@ export const createMouse = ({
       const dy = y - gesture.startY;
       const moved = dx ** 2 + dy ** 2 > dragThresholdSquared;
 
-      if (gesture.dragging) {
-        setPointerDragging(false, gesture.targetId);
-        pickRegistry.onDragEnd(picked, gesture.targetId);
-      } else if (!moved && picked.id === gesture.targetId)
+      if (gesture.dragging) pickRegistry.onDragEnd(picked, gesture.targetId);
+      else if (!moved && picked.id === gesture.targetId)
         pickRegistry.onClick(picked, gesture.targetId);
 
       gestures.delete(pointerId);
@@ -129,6 +116,4 @@ export const createMouse = ({
   element.addEventListener("pointercancel", endGesture, { signal });
 
   onCleanup(() => abortController.abort());
-
-  return { draggingId };
 };

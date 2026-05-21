@@ -206,7 +206,7 @@ export const line = createLayerType<LineProps>(
           item.prev = startIndex + Math.max(0, k - 1);
           item.current = startIndex + k;
           item.next = startIndex + Math.min(written - 1, k + 1);
-          item.pickId = pickId;
+          item.pickId = pickId();
           ni++;
         }
 
