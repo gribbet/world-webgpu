@@ -5,7 +5,6 @@ export { createContext } from "./context";
 export { createControl } from "./control";
 export { billboard } from "./layers/billboard";
 export { fill } from "./layers/fill";
-export type { Line } from "./layers/line";
 export { line } from "./layers/line";
 export type { Mesh, Vertex } from "./layers/object";
 export { object } from "./layers/object";
