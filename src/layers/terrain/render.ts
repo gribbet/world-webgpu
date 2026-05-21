@@ -10,6 +10,7 @@ export const createRenderPipeline = async ({
   countBuffer,
   imageryTextures,
   elevationTextures,
+  pickId,
   depth,
   polygonOffset,
 }: {
@@ -18,6 +19,7 @@ export const createRenderPipeline = async ({
   countBuffer: GPUBuffer;
   imageryTextures: () => GPUTexture;
   elevationTextures: () => GPUTexture;
+  pickId: () => number;
   depth?: boolean;
   polygonOffset?: CommonLayerProps["polygonOffset"];
 }) => {
@@ -142,8 +144,10 @@ export const createRenderPipeline = async ({
     }),
   );
 
-  const update = (encoder: GPUCommandEncoder) =>
+  const update = (encoder: GPUCommandEncoder) => {
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
+    device.queue.writeBuffer(pickBuffer, 0, new Uint32Array([pickId()]));
+  };
 
   const render = (
     pass: GPURenderPassEncoder,
