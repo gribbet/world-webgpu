@@ -60,5 +60,11 @@ Mouse handlers
 Recursive Properties
 Cleanup slots
 
-line should use indices like fill? 
 Move control internal? 
+
+signal package
+mipmap
+control wraparound, overlimit, pitch limit
+
+UI not require derive? But world does?
+Hermite position transition

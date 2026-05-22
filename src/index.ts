@@ -13,14 +13,10 @@ export { polygon } from "./layers/polygon";
 export { terrain } from "./layers/terrain";
 export type { TextEntry } from "./layers/text";
 export { text } from "./layers/text";
+export * from "./math";
 export type { Vec2, Vec3, Vec4 } from "./model";
 export type { View } from "./model";
 export type { PickEvent } from "./pick-registry";
-export {
-  createViewTransition,
-  quaternionTransition,
-  vec3Transition,
-  vec4Transition,
-} from "./transition";
+export * from "./transition";
 export { createWorld } from "./world";
 export { createRoot, createSignal, derived, resolve } from "signals.ts";

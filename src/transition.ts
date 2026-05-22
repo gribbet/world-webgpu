@@ -1,40 +1,36 @@
-import { type Accessor, createSignal, derived } from "signals.ts";
+import { type Accessor, createSignal, derived, untrack } from "signals.ts";
 
-import { slerp } from "./math";
-import type { Vec3, View } from "./model";
+import {
+  lerp,
+  lerpOrientation,
+  lerpPosition,
+  lerpVec3,
+  lerpVec4,
+  lngLatDistance,
+  slerp,
+} from "./math";
+import type { Vec3, Vec4, View } from "./model";
 
-let defaultNowSignal: Accessor<number> | undefined = undefined;
+export const [now, setNow] = createSignal(performance.now());
 
-const createDefaultNowSignal = (): Accessor<number> => {
-  const initialNow =
-    typeof performance !== "undefined" ? performance.now() : Date.now();
-  const [now, setNow] = createSignal(initialNow);
-
-  if (typeof requestAnimationFrame === "function") {
-    const tick = (t: number) => {
-      setNow(t);
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
-
-  return now;
+const tick = (t: number) => {
+  setNow(t);
+  requestAnimationFrame(tick);
 };
+requestAnimationFrame(tick);
 
-const getNowSignal = () => {
-  if (!defaultNowSignal) defaultNowSignal = createDefaultNowSignal();
-  return defaultNowSignal;
-};
-
-const TRANSITION_K = 10;
+export const atFrame = <T>(source: Accessor<T>) =>
+  derived(() => {
+    now();
+    return untrack(source);
+  });
 
 // Per-frame stateful transition. `step` is invoked each animation frame with
 // the elapsed `time` (seconds), the current value, and the latest target
 // value, and returns the next current value.
 export const transition =
   <T>(step: (_: { time: number; current: T; target: T }) => T) =>
-  (target: () => T): Accessor<T> => {
-    const now = getNowSignal();
+  (target: Accessor<T>): Accessor<T> => {
     let current: T | undefined;
     let last: number | undefined;
     return derived(() => {
@@ -42,83 +38,52 @@ export const transition =
       const time = (t - (last ?? t)) / 1000;
       last = t;
       if (time > 1) current = undefined; // long gap (tab inactive): restart
-      const next = target();
+      const next = untrack(target);
       current = step({ time, current: current ?? next, target: next });
       return current;
     });
   };
 
-export const vec4Transition = transition<
-  readonly [number, number, number, number]
->(({ time, current, target }) => {
-  const q = 1 - Math.exp(-TRANSITION_K * time);
-  return [
-    current[0] + (target[0] - current[0]) * q,
-    current[1] + (target[1] - current[1]) * q,
-    current[2] + (target[2] - current[2]) * q,
-    current[3] + (target[3] - current[3]) * q,
-  ];
-});
+const expQ = (time: number) => 1 - Math.exp((-time * 1000) / 100);
 
-export const vec3Transition = transition<readonly [number, number, number]>(
+export const vec4Transition = transition<Vec4>(({ time, current, target }) =>
+  lerpVec4(current, target, expQ(time)),
+);
+export const vec3Transition = transition<Vec3>(({ time, current, target }) =>
+  lerpVec3(current, target, expQ(time)),
+);
+
+export const positionTransition = transition<Vec3>(
   ({ time, current, target }) => {
-    const q = 1 - Math.exp(-TRANSITION_K * time);
-    return [
-      current[0] + (target[0] - current[0]) * q,
-      current[1] + (target[1] - current[1]) * q,
-      current[2] + (target[2] - current[2]) * q,
-    ];
+    if (lngLatDistance(current, target) > 1000) return target;
+    return lerpPosition(current, target, expQ(time));
   },
 );
 
 export const numberTransition = transition<number>(
-  ({ time, current, target }) =>
-    current + (target - current) * (1 - Math.exp(-TRANSITION_K * time)),
+  ({ time, current, target }) => lerp(current, target, expQ(time)),
 );
-
-export const quaternionTransition = transition<
-  readonly [number, number, number, number]
->(({ time, current, target }) =>
-  slerp(current, target, 1 - Math.exp(-TRANSITION_K * time)),
+export const quaternionTransition = transition<Vec4>(
+  ({ time, current, target }) => slerp(current, target, expQ(time)),
 );
-
-// Approximate distance in meters between two [lon, lat, alt] points.
-const EARTH_RADIUS = 6378137;
-const distance = (a: Vec3, b: Vec3) => {
-  const lat = (((a[1] + b[1]) / 2) * Math.PI) / 180;
-  const dx = (((b[0] - a[0]) * Math.PI) / 180) * EARTH_RADIUS * Math.cos(lat);
-  const dy = (((b[1] - a[1]) * Math.PI) / 180) * EARTH_RADIUS;
-  const dz = b[2] - a[2];
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-};
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const lerpVec3 = (a: Vec3, b: Vec3, t: number): Vec3 => [
-  lerp(a[0], b[0], t),
-  lerp(a[1], b[1], t),
-  lerp(a[2], b[2], t),
-];
 
 // Long-distance moves zoom out during travel (so we don't load a wall of
 // high-zoom tiles) and slow horizontal motion while zoomed out, then ease
 // back in near the target.
-const VIEW_TRANSITION_K = 8;
 const FLY_MIN_DISTANCE = 1000;
 
 export const createViewTransition = transition<View>(
   ({ time, current, target }) => {
-    let flyDistance = distance(current.center, target.center);
+    let flyDistance = lngLatDistance(current.center, target.center);
     if (flyDistance < FLY_MIN_DISTANCE) flyDistance = 0;
 
     const targetDistance = Math.max(target.distance, flyDistance);
-    const q = 1 - Math.exp(-VIEW_TRANSITION_K * time);
-    const slowdown =
-      flyDistance === 0 || current.distance > flyDistance
-        ? 1
-        : current.distance / flyDistance;
+    const q = expQ(time);
+    const ratio = current.distance / targetDistance;
+    const factor = Math.min(1, q * ratio * ratio);
 
     return {
-      center: lerpVec3(current.center, target.center, q * slowdown),
+      center: lerpPosition(current.center, target.center, factor),
       distance: Math.exp(
         lerp(Math.log(current.distance), Math.log(targetDistance), q),
       ),
@@ -127,18 +92,3 @@ export const createViewTransition = transition<View>(
     };
   },
 );
-
-// Shortest-path interpolation of [yaw, pitch, roll] euler angles. Yaw and
-// roll wrap around 2π so we take the short way around; pitch is clamped in
-// (-π/2, π/2) and just lerps directly.
-const TAU = Math.PI * 2;
-const lerpAngle = (a: number, b: number, t: number) => {
-  let d = (((b - a) % TAU) + TAU) % TAU;
-  if (d > Math.PI) d -= TAU;
-  return a + d * t;
-};
-const lerpOrientation = (a: Vec3, b: Vec3, t: number): Vec3 => [
-  lerpAngle(a[0], b[0], t),
-  lerp(a[1], b[1], t),
-  lerpAngle(a[2], b[2], t),
-];

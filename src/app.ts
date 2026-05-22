@@ -120,13 +120,13 @@ export const createApp = () =>
 
     const [targetView, setTargetView] = createSignal<View>({
       center: [-122.4194, 37.7749, 0],
-      distance: 100000,
+      distance: 10000000,
       orientation: [0, 0, 0],
       fieldOfView: 45,
     });
 
-    const view = createViewTransition(() => targetView());
-    const setView = (newView: View) => setTargetView(newView);
+    const view = createViewTransition(targetView);
+    const setView = (_: View) => setTargetView(_);
 
     const [time, setTime] = createSignal(0);
     const animate = (t: number) => {

@@ -1,6 +1,17 @@
 import type { Vec2, Vec3, Vec4, View } from "./model";
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 export const EARTH_CIRCUMFERENCE = 40075017; // meters
+
+const EARTH_RADIUS = 6378137; // meters (WGS-84 semi-major axis)
+const TAU = Math.PI * 2;
+
+// ---------------------------------------------------------------------------
+// Vector math
+// ---------------------------------------------------------------------------
 
 export const vec3Distance = (a: Vec3, b: Vec3): number => {
   const dx = a[0] - b[0];
@@ -25,26 +36,16 @@ export const vec3Scale = (v: Vec3, scale: number): Vec3 => [
   v[2] * scale,
 ];
 
-// Convert lat/lon to mercator projection (normalized 0-1)
-export const latLonToMercator = (lon: number, lat: number): Vec2 => {
-  const x = (lon + 180) / 360;
-  const latRad = (lat * Math.PI) / 180;
-  const y = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
-  return [x, y];
-};
+// ---------------------------------------------------------------------------
+// Geographic / coordinate conversions
+// ---------------------------------------------------------------------------
 
-// Convert mercator to lat/lon
-export const mercatorToLatLon = (x: number, y: number): Vec2 => {
-  const lon = x * 360 - 180;
-  const lat = (Math.atan(Math.sinh((0.5 - y) * (2 * Math.PI))) * 180) / Math.PI;
-  return [lon, lat];
-};
+// Integer Mercator coordinates use a [0, 2^31) range on each axis.
 
 export const lonLatFromMercator = (mx: number, my: number): Vec2 => {
   const lon = (mx / 2 ** 31) * 360 - 180;
   const lat =
-    (Math.atan(Math.sinh((0.5 - my / 2 ** 31) * (2 * Math.PI))) * 180) /
-    Math.PI;
+    (Math.atan(Math.sinh((0.5 - my / 2 ** 31) * TAU)) * 180) / Math.PI;
   return [lon, lat];
 };
 
@@ -54,16 +55,17 @@ export const mercatorFromLonLat = (
 ): [number, number] => {
   const latRad = (lat * Math.PI) / 180;
   const mx = (lon + 180) / 360;
-  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
+  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / TAU;
   return [Math.floor(mx * 2 ** 31), Math.floor(my * 2 ** 31)];
 };
 
+// Convert a [lon, lat, alt] position to a local East-North-Up displacement
+// (meters) relative to a center position.
 export const enuFromPosition = (center: Vec3, position: Vec3): Vec3 => {
   const [centerLon, centerLat, centerAlt] = center;
   const [lon, lat, alt] = position;
 
-  const radius = 6378137.0;
-  const r = radius + centerAlt;
+  const r = EARTH_RADIUS + centerAlt;
   const centerLatRad = (centerLat * Math.PI) / 180;
 
   const dLonRad = ((lon - centerLon) * Math.PI) / 180;
@@ -76,6 +78,7 @@ export const enuFromPosition = (center: Vec3, position: Vec3): Vec3 => {
   return [x, y, z];
 };
 
+// Apply an ENU displacement (meters) to a [lon, lat, alt] center position.
 export const move = (
   center: Vec3,
   enu: readonly [number, number, number],
@@ -83,8 +86,7 @@ export const move = (
   const [lon, lat, alt] = center;
   const [x, y, z] = enu;
 
-  const radius = 6378137.0;
-  const r = radius + alt;
+  const r = EARTH_RADIUS + alt;
   const latRad = (lat * Math.PI) / 180;
 
   const lonDelta = (x / (r * Math.cos(latRad))) * (180 / Math.PI);
@@ -93,7 +95,66 @@ export const move = (
   return [lon + lonDelta, lat + latDelta, alt + z];
 };
 
-// Spherical linear interpolation between two quaternions
+// Approximate great-circle distance (meters) between two [lng, lat, alt] points.
+export const lngLatDistance = (a: Vec3, b: Vec3) => {
+  const lat = (((a[1] + b[1]) / 2) * Math.PI) / 180;
+  const dx = (((b[0] - a[0]) * Math.PI) / 180) * EARTH_RADIUS * Math.cos(lat);
+  const dy = (((b[1] - a[1]) * Math.PI) / 180) * EARTH_RADIUS;
+  const dz = b[2] - a[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+};
+
+// ---------------------------------------------------------------------------
+// Interpolation
+// ---------------------------------------------------------------------------
+
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+export const lerpVec3 = (
+  [a0, a1, a2]: Vec3,
+  [b0, b1, b2]: Vec3,
+  t: number,
+): Vec3 => [lerp(a0, b0, t), lerp(a1, b1, t), lerp(a2, b2, t)];
+
+export const lerpVec4 = (
+  [a0, a1, a2, a3]: Vec4,
+  [b0, b1, b2, b3]: Vec4,
+  t: number,
+): Vec4 => [lerp(a0, b0, t), lerp(a1, b1, t), lerp(a2, b2, t), lerp(a3, b3, t)];
+
+// Interpolate longitude along the shortest path (wraps ±180°).
+export const lerpLng = (a: number, b: number, t: number) => {
+  let d = (((b - a) % 360) + 360) % 360;
+  if (d > 180) d -= 360;
+  return a + d * t;
+};
+
+export const lerpPosition = (
+  [aLng, aLat, aAlt]: Vec3,
+  [bLng, bLat, bAlt]: Vec3,
+  t: number,
+): Vec3 => [lerpLng(aLng, bLng, t), lerp(aLat, bLat, t), lerp(aAlt, bAlt, t)];
+
+// Interpolate an angle along the shortest arc (wraps at 2π).
+export const lerpAngle = (a: number, b: number, t: number) => {
+  let d = (((b - a) % TAU) + TAU) % TAU;
+  if (d > Math.PI) d -= TAU;
+  return a + d * t;
+};
+
+// Interpolate [yaw, pitch, roll] orientation. Yaw and roll use shortest-arc
+// wrapping; pitch lerps directly (clamped in (-π/2, π/2)).
+export const lerpOrientation = (a: Vec3, b: Vec3, t: number): Vec3 => [
+  lerpAngle(a[0], b[0], t),
+  lerp(a[1], b[1], t),
+  lerpAngle(a[2], b[2], t),
+];
+
+// ---------------------------------------------------------------------------
+// Quaternions  [x, y, z, w]
+// ---------------------------------------------------------------------------
+
+// Spherical linear interpolation between two quaternions.
 export const slerp = (from: Vec4, to: Vec4, t: number): Vec4 => {
   const [x1, y1, z1, w1] = from;
   let [x2, y2, z2, w2] = to;
@@ -118,10 +179,8 @@ export const slerp = (from: Vec4, to: Vec4, t: number): Vec4 => {
 
   const theta0 = Math.acos(dot);
   const theta = theta0 * t;
-
   const sinTheta0 = Math.sin(theta0);
   const sinTheta = Math.sin(theta);
-
   const s0 = Math.cos(theta) - (dot * sinTheta) / sinTheta0;
   const s1 = sinTheta / sinTheta0;
 
@@ -132,6 +191,25 @@ export const slerp = (from: Vec4, to: Vec4, t: number): Vec4 => {
     w1 * s0 + w2 * s1,
   ];
 };
+
+export const yawPitchRollToQuat = ([yaw, pitch, roll]: Vec3): Vec4 => {
+  const cy = Math.cos(yaw * 0.5),
+    sy = Math.sin(yaw * 0.5);
+  const cp = Math.cos(pitch * 0.5),
+    sp = Math.sin(pitch * 0.5);
+  const cr = Math.cos(roll * 0.5),
+    sr = Math.sin(roll * 0.5);
+  return [
+    cy * cp * sr - sy * sp * cr, // x
+    -cy * sp * cr - sy * cp * sr, // y
+    cy * sp * sr - sy * cp * cr, // z
+    cy * cp * cr + sy * sp * sr, // w
+  ];
+};
+
+// ---------------------------------------------------------------------------
+// Picking
+// ---------------------------------------------------------------------------
 
 // Given a screen pixel (px, py), intersect the camera ray with the horizontal
 // plane at the given altitude (meters) and return the world position.

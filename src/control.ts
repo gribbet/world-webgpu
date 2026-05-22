@@ -4,6 +4,8 @@ import { enuFromPosition, move } from "./math";
 import type { View } from "./model";
 import type { World } from "./world";
 
+const MAX_LAT = (Math.atan(Math.sinh(Math.PI)) * 180) / Math.PI;
+
 export const createControl = ({
   element,
   world,
@@ -66,14 +68,22 @@ export const createControl = ({
         const dx = cos * movementX - sin * movementY;
         const dy = sin * movementX + cos * movementY;
 
-        const newCenter = move(
+        const [movedLon, movedLat, movedAlt] = move(
           [lon, lat, alt],
           [-dx * metersPerPixel, dy * metersPerPixel, 0],
         );
 
+        // Wrap longitude to [-180, 180] and clamp latitude to Mercator limits
+        const wrappedLon = ((((movedLon + 180) % 360) + 360) % 360) - 180;
+        const clampedLat = Math.max(-MAX_LAT, Math.min(MAX_LAT, movedLat));
+        const newCenter = [wrappedLon, clampedLat, movedAlt] as const;
+
         setView({ center: newCenter, distance, orientation, fieldOfView });
       } else if (buttons === 2) {
-        const newPitch = pitch + movementY * 0.01;
+        const newPitch = Math.max(
+          -Math.PI / 2,
+          Math.min(0, pitch + movementY * 0.01),
+        );
         const newYaw = yaw - movementX * 0.01;
         setView({
           center,
