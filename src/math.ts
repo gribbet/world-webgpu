@@ -13,27 +13,30 @@ const TAU = Math.PI * 2;
 // Vector math
 // ---------------------------------------------------------------------------
 
-export const vec3Distance = (a: Vec3, b: Vec3): number => {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
+export const vec3Distance = (
+  [ax, ay, az]: Vec3,
+  [bx, by, bz]: Vec3,
+): number => {
+  const dx = ax - bx;
+  const dy = ay - by;
+  const dz = az - bz;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 };
 
 export const vec3Add = (
-  a: Vec3,
-  b: readonly [number, number, number],
-): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  [a0, a1, a2]: Vec3,
+  [b0, b1, b2]: readonly [number, number, number],
+): Vec3 => [a0 + b0, a1 + b1, a2 + b2];
 
 export const vec3Sub = (
-  a: Vec3,
-  b: readonly [number, number, number],
-): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  [a0, a1, a2]: Vec3,
+  [b0, b1, b2]: readonly [number, number, number],
+): Vec3 => [a0 - b0, a1 - b1, a2 - b2];
 
-export const vec3Scale = (v: Vec3, scale: number): Vec3 => [
-  v[0] * scale,
-  v[1] * scale,
-  v[2] * scale,
+export const vec3Scale = ([v0, v1, v2]: Vec3, scale: number): Vec3 => [
+  v0 * scale,
+  v1 * scale,
+  v2 * scale,
 ];
 
 // ---------------------------------------------------------------------------
@@ -96,17 +99,35 @@ export const move = (
 };
 
 // Approximate great-circle distance (meters) between two [lng, lat, alt] points.
-export const lngLatDistance = (a: Vec3, b: Vec3) => {
-  const lat = (((a[1] + b[1]) / 2) * Math.PI) / 180;
-  const dx = (((b[0] - a[0]) * Math.PI) / 180) * EARTH_RADIUS * Math.cos(lat);
-  const dy = (((b[1] - a[1]) * Math.PI) / 180) * EARTH_RADIUS;
-  const dz = b[2] - a[2];
+export const lngLatDistance = (
+  [aLng, aLat, aAlt]: Vec3,
+  [bLng, bLat, bAlt]: Vec3,
+) => {
+  const lat = (((aLat + bLat) / 2) * Math.PI) / 180;
+  const dLng = wrapDegDelta(bLng - aLng);
+  const dx = ((dLng * Math.PI) / 180) * EARTH_RADIUS * Math.cos(lat);
+  const dy = (((bLat - aLat) * Math.PI) / 180) * EARTH_RADIUS;
+  const dz = bAlt - aAlt;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 };
 
 // ---------------------------------------------------------------------------
 // Interpolation
 // ---------------------------------------------------------------------------
+
+// Wrap `d` to [-180, 180] (shortest-path longitude delta in degrees).
+export const wrapDegDelta = (d: number): number => {
+  d = ((d % 360) + 360) % 360;
+  if (d > 180) d -= 360;
+  return d;
+};
+
+// Wrap `d` to [-π, π] (shortest-path angle delta in radians).
+export const wrapRadDelta = (d: number): number => {
+  d = ((d % TAU) + TAU) % TAU;
+  if (d > Math.PI) d -= TAU;
+  return d;
+};
 
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -123,11 +144,8 @@ export const lerpVec4 = (
 ): Vec4 => [lerp(a0, b0, t), lerp(a1, b1, t), lerp(a2, b2, t), lerp(a3, b3, t)];
 
 // Interpolate longitude along the shortest path (wraps ±180°).
-export const lerpLng = (a: number, b: number, t: number) => {
-  let d = (((b - a) % 360) + 360) % 360;
-  if (d > 180) d -= 360;
-  return a + d * t;
-};
+export const lerpLng = (a: number, b: number, t: number) =>
+  wrapDegDelta(a + wrapDegDelta(b - a) * t);
 
 export const lerpPosition = (
   [aLng, aLat, aAlt]: Vec3,
@@ -136,19 +154,16 @@ export const lerpPosition = (
 ): Vec3 => [lerpLng(aLng, bLng, t), lerp(aLat, bLat, t), lerp(aAlt, bAlt, t)];
 
 // Interpolate an angle along the shortest arc (wraps at 2π).
-export const lerpAngle = (a: number, b: number, t: number) => {
-  let d = (((b - a) % TAU) + TAU) % TAU;
-  if (d > Math.PI) d -= TAU;
-  return a + d * t;
-};
+export const lerpAngle = (a: number, b: number, t: number) =>
+  a + wrapRadDelta(b - a) * t;
 
 // Interpolate [yaw, pitch, roll] orientation. Yaw and roll use shortest-arc
 // wrapping; pitch lerps directly (clamped in (-π/2, π/2)).
-export const lerpOrientation = (a: Vec3, b: Vec3, t: number): Vec3 => [
-  lerpAngle(a[0], b[0], t),
-  lerp(a[1], b[1], t),
-  lerpAngle(a[2], b[2], t),
-];
+export const lerpOrientation = (
+  [a0, a1, a2]: Vec3,
+  [b0, b1, b2]: Vec3,
+  t: number,
+): Vec3 => [lerpAngle(a0, b0, t), lerp(a1, b1, t), lerpAngle(a2, b2, t)];
 
 // ---------------------------------------------------------------------------
 // Quaternions  [x, y, z, w]
@@ -224,6 +239,7 @@ export const pickFlat = (
   const { center, distance, orientation, fieldOfView } = view;
   const [yaw, pitch, roll] = orientation;
   const [width, height] = size;
+  const [, , centerAlt] = center;
 
   const fov = (fieldOfView / 180) * Math.PI;
   const fieldScale = Math.tan(Math.PI / 8) / Math.tan(fov / 2);
@@ -269,8 +285,8 @@ export const pickFlat = (
   const rdz = r2z;
 
   if (Math.abs(rdz) < 1e-10) return null;
-  const t = (altitude - center[2] - camZ) / rdz;
+  const t = (altitude - centerAlt - camZ) / rdz;
   if (t < 0) return null;
 
-  return move(center, [camX + t * rdx, camY + t * rdy, altitude - center[2]]);
+  return move(center, [camX + t * rdx, camY + t * rdy, altitude - centerAlt]);
 };

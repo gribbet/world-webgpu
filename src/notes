@@ -68,3 +68,4 @@ control wraparound, overlimit, pitch limit
 
 UI not require derive? But world does?
 Hermite position transition
+transition completion

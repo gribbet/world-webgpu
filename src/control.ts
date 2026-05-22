@@ -1,6 +1,6 @@
 import { type Accessor, onCleanup } from "signals.ts";
 
-import { enuFromPosition, move } from "./math";
+import { enuFromPosition, move, wrapDegDelta } from "./math";
 import type { View } from "./model";
 import type { World } from "./world";
 
@@ -74,7 +74,7 @@ export const createControl = ({
         );
 
         // Wrap longitude to [-180, 180] and clamp latitude to Mercator limits
-        const wrappedLon = ((((movedLon + 180) % 360) + 360) % 360) - 180;
+        const wrappedLon = wrapDegDelta(movedLon);
         const clampedLat = Math.max(-MAX_LAT, Math.min(MAX_LAT, movedLat));
         const newCenter = [wrappedLon, clampedLat, movedAlt] as const;
 
