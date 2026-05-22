@@ -1,10 +1,4 @@
-import {
-  createSignal,
-  effect,
-  map,
-  type Properties,
-  resolve,
-} from "signals.ts";
+import { effect, map, type Properties, resolve, signal } from "signals.ts";
 
 import { createLayer, createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
@@ -30,7 +24,7 @@ export type TextProps = {
 export const text = createLayerType<TextProps>((context, { entries }) => {
   const billboards = map(entries, entry => {
     const { text, font, fontSize, ...rest } = entry;
-    const [image, setImage] = createSignal<string>("");
+    const [image, setImage] = signal<string>("");
     effect(() => {
       const textValue = resolve(text);
       if (!textValue) return;

@@ -1,4 +1,4 @@
-import { createSignal, effect, resolve } from "signals.ts";
+import { effect, resolve, signal } from "signals.ts";
 
 import { createLayer, createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
@@ -149,10 +149,10 @@ const earcut = (vertices: Vec3[], holes: Vec3[][] = []): number[] => {
 
 export const polygon = createLayerType<PolygonProps>(
   (context, { rings, color, depth, polygonOffset, ...pickHandlers }) => {
-    const [fillVertices, setFillVertices] = createSignal<
+    const [fillVertices, setFillVertices] = signal<
       { position: Vec3; color: Vec4 }[]
     >([]);
-    const [indices, setIndices] = createSignal<number[]>([]);
+    const [indices, setIndices] = signal<number[]>([]);
 
     effect(() => {
       const _rings = resolve(rings);

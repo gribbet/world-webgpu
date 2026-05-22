@@ -1,4 +1,4 @@
-import { type Accessor, createSignal, derived, untrack } from "signals.ts";
+import { derived, type Signal, signal, untrack } from "signals.ts";
 
 import {
   lerp,
@@ -11,7 +11,7 @@ import {
 } from "./math";
 import type { Vec3, Vec4, View } from "./model";
 
-export const [now, setNow] = createSignal(performance.now());
+export const [now, setNow] = signal(performance.now());
 
 const tick = (t: number) => {
   setNow(t);
@@ -19,7 +19,7 @@ const tick = (t: number) => {
 };
 requestAnimationFrame(tick);
 
-export const atFrame = <T>(source: Accessor<T>) =>
+export const atFrame = <T>(source: Signal<T>) =>
   derived(() => {
     now();
     return untrack(source);
@@ -30,7 +30,7 @@ export const atFrame = <T>(source: Accessor<T>) =>
 // value, and returns the next current value.
 export const transition =
   <T>(step: (_: { time: number; current: T; target: T }) => T) =>
-  (target: Accessor<T>): Accessor<T> => {
+  (target: Signal<T>): Signal<T> => {
     let current: T | undefined;
     let last: number | undefined;
     return derived(() => {

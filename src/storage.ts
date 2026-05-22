@@ -1,4 +1,4 @@
-import { type Accessor, createSignal } from "signals.ts";
+import { type Signal, signal } from "signals.ts";
 
 import { createResizableBuffer } from "./buffer";
 import { mercatorFromLonLat } from "./math";
@@ -18,7 +18,7 @@ const alignTo = (n: number, a: number) => Math.ceil(n / a) * a;
 
 type BackingStore = {
   readonly view: () => DataView;
-  readonly buffer: Accessor<GPUBuffer>;
+  readonly buffer: Signal<GPUBuffer>;
   markDirty(from: number, to: number): void;
   ensureCapacity(minByteLength: number): void;
   flush(): void;
@@ -184,7 +184,7 @@ export const struct = <S extends Shape>(shape: S): StructDef<S> => {
 
 export type StructBuffer<S extends Shape> = {
   readonly item: ItemView<S>;
-  readonly buffer: Accessor<GPUBuffer>;
+  readonly buffer: Signal<GPUBuffer>;
   flush(): void;
 };
 
@@ -206,7 +206,7 @@ export const buffer = <S extends Shape>(
 type ArrayResult<TItem> = {
   readonly stride: number;
   readonly items: TItem[];
-  readonly buffer: Accessor<GPUBuffer>;
+  readonly buffer: Signal<GPUBuffer>;
   resize(n: number): void;
   flush(): void;
 };
@@ -268,8 +268,8 @@ const createStructArray = <S extends Shape>(
 export const structArray = createStructArray;
 
 export type SlotAllocator<S extends Shape> = {
-  readonly count: Accessor<number>;
-  readonly buffer: Accessor<GPUBuffer>;
+  readonly count: Signal<number>;
+  readonly buffer: Signal<GPUBuffer>;
   allocate(): [item: ItemView<S>, release: () => void];
   flush(): void;
 };
@@ -286,7 +286,7 @@ export const createSlotAllocator = <S extends Shape>(
     (options.initialCapacity ?? 16) * stride,
   );
 
-  const [count, setCount] = createSignal(0);
+  const [count, setCount] = signal(0);
   let liveCount = 0;
   const movers = new Map<number, (slot: number) => void>();
 
@@ -298,7 +298,7 @@ export const createSlotAllocator = <S extends Shape>(
 
   const allocate = (): [ItemView<S>, () => void] => {
     const slot = liveCount;
-    const [getSlot, setSlot] = createSignal(slot);
+    const [getSlot, setSlot] = signal(slot);
     movers.set(slot, setSlot);
     liveCount++;
     setCount(liveCount);

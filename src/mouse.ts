@@ -1,4 +1,4 @@
-import type { Accessor } from "signals.ts";
+import type { MaybeSignal } from "signals.ts";
 import { onCleanup, resolve } from "signals.ts";
 
 import { pickFlat } from "./math";
@@ -15,7 +15,7 @@ export const createMouse = ({
   element: HTMLElement;
   pickRegistry: PickRegistry;
   picker: Picker;
-  view: View | Accessor<View>;
+  view: MaybeSignal<View>;
 }) => {
   const abortController = new AbortController();
   const { signal } = abortController;

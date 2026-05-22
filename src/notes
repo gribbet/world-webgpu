@@ -69,3 +69,6 @@ control wraparound, overlimit, pitch limit
 UI not require derive? But world does?
 Hermite position transition
 transition completion
+Derived vs not for props? 
+signal to signal
+Signal to Signal

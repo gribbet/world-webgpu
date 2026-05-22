@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "signals.ts";
+import { onCleanup, signal } from "signals.ts";
 
 export const createBuffer = (
   device: GPUDevice,
@@ -34,7 +34,7 @@ export const createResizableBuffer = (
 ) => {
   let size = Math.max(4, (initialSize + 3) & ~3);
   let buffer = createBuffer(device, { size, usage }, { cleanup: false });
-  const [accessor, setBuffer] = createSignal(buffer);
+  const [Signal, setBuffer] = signal(buffer);
 
   const ensureSize = (requiredSize: number) => {
     const required = Math.max(4, (requiredSize + 3) & ~3);
@@ -52,7 +52,7 @@ export const createResizableBuffer = (
   onCleanup(() => buffer.destroy());
 
   return {
-    buffer: accessor,
+    buffer: Signal,
     ensureSize,
   };
 };

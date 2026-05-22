@@ -1,9 +1,9 @@
 import {
-  createSignal,
   derived,
   onCleanup,
   type Properties,
   resolve,
+  signal,
 } from "signals.ts";
 
 import type { Vec3 } from "./model";
@@ -39,7 +39,7 @@ export const createPickRegistry = () => {
   let nextId = 1;
   const freeList: number[] = [];
   const handlers = new Map<number, Properties<PickHandlers>>();
-  const [draggingId, setDraggingId] = createSignal(0);
+  const [draggingId, setDraggingId] = signal(0);
 
   const allocate = (entry: Properties<PickHandlers> = {}) => {
     const id = freeList.length > 0 ? freeList.pop()! : nextId++;

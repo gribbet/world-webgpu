@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "signals.ts";
+import { onCleanup, signal } from "signals.ts";
 
 import { tileTextureLayers } from "./configuration";
 import type { Vec2 } from "./model";
@@ -20,7 +20,7 @@ export const createContext = async (element: HTMLCanvasElement) => {
 
   const devicePixelRatio = window.devicePixelRatio || 1;
   const { width, height } = element;
-  const [size, setSize] = createSignal<Vec2>([width, height]);
+  const [size, setSize] = signal<Vec2>([width, height]);
   const observer = new ResizeObserver(
     ([{ contentRect: { width, height } = {} } = {}]) => {
       if (width === undefined || height === undefined) return;

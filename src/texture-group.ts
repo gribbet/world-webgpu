@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "signals.ts";
+import { onCleanup, signal } from "signals.ts";
 
 import { mipLevelCount, tileTextureLayers } from "./configuration";
 import type { Context } from "./context";
@@ -30,9 +30,7 @@ export const createTextureGroup = ({
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-  const [texture, setTexture] = createSignal<GPUTexture>(
-    createGroupTexture(8, 8),
-  );
+  const [texture, setTexture] = signal<GPUTexture>(createGroupTexture(8, 8));
 
   const available = new Array(layers).fill(0).map((_, i) => i);
 

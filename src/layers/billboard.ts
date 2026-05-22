@@ -1,11 +1,11 @@
 import {
-  createSignal,
   derived,
   effect,
   map,
   onCleanup,
   type Properties,
   resolve,
+  signal,
 } from "signals.ts";
 
 import { createLayerType } from "../common";
@@ -57,7 +57,7 @@ export const billboard = createLayerType<BillboardProps>(
       initialCapacity: 16,
     });
 
-    const [imageMetadata, setImageMetadata] = createSignal<{
+    const [imageMetadata, setImageMetadata] = signal<{
       [url: string]:
         | { index: number; width: number; height: number }
         | undefined;

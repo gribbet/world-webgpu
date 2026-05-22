@@ -1,10 +1,10 @@
-import { createRoot, createSignal, derived, map } from "signals.ts";
+import { derived, map, root, signal } from "signals.ts";
 
 import { createContext } from "./context";
 import { createControl } from "./control";
 import { fill } from "./layers/fill";
 import { type Vertex as LineVertex } from "./layers/line";
-import { line } from "./layers/line/index";
+import { line } from "./layers/line";
 import { type Mesh, object, type Vertex as MeshVertex } from "./layers/object";
 import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
@@ -112,13 +112,13 @@ const mapboxToken =
 const elevationUrl = `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.png?access_token=${mapboxToken}`;
 
 export const createApp = () =>
-  createRoot(async dispose => {
+  root(async dispose => {
     const element = document.createElement("canvas");
     document.body.appendChild(element);
 
     const context = await createContext(element);
 
-    const [targetView, setTargetView] = createSignal<View>({
+    const [targetView, setTargetView] = signal<View>({
       center: [-122.4194, 37.7749, 0],
       distance: 10000000,
       orientation: [0, 0, 0],
@@ -128,14 +128,14 @@ export const createApp = () =>
     const view = createViewTransition(targetView);
     const setView = (_: View) => setTargetView(_);
 
-    const [time, setTime] = createSignal(0);
+    const [time, setTime] = signal(0);
     const animate = (t: number) => {
       setTime(t);
       requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
 
-    const [items, setItems] = createSignal<
+    const [items, setItems] = signal<
       { id: string; position: Vec3; test: boolean }[]
     >([]);
 

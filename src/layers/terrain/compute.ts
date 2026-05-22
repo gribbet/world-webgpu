@@ -1,4 +1,4 @@
-import type { Accessor } from "signals.ts";
+import type { Signal } from "signals.ts";
 import { derived } from "signals.ts";
 
 import { createBuffer, createDataBuffer } from "../../buffer";
@@ -17,7 +17,7 @@ export const createComputePipeline = async ({
   countBuffer: GPUBuffer;
   imageryMapBuffer: GPUBuffer;
   elevationMapBuffer: GPUBuffer;
-  elevationTextures: Accessor<GPUTexture>;
+  elevationTextures: Signal<GPUTexture>;
 }) => {
   const module = device.createShaderModule({
     code:

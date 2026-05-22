@@ -1,4 +1,4 @@
-import { type Accessor, onCleanup } from "signals.ts";
+import { onCleanup, type Signal } from "signals.ts";
 
 import { enuFromPosition, move, wrapDegDelta } from "./math";
 import type { View } from "./model";
@@ -14,7 +14,7 @@ export const createControl = ({
 }: {
   element: HTMLElement;
   world: World;
-  view: Accessor<View>;
+  view: Signal<View>;
   setView: (_: View) => void;
 }) => {
   const abortController = new AbortController();

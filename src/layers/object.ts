@@ -1,11 +1,11 @@
 import {
-  createSignal,
   derived,
   effect,
   map,
   onCleanup,
   type Properties,
   resolve,
+  signal,
 } from "signals.ts";
 
 import { createDataBuffer } from "../buffer";
@@ -115,7 +115,7 @@ export const object = createLayerType<ObjectProps>(
       indices: GPUBuffer;
       indexCount: number;
     };
-    const [meshBuffers, setMeshBuffers] = createSignal<MeshBuffers | undefined>(
+    const [meshBuffers, setMeshBuffers] = signal<MeshBuffers | undefined>(
       undefined,
     );
 

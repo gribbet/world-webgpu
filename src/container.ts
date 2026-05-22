@@ -1,11 +1,11 @@
 import {
-  createSignal,
   derived,
   effect,
   map,
   onCleanup,
   type Properties,
   resolve,
+  signal,
 } from "signals.ts";
 
 import {
@@ -31,7 +31,7 @@ const createCell = <P>(
   factory: LayerFactory<P>,
   initial: Properties<P>,
 ): Cell => {
-  const [getProps, setProps] = createSignal(initial);
+  const [getProps, setProps] = signal(initial);
   const reactiveProps = {} as Properties<P>;
   for (const key in initial)
     Object.defineProperty(reactiveProps, key, {
@@ -77,7 +77,7 @@ export const createContainerLayer = (
     return result;
   });
 
-  const [active, setActive] = createSignal<Layer[]>([]);
+  const [active, setActive] = signal<Layer[]>([]);
 
   const items = map(stableList, _ => _.create());
 
