@@ -4,10 +4,9 @@ import type { Vec2, Vec3, Vec4, View } from "./model";
 // Constants
 // ---------------------------------------------------------------------------
 
-export const EARTH_CIRCUMFERENCE = 40075017; // meters
+const tau = Math.PI * 2;
 
-const EARTH_RADIUS = 6378137; // meters (WGS-84 semi-major axis)
-const TAU = Math.PI * 2;
+const earthRadius = 6378137; // meters (WGS-84 semi-major axis)
 
 // ---------------------------------------------------------------------------
 // Vector math
@@ -48,7 +47,7 @@ export const vec3Scale = ([v0, v1, v2]: Vec3, scale: number): Vec3 => [
 export const lonLatFromMercator = (mx: number, my: number): Vec2 => {
   const lon = (mx / 2 ** 31) * 360 - 180;
   const lat =
-    (Math.atan(Math.sinh((0.5 - my / 2 ** 31) * TAU)) * 180) / Math.PI;
+    (Math.atan(Math.sinh((0.5 - my / 2 ** 31) * tau)) * 180) / Math.PI;
   return [lon, lat];
 };
 
@@ -58,7 +57,7 @@ export const mercatorFromLonLat = (
 ): [number, number] => {
   const latRad = (lat * Math.PI) / 180;
   const mx = (lon + 180) / 360;
-  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / TAU;
+  const my = 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / tau;
   return [Math.floor(mx * 2 ** 31), Math.floor(my * 2 ** 31)];
 };
 
@@ -68,7 +67,7 @@ export const enuFromPosition = (center: Vec3, position: Vec3): Vec3 => {
   const [centerLon, centerLat, centerAlt] = center;
   const [lon, lat, alt] = position;
 
-  const r = EARTH_RADIUS + centerAlt;
+  const r = earthRadius + centerAlt;
   const centerLatRad = (centerLat * Math.PI) / 180;
 
   const dLonRad = ((lon - centerLon) * Math.PI) / 180;
@@ -89,7 +88,7 @@ export const move = (
   const [lon, lat, alt] = center;
   const [x, y, z] = enu;
 
-  const r = EARTH_RADIUS + alt;
+  const r = earthRadius + alt;
   const latRad = (lat * Math.PI) / 180;
 
   const lonDelta = (x / (r * Math.cos(latRad))) * (180 / Math.PI);
@@ -105,8 +104,8 @@ export const lngLatDistance = (
 ) => {
   const lat = (((aLat + bLat) / 2) * Math.PI) / 180;
   const dLng = wrapDegDelta(bLng - aLng);
-  const dx = ((dLng * Math.PI) / 180) * EARTH_RADIUS * Math.cos(lat);
-  const dy = (((bLat - aLat) * Math.PI) / 180) * EARTH_RADIUS;
+  const dx = ((dLng * Math.PI) / 180) * earthRadius * Math.cos(lat);
+  const dy = (((bLat - aLat) * Math.PI) / 180) * earthRadius;
   const dz = bAlt - aAlt;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 };
@@ -124,8 +123,8 @@ export const wrapDegDelta = (d: number): number => {
 
 // Wrap `d` to [-π, π] (shortest-path angle delta in radians).
 export const wrapRadDelta = (d: number): number => {
-  d = ((d % TAU) + TAU) % TAU;
-  if (d > Math.PI) d -= TAU;
+  d = ((d % tau) + tau) % tau;
+  if (d > Math.PI) d -= tau;
   return d;
 };
 

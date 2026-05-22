@@ -1,5 +1,6 @@
-import type { Context } from "./context";
 import { derived } from "signals.ts";
+
+import type { Context } from "./context";
 import { createTexture } from "./texture";
 
 export const createRenderer = (context: Context) => {
@@ -12,7 +13,7 @@ export const createRenderer = (context: Context) => {
 
   const renderTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       sampleCount,
       format,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -21,7 +22,7 @@ export const createRenderer = (context: Context) => {
 
   const depthTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       sampleCount,
       format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT,

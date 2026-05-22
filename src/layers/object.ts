@@ -120,9 +120,9 @@ export const object = createLayerType<ObjectProps>(
     );
 
     effect(() => {
-      const mesh_ = resolve(mesh);
-      const vertexData = new Float32Array(mesh_.vertices.length * 12);
-      mesh_.vertices.forEach((v, i) => {
+      const _mesh = resolve(mesh);
+      const vertexData = new Float32Array(_mesh.vertices.length * 12);
+      _mesh.vertices.forEach((v, i) => {
         const offset = i * 12;
         vertexData.set(v.position, offset);
         vertexData.set(v.color ?? [1, 1, 1, 1], offset + 3);
@@ -135,7 +135,7 @@ export const object = createLayerType<ObjectProps>(
         GPUBufferUsage.VERTEX,
         vertexData,
       );
-      const indicesData = new Uint32Array(mesh_.indices.flat());
+      const indicesData = new Uint32Array(_mesh.indices.flat());
       const indices = createDataBuffer(
         device,
         GPUBufferUsage.INDEX,

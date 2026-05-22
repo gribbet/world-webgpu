@@ -19,7 +19,7 @@ export const createPicker = (
 
   const xyTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       format: "rg32uint",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     }),
@@ -27,7 +27,7 @@ export const createPicker = (
 
   const zTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       format: "r32float",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     }),
@@ -35,7 +35,7 @@ export const createPicker = (
 
   const idTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       format: "r32uint",
       usage:
         GPUTextureUsage.RENDER_ATTACHMENT |
@@ -46,7 +46,7 @@ export const createPicker = (
 
   const depthTexture = derived(() =>
     createTexture(device, {
-      size: textureSize(),
+      size: [...textureSize()],
       format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     }),
@@ -85,7 +85,7 @@ export const createPicker = (
         Math.min(Math.max(0, Math.floor(px * devicePixelRatio)), maxX),
         Math.min(Math.max(0, Math.floor(py * devicePixelRatio)), maxY),
         0,
-      ] as const;
+      ];
 
       const encoder = device.createCommandEncoder();
       encoder.copyTextureToBuffer(

@@ -67,15 +67,10 @@ export const quaternionTransition = transition<Vec4>(
   ({ time, current, target }) => slerp(current, target, expQ(time)),
 );
 
-// Long-distance moves zoom out during travel (so we don't load a wall of
-// high-zoom tiles) and slow horizontal motion while zoomed out, then ease
-// back in near the target.
-const FLY_MIN_DISTANCE = 1000;
-
 export const createViewTransition = transition<View>(
   ({ time, current, target }) => {
     let flyDistance = lngLatDistance(current.center, target.center);
-    if (flyDistance < FLY_MIN_DISTANCE) flyDistance = 0;
+    if (flyDistance < 1000) flyDistance = 0;
 
     const targetDistance = Math.max(target.distance, flyDistance);
     const q = expQ(time);

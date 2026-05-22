@@ -4,7 +4,7 @@ import { enuFromPosition, move, wrapDegDelta } from "./math";
 import type { View } from "./model";
 import type { World } from "./world";
 
-const MAX_LAT = (Math.atan(Math.sinh(Math.PI)) * 180) / Math.PI;
+const maxLat = (Math.atan(Math.sinh(Math.PI)) * 180) / Math.PI;
 
 export const createControl = ({
   element,
@@ -75,7 +75,7 @@ export const createControl = ({
 
         // Wrap longitude to [-180, 180] and clamp latitude to Mercator limits
         const wrappedLon = wrapDegDelta(movedLon);
-        const clampedLat = Math.max(-MAX_LAT, Math.min(MAX_LAT, movedLat));
+        const clampedLat = Math.max(-maxLat, Math.min(maxLat, movedLat));
         const newCenter = [wrappedLon, clampedLat, movedAlt] as const;
 
         setView({ center: newCenter, distance, orientation, fieldOfView });

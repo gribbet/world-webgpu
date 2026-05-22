@@ -88,7 +88,7 @@ export const createContainerLayer = (
       current = false;
     });
 
-    void Promise.all(list).then(resolved => {
+    void Promise.all(list.map(_ => Promise.resolve(_))).then(resolved => {
       if (current) setActive(resolved);
     });
   });

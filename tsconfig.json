@@ -2,12 +2,13 @@
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "esnext",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "sourceMap": true,
     "types": ["@webgpu/types"],
+    "skipLibCheck": true,
     "paths": {
       "signals.ts": ["../signals.ts/src"]
     }

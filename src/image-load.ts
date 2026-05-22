@@ -8,7 +8,9 @@ export const createImageLoad = (url: string, signal?: AbortSignal) => {
   const { promise, resolve, reject } = Promise.withResolvers<ImageBitmap[]>();
   let complete = false;
 
-  const handler = ({ data }: MessageEvent) => {
+  const handler = ({
+    data,
+  }: MessageEvent<{ url: string; images?: ImageBitmap[] }>) => {
     if (url !== data.url) return;
     complete = true;
     worker.removeEventListener("message", handler);
