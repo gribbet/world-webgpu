@@ -19,4 +19,3 @@ export type { View } from "./model";
 export type { PickEvent } from "./pick-registry";
 export * from "./transition";
 export { createWorld } from "./world";
-export { createRoot, createSignal, derived, resolve } from "signals.ts";
