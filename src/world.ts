@@ -145,6 +145,8 @@ export const createWorld = async (
 
     device.queue.submit([encoder.finish()]);
 
+    root.postFrame?.();
+
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

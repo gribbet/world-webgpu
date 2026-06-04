@@ -7,6 +7,7 @@ export type Layer = {
   update?: (encode: GPUCommandEncoder) => void;
   render: (pass: GPURenderPassEncoder) => void;
   pick?: (pass: GPURenderPassEncoder) => void;
+  postFrame?: () => void;
 };
 
 export type LayerFactory<P> = (

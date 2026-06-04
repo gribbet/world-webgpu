@@ -105,11 +105,14 @@ export const createContainerLayer = (
   const pick = (pass: GPURenderPassEncoder) =>
     active().forEach(_ => _.pick?.(pass));
 
+  const postFrame = () => active().forEach(_ => _.postFrame?.());
+
   return {
     compute,
     update,
     render,
     pick,
+    postFrame,
   };
 };
 

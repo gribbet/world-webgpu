@@ -1,4 +1,4 @@
-import { derived, onCleanup, resolve } from "signals.ts";
+import { derived, resolve } from "signals.ts";
 
 import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
@@ -88,25 +88,20 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
     renderPipeline.update(encoder);
   };
 
-  const render = (pass: GPURenderPassEncoder) => renderPipeline.render(pass);
+  const { render, pick } = renderPipeline;
 
-  const pick = (pass: GPURenderPassEncoder) => renderPipeline.pick(pass);
-
-  const updateTextures = async () => {
+  const postFrame = async () => {
     const tiles = await computePipeline.read();
     if (!tiles) return;
     imagery().ensure(tiles);
     elevation().ensure(tiles);
   };
 
-  const timer = setInterval(() => void updateTextures(), 100);
-
-  onCleanup(() => clearInterval(timer));
-
   return {
     compute,
     update,
     render,
     pick,
+    postFrame,
   };
 });
