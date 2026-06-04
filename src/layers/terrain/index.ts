@@ -68,7 +68,7 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
     elevationTextures,
   });
 
-  const pipeline = await createRenderPipeline({
+  const renderPipeline = await createRenderPipeline({
     context,
     tilesBuffer,
     countBuffer,
@@ -85,13 +85,12 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
   const update = (encoder: GPUCommandEncoder) => {
     imageryMap.update(encoder);
     elevationMap.update(encoder);
-    pipeline.update(encoder);
+    renderPipeline.update(encoder);
   };
 
-  const render = (
-    pass: GPURenderPassEncoder,
-    { pick }: { pick?: boolean } = {},
-  ) => pipeline.render(pass, { pick });
+  const render = (pass: GPURenderPassEncoder) => renderPipeline.render(pass);
+
+  const pick = (pass: GPURenderPassEncoder) => renderPipeline.pick(pass);
 
   const updateTextures = async () => {
     const tiles = await computePipeline.read();
@@ -108,5 +107,6 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
     compute,
     update,
     render,
+    pick,
   };
 });

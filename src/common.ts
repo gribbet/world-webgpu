@@ -5,7 +5,8 @@ import type { Context } from "./context";
 export type Layer = {
   compute?: (pass: GPUComputePassEncoder) => void;
   update?: (encode: GPUCommandEncoder) => void;
-  render: (pass: GPURenderPassEncoder, options?: { pick?: boolean }) => void;
+  render: (pass: GPURenderPassEncoder) => void;
+  pick?: (pass: GPURenderPassEncoder) => void;
 };
 
 export type LayerFactory<P> = (

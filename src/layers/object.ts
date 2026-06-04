@@ -20,7 +20,7 @@ import {
   u32,
   vec4f,
 } from "../storage";
-import { type CommonLayerProps, createLayerPipelines } from "./common";
+import { type CommonLayerProps, createLayerRenderer } from "./common";
 
 const instanceStruct = struct({
   position: position(),
@@ -83,7 +83,14 @@ export const object = createLayerType<ObjectProps>(
       ],
     });
 
-    const { pipeline, pickPipeline } = await createLayerPipelines({
+    const bindGroup = derived(() =>
+      device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{ binding: 0, resource: { buffer: slots.buffer() } }],
+      }),
+    );
+
+    const { render, pick } = await createLayerRenderer({
       context,
       code,
       topology: "triangle-list",
@@ -101,14 +108,16 @@ export const object = createLayerType<ObjectProps>(
           ],
         },
       ],
+      bindGroup,
+      draw: (pass: GPURenderPassEncoder) => {
+        const mesh = meshBuffers();
+        if (!mesh) return;
+        const { vertex, indices, indexCount } = mesh;
+        pass.setVertexBuffer(0, vertex);
+        pass.setIndexBuffer(indices, "uint32");
+        pass.drawIndexed(indexCount, slots.count());
+      },
     });
-
-    const bindGroup = derived(() =>
-      device.createBindGroup({
-        layout: bindGroupLayout,
-        entries: [{ binding: 0, resource: { buffer: slots.buffer() } }],
-      }),
-    );
 
     type MeshBuffers = {
       vertex: GPUBuffer;
@@ -190,23 +199,10 @@ export const object = createLayerType<ObjectProps>(
 
     const update = () => slots.flush();
 
-    const render = (
-      pass: GPURenderPassEncoder,
-      { pick }: { pick?: boolean } = {},
-    ) => {
-      const buffers = meshBuffers();
-      const count = slots.count();
-      if (count === 0 || !buffers) return;
-      pass.setPipeline(pick ? pickPipeline() : pipeline());
-      pass.setBindGroup(1, bindGroup());
-      pass.setVertexBuffer(0, buffers.vertex);
-      pass.setIndexBuffer(buffers.indices, "uint32");
-      pass.drawIndexed(buffers.indexCount, count);
-    };
-
     return {
       update,
       render,
+      pick,
     };
   },
 );

@@ -1,3 +1,4 @@
+import type { Signal } from "signals.ts";
 import { derived, type Properties, resolve } from "signals.ts";
 
 import { viewLayout } from "../common";
@@ -8,7 +9,7 @@ export type CommonLayerProps = {
   polygonOffset?: number;
 };
 
-export const createLayerPipelines = async ({
+export const createLayerRenderer = async ({
   context,
   code,
   topology = "triangle-list",
@@ -16,12 +17,16 @@ export const createLayerPipelines = async ({
   buffers,
   depth,
   polygonOffset,
+  bindGroup,
+  draw,
 }: {
   context: Context;
   code: string;
   topology?: GPUPrimitiveTopology;
   bindGroupLayout: GPUBindGroupLayout;
   buffers?: GPUVertexBufferLayout[];
+  bindGroup: () => GPUBindGroup;
+  draw: (pass: GPURenderPassEncoder) => void;
 } & Pick<Properties<CommonLayerProps>, "depth" | "polygonOffset">) => {
   const { device, format, sampleCount } = context;
 
@@ -94,5 +99,15 @@ export const createLayerPipelines = async ({
     }),
   );
 
-  return { pipeline, pickPipeline };
+  const execute =
+    (pipeline: Signal<GPURenderPipeline>) => (pass: GPURenderPassEncoder) => {
+      pass.setPipeline(pipeline());
+      pass.setBindGroup(1, bindGroup());
+      draw(pass);
+    };
+
+  const render = execute(pipeline);
+  const pick = execute(pickPipeline);
+
+  return { render, pick };
 };

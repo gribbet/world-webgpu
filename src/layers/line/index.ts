@@ -4,7 +4,7 @@ import { createLayerType } from "../../common";
 import type { Vec3, Vec4 } from "../../model";
 import type { PickHandlers } from "../../pick-registry";
 import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
-import { type CommonLayerProps, createLayerPipelines } from "../common";
+import { type CommonLayerProps, createLayerRenderer } from "../common";
 
 export type Vertex = {
   position: Vec3;
@@ -52,20 +52,22 @@ export const line = createLayerType<LineProps>(async (context, props) => {
     ],
   });
 
-  const { pipeline, pickPipeline } = await createLayerPipelines({
-    context,
-    bindGroupLayout,
-    code,
-    depth,
-    polygonOffset,
-  });
-
   const bindGroup = derived(() =>
     device.createBindGroup({
       layout: bindGroupLayout,
       entries: [{ binding: 0, resource: { buffer: storage.buffer() } }],
     }),
   );
+
+  const { render, pick } = await createLayerRenderer({
+    context,
+    bindGroupLayout,
+    code,
+    depth,
+    polygonOffset,
+    bindGroup,
+    draw: pass => pass.draw(12, totalVertices),
+  });
 
   const pickId = pickRegistry.allocate(props);
   let totalVertices = 0;
@@ -101,15 +103,5 @@ export const line = createLayerType<LineProps>(async (context, props) => {
 
   const update = () => storage.flush();
 
-  const render = (
-    pass: GPURenderPassEncoder,
-    { pick }: { pick?: boolean } = {},
-  ) => {
-    if (totalVertices === 0) return;
-    pass.setPipeline(pick ? pickPipeline() : pipeline());
-    pass.setBindGroup(1, bindGroup());
-    pass.draw(12, totalVertices);
-  };
-
-  return { update, render };
+  return { update, render, pick };
 });

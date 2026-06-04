@@ -2,7 +2,7 @@ import { derived } from "signals.ts";
 
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
-import { type CommonLayerProps, createLayerPipelines } from "../common";
+import { type CommonLayerProps, createLayerRenderer } from "../common";
 
 export const createRenderPipeline = async ({
   context,
@@ -63,21 +63,6 @@ export const createRenderPipeline = async ({
     GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     new Uint32Array([0]),
   );
-
-  const { pipeline, pickPipeline } = await createLayerPipelines({
-    context,
-    bindGroupLayout,
-    buffers: [
-      {
-        arrayStride: 12,
-        attributes: [{ shaderLocation: 0, format: "uint32x3", offset: 0 }],
-      },
-    ],
-    topology: "triangle-list",
-    code,
-    depth,
-    polygonOffset,
-  });
 
   const resolution = 21;
   const count = resolution + 2;
@@ -144,24 +129,35 @@ export const createRenderPipeline = async ({
     }),
   );
 
+  const { render, pick } = await createLayerRenderer({
+    context,
+    bindGroupLayout,
+    buffers: [
+      {
+        arrayStride: 12,
+        attributes: [{ shaderLocation: 0, format: "uint32x3", offset: 0 }],
+      },
+    ],
+    topology: "triangle-list",
+    code,
+    depth,
+    polygonOffset,
+    bindGroup,
+    draw: (pass: GPURenderPassEncoder) => {
+      pass.setVertexBuffer(0, verticesBuffer);
+      pass.setIndexBuffer(indicesBuffer, "uint32");
+      pass.drawIndexedIndirect(indirectBuffer, 0);
+    },
+  });
+
   const update = (encoder: GPUCommandEncoder) => {
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
     device.queue.writeBuffer(pickBuffer, 0, new Uint32Array([pickId()]));
   };
 
-  const render = (
-    pass: GPURenderPassEncoder,
-    { pick }: { pick?: boolean } = {},
-  ) => {
-    pass.setPipeline(pick ? pickPipeline() : pipeline());
-    pass.setVertexBuffer(0, verticesBuffer);
-    pass.setIndexBuffer(indicesBuffer, "uint32");
-    pass.setBindGroup(1, bindGroup());
-    pass.drawIndexedIndirect(indirectBuffer, 0);
-  };
-
   return {
     update,
     render,
+    pick,
   };
 };

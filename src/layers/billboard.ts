@@ -21,7 +21,7 @@ import {
   vec4f,
 } from "../storage";
 import { createTextureGroup } from "../texture-group";
-import { type CommonLayerProps, createLayerPipelines } from "./common";
+import { type CommonLayerProps, createLayerRenderer } from "./common";
 
 const billboardStruct = struct({
   position: position(),
@@ -105,15 +105,6 @@ export const billboard = createLayerType<BillboardProps>(
       maxAnisotropy: 16,
     });
 
-    const { pipeline, pickPipeline } = await createLayerPipelines({
-      context,
-      code,
-      topology: "triangle-strip",
-      bindGroupLayout,
-      depth,
-      polygonOffset,
-    });
-
     const bindGroup = derived(() =>
       device.createBindGroup({
         layout: bindGroupLayout,
@@ -124,6 +115,17 @@ export const billboard = createLayerType<BillboardProps>(
         ],
       }),
     );
+
+    const { render, pick } = await createLayerRenderer({
+      context,
+      code,
+      topology: "triangle-strip",
+      bindGroupLayout,
+      depth,
+      polygonOffset,
+      bindGroup,
+      draw: pass => pass.draw(4, slots.count()),
+    });
 
     map(billboards, billboard => {
       const [item, release] = slots.allocate();
@@ -166,20 +168,10 @@ export const billboard = createLayerType<BillboardProps>(
       slots.flush();
     };
 
-    const render = (
-      pass: GPURenderPassEncoder,
-      { pick }: { pick?: boolean } = {},
-    ) => {
-      const count = slots.count();
-      if (count === 0) return;
-      pass.setPipeline(pick ? pickPipeline() : pipeline());
-      pass.setBindGroup(1, bindGroup());
-      pass.draw(4, count, 0, 0);
-    };
-
     return {
       update,
       render,
+      pick,
     };
   },
 );

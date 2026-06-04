@@ -140,7 +140,7 @@ export const createWorld = async (
     });
 
     pickPass.setBindGroup(0, bindGroup);
-    root.render(pickPass, { pick: true });
+    root.pick?.(pickPass);
     pickPass.end();
 
     device.queue.submit([encoder.finish()]);
