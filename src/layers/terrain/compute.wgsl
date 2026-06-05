@@ -60,27 +60,39 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
         let c2 = projectTile(vec3<u32>(x + 1, y, z));
         let c3 = projectTile(vec3<u32>(x, y + 1, z));
         let c4 = projectTile(vec3<u32>(x + 1, y + 1, z));
+        let e1 = projectTile(vec3<u32>(2 * x + 1, 2 * y, z + 1));
+        let e2 = projectTile(vec3<u32>(2 * x + 2, 2 * y + 1, z + 1));
+        let e3 = projectTile(vec3<u32>(2 * x + 1, 2 * y + 2, z + 1));
+        let e4 = projectTile(vec3<u32>(2 * x, 2 * y + 1, z + 1));
 
         let cx = vec4<f32>(c1.x, c2.x, c3.x, c4.x);
         let cy = vec4<f32>(c1.y, c2.y, c3.y, c4.y);
         let cz = vec4<f32>(c1.z, c2.z, c3.z, c4.z);
         let cw = vec4<f32>(c1.w, c2.w, c3.w, c4.w);
+        let ex = vec4<f32>(e1.x, e2.x, e3.x, e4.x);
+        let ey = vec4<f32>(e1.y, e2.y, e3.y, e4.y);
+        let ez = vec4<f32>(e1.z, e2.z, e3.z, e4.z);
+        let ew = vec4<f32>(e1.w, e2.w, e3.w, e4.w);
 
-        if !inside && (all(cx > cw) || all(cx < -cw) || all(cy > cw) || all(cy < -cw) || all(cz > cw) || all(cz < vec4(0.0)) || all(cw <= vec4(0.0))) {
+        if !inside && ((all(cx > cw) && all(ex > ew)) || (all(cx < -cw) && all(ex < -ew)) || (all(cy > cw) && all(ey > ew)) || (all(cy < -cw) && all(ey < -ew)) || (all(cz > cw) && all(ez > ew)) || (all(cz < vec4(0.0)) && all(ez < vec4(0.0))) || (all(cw <= vec4(0.0)) && all(ew <= vec4(0.0)))) {
             continue;
         }
 
         var subdivide = false;
-        if z < 3 || any(cw <= vec4(0.0)) {
+        if z < 3 || any(cw <= vec4(0.0)) || any(ew <= vec4(0.0)) {
             subdivide = true;
         } else {
             let n1 = screen(c1);
             let n2 = screen(c2);
             let n3 = screen(c3);
             let n4 = screen(c4);
+            let n5 = screen(e1);
+            let n6 = screen(e2);
+            let n7 = screen(e3);
+            let n8 = screen(e4);
 
-            let n_max = max(max(n1, n2), max(n3, n4));
-            let n_min = min(min(n1, n2), min(n3, n4));
+            let n_max = max(max(max(n1, n2), max(n3, n4)), max(max(n5, n6), max(n7, n8)));
+            let n_min = min(min(min(n1, n2), min(n3, n4)), min(min(n5, n6), min(n7, n8)));
 
             let span = n_max - n_min;
             let pixels = span.xy * view.screenSize / 2.0;
