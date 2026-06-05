@@ -126,7 +126,11 @@ export const billboard = createLayerType<BillboardProps>(
       depth,
       polygonOffset,
       bindGroup,
-      draw: pass => pass.draw(4, slots.count()),
+      draw: pass => {
+        const count = slots.count();
+        if (count === 0) return;
+        pass.draw(4, count);
+      },
     });
 
     map(billboards, billboard => {

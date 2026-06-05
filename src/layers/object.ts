@@ -113,9 +113,11 @@ export const object = createLayerType<ObjectProps>(
         const mesh = meshBuffers();
         if (!mesh) return;
         const { vertex, indices, indexCount } = mesh;
+        const count = slots.count();
+        if (indexCount === 0 || count === 0) return;
         pass.setVertexBuffer(0, vertex);
         pass.setIndexBuffer(indices, "uint32");
-        pass.drawIndexed(indexCount, slots.count());
+        pass.drawIndexed(indexCount, count);
       },
     });
 

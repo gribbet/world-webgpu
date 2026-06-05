@@ -66,7 +66,10 @@ export const line = createLayerType<LineProps>(async (context, props) => {
     depth,
     polygonOffset,
     bindGroup,
-    draw: pass => pass.draw(12, totalVertices),
+    draw: pass => {
+      if (totalVertices === 0) return;
+      pass.draw(12, totalVertices);
+    },
   });
 
   const pickId = pickRegistry.allocate(props);

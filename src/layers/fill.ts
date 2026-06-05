@@ -65,6 +65,7 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
     polygonOffset,
     bindGroup,
     draw: pass => {
+      if (indexCount === 0) return;
       pass.setIndexBuffer(indexStorage.buffer(), "uint32");
       pass.drawIndexed(indexCount);
     },
