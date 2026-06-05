@@ -31,17 +31,17 @@ const createImageLoad = (url: string) => {
     if (url !== data.url) return;
     complete = true;
     loads.delete(url);
-    worker.removeEventListener("message", handler);
     abortController.abort();
     if (data.image) resolve(data.image);
     else reject(new Error(`Failed to load image: ${url}`));
   };
-  worker.addEventListener("message", handler);
+  worker.addEventListener("message", handler, {
+    signal: abortController.signal,
+  });
 
   const cancel = (signal?: AbortSignal) => {
     complete = true;
     loads.delete(url);
-    worker.removeEventListener("message", handler);
     abortController.abort();
     reject(signal?.reason);
     worker.postMessage(["cancel", url]);

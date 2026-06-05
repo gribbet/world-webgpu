@@ -36,8 +36,8 @@ addEventListener("message", async event => {
     postMessage({ url, image }, [image]);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
-    if (error.name === "AbortError" || error.message === "Failed to fetch")
-      return postMessage({ url });
+    if (error.name === "AbortError") return;
+    else if (error.message === "Failed to fetch") return postMessage({ url });
     throw error;
   } finally {
     release();
