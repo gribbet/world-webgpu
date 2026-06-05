@@ -78,11 +78,10 @@ export const createTileTextureGroup = ({
 
   const loadTileMipmaps = (tile: Vec3, signal: AbortSignal) =>
     Promise.all(
-      computeMipSources(tile).map(async ({ url, crop }) =>
-        crop
-          ? await cropImage(await loadImage(url, signal), crop)
-          : await loadImage(url, signal),
-      ),
+      computeMipSources(tile).map(async ({ url, crop }) => {
+        const image = await loadImage(url, signal);
+        return crop ? await cropImage(image, crop) : image;
+      }),
     );
 
   const ensure = (tiles: Vec3[]) =>

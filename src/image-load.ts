@@ -22,21 +22,27 @@ export const loadImage = (url: string, signal?: AbortSignal) => {
 
 const createImageLoad = (url: string) => {
   const { promise, resolve, reject } = Promise.withResolvers<ImageBitmap>();
+  const abortController = new AbortController();
+  let complete = false;
 
   const handler = ({
     data,
   }: MessageEvent<{ url: string; image?: ImageBitmap }>) => {
     if (url !== data.url) return;
+    complete = true;
     loads.delete(url);
     worker.removeEventListener("message", handler);
+    abortController.abort();
     if (data.image) resolve(data.image);
     else reject(new Error(`Failed to load image: ${url}`));
   };
   worker.addEventListener("message", handler);
 
   const cancel = (signal?: AbortSignal) => {
+    complete = true;
     loads.delete(url);
     worker.removeEventListener("message", handler);
+    abortController.abort();
     reject(signal?.reason);
     worker.postMessage(["cancel", url]);
   };
@@ -46,11 +52,16 @@ const createImageLoad = (url: string) => {
   let count = 0;
   const acquire = (signal?: AbortSignal) => {
     count++;
-    signal?.addEventListener("abort", release, { once: true });
+    if (!signal) return;
+
+    signal.addEventListener("abort", () => release(signal), {
+      once: true,
+      signal: abortController.signal,
+    });
   };
-  const release = () => {
+  const release = (signal?: AbortSignal) => {
     count--;
-    if (count === 0) cancel();
+    if (count === 0 && !complete) cancel(signal);
   };
 
   return { promise, acquire };

@@ -49,7 +49,7 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     let index = tiles[i].imageryTexture;
     let k = 1u << index.y;
     let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
-    return textureSampleBias(imageryTextures, sample, uv, index.x, 0.5);
+    return textureSampleBias(imageryTextures, sample, uv, index.x, 1.5);
 }
 
 @fragment
