@@ -4,9 +4,12 @@ import { createBuffer } from "./buffer";
 import { createLock } from "./common";
 import type { Context } from "./context";
 import { lonLatFromMercator } from "./math";
+import type { Vec2, Vec3 } from "./model";
 import { createTexture } from "./texture";
 
 export type Picker = ReturnType<typeof createPicker>;
+
+type PickRenderer = (pass: GPURenderPassEncoder) => void;
 
 export const createPicker = (
   context: Pick<Context, "device" | "size" | "devicePixelRatio">,
@@ -73,21 +76,48 @@ export const createPicker = (
   });
 
   const lock = createLock();
-  const pick = async (px: number, py: number) => {
+  const read = async ([px, py]: Vec2, render: PickRenderer) => {
     const release = await lock();
 
     try {
       const [width, height] = size();
       const maxX = Math.max(0, Math.floor(width * devicePixelRatio) - 1);
       const maxY = Math.max(0, Math.floor(height * devicePixelRatio) - 1);
+      const ox = Math.min(Math.max(0, Math.floor(px * devicePixelRatio)), maxX);
+      const oy = Math.min(Math.max(0, Math.floor(py * devicePixelRatio)), maxY);
 
-      const origin = [
-        Math.min(Math.max(0, Math.floor(px * devicePixelRatio)), maxX),
-        Math.min(Math.max(0, Math.floor(py * devicePixelRatio)), maxY),
-        0,
-      ];
-
+      const origin: [number, number, number] = [ox, oy, 0];
       const encoder = device.createCommandEncoder();
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: xyView(),
+            loadOp: "clear",
+            storeOp: "store",
+          },
+          {
+            view: zView(),
+            loadOp: "clear",
+            storeOp: "store",
+          },
+          {
+            view: idView(),
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+        depthStencilAttachment: {
+          view: depthView(),
+          depthLoadOp: "clear",
+          depthStoreOp: "discard",
+          depthClearValue: 1.0,
+        },
+      });
+
+      pass.setScissorRect(ox, oy, 1, 1);
+      render(pass);
+      pass.end();
+
       encoder.copyTextureToBuffer(
         { texture: xyTexture(), origin },
         { buffer: xyReadBuffer, bytesPerRow: 256 },
@@ -123,17 +153,15 @@ export const createPicker = (
       zReadBuffer.unmap();
       idReadBuffer.unmap();
 
-      return { position: [lon, lat, z] as const, id };
+      const position: Vec3 = [lon, lat, z];
+
+      return { position, id };
     } finally {
       release();
     }
   };
 
   return {
-    pick,
-    xyView,
-    zView,
-    idView,
-    depthView,
+    read,
   };
 };

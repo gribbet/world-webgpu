@@ -2,19 +2,21 @@ import type { MaybeSignal } from "signals.ts";
 import { onCleanup, resolve } from "signals.ts";
 
 import { pickFlat } from "./math";
-import type { View } from "./model";
+import type { Vec2, Vec3, View } from "./model";
 import type { PickRegistry } from "./pick-registry";
-import type { Picker } from "./picker";
 
 export const createMouse = ({
   element,
   pickRegistry,
-  picker,
+  pick,
   view,
 }: {
   element: HTMLElement;
   pickRegistry: PickRegistry;
-  picker: Picker;
+  pick: (xy: Vec2) => Promise<{
+    position: Vec3;
+    id: number;
+  }>;
   view: MaybeSignal<View>;
 }) => {
   const abortController = new AbortController();
@@ -39,8 +41,8 @@ export const createMouse = ({
     return [event.clientX - left, event.clientY - top] as const;
   };
 
-  const readPickEvent = async (x: number, y: number) => ({
-    ...(await picker.pick(x, y)),
+  const readPickEvent = async ([x, y]: Vec2) => ({
+    ...(await pick([x, y])),
     x,
     y,
   });
@@ -50,7 +52,7 @@ export const createMouse = ({
     event => {
       const [x, y] = pointerPosition(event);
       const { pointerId, button } = event;
-      void readPickEvent(x, y).then(picked => {
+      void readPickEvent([x, y]).then(picked => {
         if (!picked.id) {
           gestures.delete(pointerId);
           return;
@@ -80,7 +82,7 @@ export const createMouse = ({
     event => {
       const [x, y] = pointerPosition(event);
       const { pointerId } = event;
-      void readPickEvent(x, y).then(picked => {
+      void readPickEvent([x, y]).then(picked => {
         if (picked.id) pickRegistry.onMouseMove(picked);
 
         const gesture = gestures.get(pointerId);
@@ -141,7 +143,7 @@ export const createMouse = ({
     const [x, y] = pointerPosition(event);
     const { pointerId } = event;
 
-    void readPickEvent(x, y).then(picked => {
+    void readPickEvent([x, y]).then(picked => {
       if (picked.id) pickRegistry.onMouseUp(picked);
 
       const gesture = gestures.get(pointerId);

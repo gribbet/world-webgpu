@@ -4,7 +4,7 @@ import { mat4 } from "wgpu-matrix";
 import { createLayer, type LayerDescriptor, viewLayout } from "./common";
 import { container } from "./container";
 import type { Context } from "./context";
-import type { View } from "./model";
+import type { Vec2, View } from "./model";
 import { createMouse } from "./mouse";
 import { createPicker } from "./picker";
 import { createRenderer } from "./renderer";
@@ -24,11 +24,7 @@ export const createWorld = async (
   const { device, size, textureLoader, element, pickRegistry } = context;
 
   const renderer = createRenderer(context);
-  const { renderView, depthView } = renderer;
   const picker = createPicker(context);
-  const { xyView, zView, idView, depthView: pickDepthView } = picker;
-
-  createMouse({ element, picker, pickRegistry, view });
 
   const viewUniform = buffer(
     {
@@ -76,6 +72,14 @@ export const createWorld = async (
 
   const root = await createLayer(context, container({ layers }));
 
+  const pick = (xy: Vec2) =>
+    picker.read(xy, pass => {
+      pass.setBindGroup(0, bindGroup);
+      root.pick?.(pass);
+    });
+
+  createMouse({ element, pick, pickRegistry, view });
+
   let running = true;
   const frame = () => {
     if (!running) return;
@@ -92,56 +96,10 @@ export const createWorld = async (
 
     textureLoader.update();
 
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: renderView(),
-          resolveTarget: context.context.getCurrentTexture().createView(),
-          loadOp: "clear",
-          storeOp: "discard",
-        },
-      ],
-      depthStencilAttachment: {
-        view: depthView(),
-        depthLoadOp: "clear",
-        depthStoreOp: "discard",
-        depthClearValue: 1.0,
-      },
+    renderer.render(encoder, pass => {
+      pass.setBindGroup(0, bindGroup);
+      root.render(pass);
     });
-
-    pass.setBindGroup(0, bindGroup);
-    root.render(pass);
-    pass.end();
-
-    const pickPass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: xyView(),
-          loadOp: "clear",
-          storeOp: "store",
-        },
-        {
-          view: zView(),
-          loadOp: "clear",
-          storeOp: "store",
-        },
-        {
-          view: idView(),
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-      depthStencilAttachment: {
-        view: pickDepthView(),
-        depthLoadOp: "clear",
-        depthStoreOp: "discard",
-        depthClearValue: 1.0,
-      },
-    });
-
-    pickPass.setBindGroup(0, bindGroup);
-    root.pick?.(pickPass);
-    pickPass.end();
 
     device.queue.submit([encoder.finish()]);
 
@@ -156,7 +114,7 @@ export const createWorld = async (
   });
 
   return {
-    pick: picker.pick,
+    pick,
     isDragging: pickRegistry.isDragging,
   };
 };
