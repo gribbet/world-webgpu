@@ -1,5 +1,7 @@
+import { mipLevelCount } from "../../configuration";
 import type { Context } from "../../context";
-import { createLru } from "../../lru";
+import { loadImage } from "../../image-load";
+import { cropImage } from "../../image-process";
 import type { Vec3 } from "../../model";
 import { createTextureGroup } from "../../texture-group";
 import { toKey } from "./common";
@@ -11,20 +13,77 @@ export const createTileTextureGroup = ({
   urlPattern,
   initialDownsample = 0,
   maxZ = 22,
+  mipmap = false,
 }: {
   context: Context;
   map: TileMapBuffer;
   urlPattern: string;
   initialDownsample?: number;
   maxZ?: number;
+  mipmap?: boolean;
 }) => {
-  const tileIndices = createLru<string, Vec3>({ maxSize: 4096 });
+  const tilesByKey = new Map<string, Vec3>();
+
   const textureGroup = createTextureGroup({
     context,
-    onLoad: (url, index) => map.set(tileIndices.get(url)!, index),
-    onEvict: url => map.clear(tileIndices.get(url)!),
+    load: (key, signal) => {
+      const tile = tilesByKey.get(key)!;
+      return mipmap
+        ? loadTileMipmaps(tile, signal)
+        : loadTileImage(tile, signal);
+    },
+    onLoad: (key, index) => map.set(tilesByKey.get(key)!, index),
+    onEvict: key => map.clear(tilesByKey.get(key)!),
   });
   const { texture } = textureGroup;
+
+  const tileUrl = (x: number, y: number, z: number) =>
+    urlPattern
+      .replace("{z}", z.toString())
+      .replace("{x}", x.toString())
+      .replace("{y}", y.toString());
+
+  const loadTileImage = ([x, y, z]: Vec3, signal?: AbortSignal) =>
+    loadImage(tileUrl(x, y, z), signal);
+
+  type MipSource = {
+    url: string;
+    crop?: { x: number; y: number; width: number; height: number };
+  };
+  const computeMipSources = ([x, y, z]: Vec3): MipSource[] =>
+    new Array(mipLevelCount).fill(0).flatMap((_, m) => {
+      const ancestorZ = z - m;
+      if (ancestorZ < 0) return [];
+      if (m === 0) return [{ url: tileUrl(x, y, z) }];
+      const scale = 2 ** m;
+      const tileSize = 256;
+      const size = tileSize / scale;
+      const url = tileUrl(
+        Math.floor(x / scale),
+        Math.floor(y / scale),
+        ancestorZ,
+      );
+      return [
+        {
+          url,
+          crop: {
+            x: (x % scale) * size,
+            y: (y % scale) * size,
+            width: size,
+            height: size,
+          },
+        },
+      ];
+    });
+
+  const loadTileMipmaps = (tile: Vec3, signal: AbortSignal) =>
+    Promise.all(
+      computeMipSources(tile).map(async ({ url, crop }) =>
+        crop
+          ? await cropImage(await loadImage(url, signal), crop)
+          : await loadImage(url, signal),
+      ),
+    );
 
   const ensure = (tiles: Vec3[]) =>
     textureGroup.ensure(
@@ -35,13 +94,9 @@ export const createTileTextureGroup = ({
       )
         .filter(([, , z]) => z <= maxZ)
         .map(xyz => {
-          const [x, y, z] = xyz;
-          const url = urlPattern
-            .replace("{z}", z.toString())
-            .replace("{x}", x.toString())
-            .replace("{y}", y.toString());
-          tileIndices.set(url, xyz);
-          return url;
+          const key = toKey(xyz).toString();
+          tilesByKey.set(key, xyz);
+          return key;
         }),
     );
 

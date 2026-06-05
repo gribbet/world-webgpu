@@ -9,6 +9,7 @@ import {
 } from "signals.ts";
 
 import { createLayerType } from "../common";
+import { loadImage } from "../image-load";
 import type { Vec3, Vec4 } from "../model";
 import type { PickHandlers } from "../pick-registry";
 import {
@@ -65,6 +66,7 @@ export const billboard = createLayerType<BillboardProps>(
 
     const textureGroup = createTextureGroup({
       context,
+      load: loadImage,
       onLoad: (url, index, width, height) =>
         setImageMetadata({
           ...imageMetadata(),

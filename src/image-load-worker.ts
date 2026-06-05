@@ -1,5 +1,4 @@
 import { limit } from "./common";
-import { mipLevelCount } from "./configuration";
 
 export type Data = ["load" | "cancel", string];
 
@@ -14,8 +13,8 @@ addEventListener("message", async event => {
   addEventListener(
     "message",
     (event: MessageEvent) => {
-      const [action, _] = event.data as Data;
-      if (action === "cancel" && url === _) abortController.abort();
+      const [evAction, _] = event.data as Data;
+      if (evAction === "cancel" && _ === url) abortController.abort();
     },
     { signal },
   );
@@ -32,10 +31,9 @@ addEventListener("message", async event => {
 
     const blob = await response.blob();
     const image = await createImageBitmap(blob);
-    const images = await createMipmaps(image);
 
     // @ts-expect-error Transferable
-    postMessage({ url, images }, images);
+    postMessage({ url, image }, [image]);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     if (error.name === "AbortError" || error.message === "Failed to fetch")
@@ -45,16 +43,3 @@ addEventListener("message", async event => {
     release();
   }
 });
-
-const createMipmaps = (image: ImageBitmap) =>
-  Promise.all(
-    new Array(mipLevelCount).fill(0).map((_, i) => {
-      const width = Math.max(1, Math.floor(image.width / 2 ** i));
-      const height = Math.max(1, Math.floor(image.height / 2 ** i));
-      return createImageBitmap(image, {
-        resizeWidth: width,
-        resizeHeight: height,
-        resizeQuality: "high",
-      });
-    }),
-  );

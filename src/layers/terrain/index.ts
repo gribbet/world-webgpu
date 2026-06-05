@@ -39,6 +39,7 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
       context,
       map: imageryMap,
       urlPattern: resolve(imageryUrl),
+      mipmap: true,
     }),
   );
 

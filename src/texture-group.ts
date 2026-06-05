@@ -2,20 +2,25 @@ import { onCleanup, signal } from "signals.ts";
 
 import { mipLevelCount, tileTextureLayers } from "./configuration";
 import type { Context } from "./context";
-import { createImageLoad } from "./image-load";
+import { createMipmaps } from "./image-process";
 import { createLru } from "./lru";
 import { createTexture } from "./texture";
 
 export const createTextureGroup = ({
   context,
   layers = tileTextureLayers,
+  load,
   onLoad,
   onEvict,
 }: {
   context: Context;
   layers?: number;
-  onLoad?: (url: string, index: number, width: number, height: number) => void;
-  onEvict?: (url: string, index: number) => void;
+  load: (
+    key: string,
+    signal: AbortSignal,
+  ) => Promise<ImageBitmap | ImageBitmap[]>;
+  onLoad?: (key: string, index: number, width: number, height: number) => void;
+  onEvict?: (key: string, index: number) => void;
 }) => {
   const { device, textureLoader } = context;
 
@@ -23,7 +28,10 @@ export const createTextureGroup = ({
     createTexture(device, {
       size: [width, height, layers],
       format: "rgba8unorm",
-      mipLevelCount,
+      mipLevelCount: Math.min(
+        mipLevelCount,
+        Math.floor(Math.log2(Math.max(width, height))) + 1,
+      ),
       usage:
         GPUTextureUsage.TEXTURE_BINDING |
         GPUTextureUsage.COPY_DST |
@@ -37,11 +45,11 @@ export const createTextureGroup = ({
   type Entry = { index?: number; cancel: (() => void) | undefined };
   const mapping = createLru<string, Entry>({
     maxSize: layers,
-    onEvict: (url, { index, cancel }) => {
+    onEvict: (key, { index, cancel }) => {
       cancel?.();
       if (index === undefined) return;
       if (!cancel) available.push(index);
-      onEvict?.(url, index);
+      onEvict?.(key, index);
     },
   });
 
@@ -59,18 +67,36 @@ export const createTextureGroup = ({
     return false;
   };
 
-  const load = async (url: string, index: number, signal: AbortSignal) => {
+  const normalizeImages = async (_: ImageBitmap | ImageBitmap[]) => {
+    const images = Array.isArray(_)
+      ? _.slice(0, mipLevelCount)
+      : await createMipmaps(_);
+
+    const last = images[images.length - 1];
+    if (last && images.length < mipLevelCount) {
+      const remaining = await createMipmaps(
+        last,
+        mipLevelCount - images.length + 1,
+      );
+      return [...images, ...remaining.slice(1)];
+    }
+
+    return images;
+  };
+
+  const doLoad = async (key: string, index: number, signal: AbortSignal) => {
     try {
-      const result = await createImageLoad(url, signal);
+      const images = await normalizeImages(await load(key, signal));
 
-      const images = Array.isArray(result) ? result : [result];
       const [first] = images;
-
       if (!first) return;
 
       const { width, height } = first;
 
-      if (ensureSize(width, height)) return;
+      if (ensureSize(width, height)) {
+        available.push(index);
+        return;
+      }
 
       await Promise.all(
         images.map((_, mip) =>
@@ -78,31 +104,31 @@ export const createTextureGroup = ({
         ),
       );
 
-      mapping.set(url, { index, cancel: undefined });
+      mapping.set(key, { index, cancel: undefined });
 
-      onLoad?.(url, index, width, height);
+      onLoad?.(key, index, width, height);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         available.push(index);
-        mapping.delete(url);
+        mapping.delete(key);
         return;
       }
       throw error;
     }
   };
 
-  const ensure = (urls: string[]) => {
-    const current = new Set(urls);
+  const ensure = (keys: string[]) => {
+    const current = new Set(keys);
     mapping
       .entries()
-      .filter(([url]) => !current.has(url))
+      .filter(([key]) => !current.has(key))
       .forEach(([, { cancel }]) => cancel?.());
-    current.forEach(ensureOne);
+    keys.forEach(ensureOne);
   };
 
-  const ensureOne = (url: string) => {
-    const current = mapping.get(url);
-    if (current?.index !== undefined) return mapping.set(url, current);
+  const ensureOne = (key: string) => {
+    const current = mapping.get(key);
+    if (current?.index !== undefined) return mapping.set(key, current);
 
     const index = available.shift();
 
@@ -111,11 +137,11 @@ export const createTextureGroup = ({
     const cancel =
       index !== undefined ? () => abortController.abort() : undefined;
 
-    mapping.set(url, { index, cancel });
+    mapping.set(key, { index, cancel });
 
     if (index === undefined) return;
 
-    void load(url, index, signal);
+    void doLoad(key, index, signal);
   };
 
   onCleanup(() => {
