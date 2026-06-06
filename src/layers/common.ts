@@ -15,6 +15,7 @@ export const createLayerRenderer = async ({
   topology = "triangle-list",
   bindGroupLayout,
   buffers,
+  constants,
   depth,
   polygonOffset,
   bindGroup,
@@ -25,6 +26,7 @@ export const createLayerRenderer = async ({
   topology?: GPUPrimitiveTopology;
   bindGroupLayout: GPUBindGroupLayout;
   buffers?: GPUVertexBufferLayout[];
+  constants?: Record<string, GPUPipelineConstantValue>;
   bindGroup: () => GPUBindGroup;
   draw: (pass: GPURenderPassEncoder) => void;
 } & Pick<Properties<CommonLayerProps>, "depth" | "polygonOffset">) => {
@@ -65,6 +67,7 @@ export const createLayerRenderer = async ({
       fragment: {
         module,
         entryPoint: "render",
+        constants,
         targets: [
           {
             format,

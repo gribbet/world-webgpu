@@ -104,7 +104,7 @@ export const billboard = createLayerType<BillboardProps>(
       magFilter: "linear",
       minFilter: "linear",
       mipmapFilter: "linear",
-      maxAnisotropy: 16,
+      maxAnisotropy: 4,
     });
 
     const bindGroup = derived(() =>

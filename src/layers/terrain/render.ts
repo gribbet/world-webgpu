@@ -23,10 +23,11 @@ export const createRenderPipeline = async ({
   depth?: boolean;
   polygonOffset?: CommonLayerProps["polygonOffset"];
 }) => {
-  const { device } = context;
+  const { device, devicePixelRatio } = context;
   const code = await (
     await fetch(new URL("./render.wgsl", import.meta.url))
   ).text();
+  const mipBias = Math.log2(devicePixelRatio);
 
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -107,7 +108,7 @@ export const createRenderPipeline = async ({
     magFilter: "linear",
     minFilter: "linear",
     mipmapFilter: "linear",
-    maxAnisotropy: 16,
+    maxAnisotropy: 4,
   });
 
   const bindGroup = derived(() =>
@@ -140,6 +141,7 @@ export const createRenderPipeline = async ({
     ],
     topology: "triangle-list",
     code,
+    constants: { devicePixelRatio },
     depth,
     polygonOffset,
     bindGroup,
