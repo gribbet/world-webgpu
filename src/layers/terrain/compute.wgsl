@@ -5,6 +5,8 @@
 @group(1) @binding(4) var<storage, read> elevationMap: array<MapEntry>;
 @group(1) @binding(5) var elevationTextures: texture_2d_array<f32>;
 
+const SUBDIVIDE_PIXEL_THRESHOLD = 384.0;
+
 fn tileElevation(tile: vec3<u32>) -> f32 {
     let size = arrayLength(&elevationCache);
     let h = indexHash(tile, size);
@@ -86,17 +88,13 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
             let n2 = screen(c2);
             let n3 = screen(c3);
             let n4 = screen(c4);
-            let n5 = screen(e1);
-            let n6 = screen(e2);
-            let n7 = screen(e3);
-            let n8 = screen(e4);
 
-            let n_max = max(max(max(n1, n2), max(n3, n4)), max(max(n5, n6), max(n7, n8)));
-            let n_min = min(min(min(n1, n2), min(n3, n4)), min(min(n5, n6), min(n7, n8)));
+            let n_max = max(max(n1, n2), max(n3, n4));
+            let n_min = min(min(n1, n2), min(n3, n4));
 
             let span = n_max - n_min;
             let pixels = span.xy * view.screenSize / 2.0;
-            subdivide = length(pixels) > 512.0;
+            subdivide = dot(pixels, pixels) > SUBDIVIDE_PIXEL_THRESHOLD * SUBDIVIDE_PIXEL_THRESHOLD;
         }
 
         if subdivide && z <= 20u {
