@@ -31,6 +31,7 @@ const instanceStruct = struct({
   color: vec4f(),
   pickId: u32(),
   diffuse: vec4f(),
+  outline: vec4f(),
 });
 
 export type Vertex = {
@@ -175,6 +176,7 @@ export const object = createLayerType<ObjectProps>(
         maxScalePixels,
         color,
         diffuse,
+        outline,
       } = instance;
       const pickId = pickRegistry.allocate(instance);
       effect(() => {
@@ -196,6 +198,9 @@ export const object = createLayerType<ObjectProps>(
       });
       effect(() => {
         item.diffuse = resolve(diffuse) ?? [1, 1, 1, 1];
+      });
+      effect(() => {
+        item.outline = resolve(outline) ?? [0, 0, 0, 0];
       });
     });
 

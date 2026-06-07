@@ -27,6 +27,7 @@ const vertexStruct = struct({
   maxWidthPixels: f32(),
   flags: u32(), // bit 0 = isFirst, bit 1 = isLast
   pickId: u32(),
+  outline: vec4f(),
 });
 
 export const line = createLayerType<LineProps>(async (context, props) => {
@@ -78,6 +79,7 @@ export const line = createLayerType<LineProps>(async (context, props) => {
   effect(() => {
     const polylines = resolve(vertices);
     const id = pickId();
+    const _outline = resolve(props.outline) ?? [0, 0, 0, 0];
 
     let count = 0;
     for (const polyline of polylines) count += polyline.length;
@@ -97,6 +99,7 @@ export const line = createLayerType<LineProps>(async (context, props) => {
           item.maxWidthPixels = v.maxWidthPixels ?? Infinity;
           item.flags = (k === 0 ? 1 : 0) | (k === len - 1 ? 2 : 0);
           item.pickId = id;
+          item.outline = _outline;
         }
         vi++;
       }

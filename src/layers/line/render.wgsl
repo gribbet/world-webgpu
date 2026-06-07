@@ -6,6 +6,7 @@ struct Vertex {
     maxWidthPixels: f32,
     flags: u32,
     pickId: u32,
+    outline: vec4<f32>,
 };
 
 @group(1) @binding(0) var<storage, read> vertices: array<Vertex>;
@@ -15,6 +16,7 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
     @location(1) local: vec3<f32>,
     @location(2) @interpolate(flat) id: u32,
+    @location(3) outline: vec4<f32>,
 };
 
 fn pixelsPerUnit(local: vec3<f32>) -> f32 {
@@ -141,6 +143,7 @@ fn vertex(
     var localPos = curr.local;
     var color = vertices[inst].color;
     var pickId = vertices[inst].pickId;
+    var outline = vertices[inst].outline;
 
     if vert < 6u {
         clipPos = curr.clips[ownSeq[vert]];
@@ -155,6 +158,7 @@ fn vertex(
                 localPos = next.local;
                 color = vertices[inst + 1u].color;
                 pickId = vertices[inst + 1u].pickId;
+                outline = vertices[inst + 1u].outline;
             } else {
                 clipPos = curr.clips[currSeq[bi]];
             }
@@ -166,13 +170,14 @@ fn vertex(
     out.color = color;
     out.local = localPos;
     out.id = pickId;
+    out.outline = outline;
     return out;
 }
 
 @fragment
-fn render(in: VertexOutput) -> @location(0) vec4<f32> {
+fn render(in: VertexOutput) -> RenderOutput {
     if in.color.a < 0.01 { discard; }
-    return in.color;
+    return RenderOutput(in.color, in.outline);
 }
 
 @fragment

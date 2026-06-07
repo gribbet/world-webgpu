@@ -17,7 +17,7 @@ export type TerrainProps = PickHandlers &
   };
 
 export const terrain = createLayerType<TerrainProps>(async (context, props) => {
-  const { imageryUrl, elevationUrl, depth, polygonOffset } = props;
+  const { imageryUrl, elevationUrl, depth, polygonOffset, outline } = props;
   const { device, pickRegistry } = context;
 
   const tilesBuffer = createDataBuffer(
@@ -76,6 +76,7 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
     imageryTextures,
     elevationTextures,
     pickId,
+    outline: resolve(outline) ?? [0, 0, 0, 0],
     depth: resolve(depth) ?? true,
     polygonOffset: resolve(polygonOffset),
   });

@@ -12,6 +12,7 @@ struct Billboard {
     minScale: f32,
     maxScale: f32,
     pickId: u32,
+    outline: vec4<f32>,
 };
 
 struct VertexOutput {
@@ -21,6 +22,7 @@ struct VertexOutput {
     @location(2) @interpolate(flat) texture: i32,
     @location(3) local: vec3<f32>,
     @location(4) @interpolate(flat) id: u32,
+    @location(5) outline: vec4<f32>,
 };
 
 @vertex
@@ -60,16 +62,17 @@ fn vertex(
     output.texture = billboard.texture;
     output.local = local;
     output.id = billboard.pickId;
+    output.outline = billboard.outline;
     return output;
 }
 
 @fragment
-fn render(input: VertexOutput) -> @location(0) vec4<f32> {
+fn render(input: VertexOutput) -> RenderOutput {
     let color = textureSampleBias(textures, sample, input.uv, input.texture, -1.0) * input.color;
     if color.a < 0.01 {
         discard;
     }
-    return color;
+    return RenderOutput(color, input.outline);
 }
 
 @fragment

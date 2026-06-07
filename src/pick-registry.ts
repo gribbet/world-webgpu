@@ -6,7 +6,7 @@ import {
   signal,
 } from "signals.ts";
 
-import type { Vec3 } from "./model";
+import type { Vec3, Vec4 } from "./model";
 
 export type PickEvent = {
   id: number;
@@ -17,6 +17,7 @@ export type PickEvent = {
 
 export type PickHandlers = {
   pickable?: boolean;
+  outline?: Vec4;
   onMouseDown?: (event: PickEvent) => void;
   onMouseMove?: (event: PickEvent) => void;
   onMouseUp?: (event: PickEvent) => void;
@@ -27,7 +28,7 @@ export type PickHandlers = {
   onDragFlat?: (event: PickEvent) => void;
 };
 
-export type PickEventType = Exclude<keyof PickHandlers, "pickable">;
+export type PickEventType = Exclude<keyof PickHandlers, "pickable" | "outline">;
 
 type PickDispatch = {
   [K in PickEventType]: (event: PickEvent, targetId?: number) => void;

@@ -99,6 +99,11 @@ struct PickOutput {
     @location(2) id: u32,
 }
 
+struct RenderOutput {
+    @location(0) color: vec4<f32>,
+    @location(1) outline: vec4<f32>,
+};
+
 fn packPick(local: vec3<f32>, id: u32) -> PickOutput {
     let p = positionFromFlatLocal(local, view.center);
     let xy = vec2<u32>(clamp(

@@ -2,6 +2,7 @@ import { derived } from "signals.ts";
 
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
+import type { Vec4 } from "../../model";
 import { type CommonLayerProps, createLayerRenderer } from "../common";
 
 export const createRenderPipeline = async ({
@@ -11,6 +12,7 @@ export const createRenderPipeline = async ({
   imageryTextures,
   elevationTextures,
   pickId,
+  outline,
   depth,
   polygonOffset,
 }: {
@@ -20,6 +22,7 @@ export const createRenderPipeline = async ({
   imageryTextures: () => GPUTexture;
   elevationTextures: () => GPUTexture;
   pickId: () => number;
+  outline: Vec4;
   depth?: boolean;
   polygonOffset?: CommonLayerProps["polygonOffset"];
 }) => {
@@ -27,7 +30,6 @@ export const createRenderPipeline = async ({
   const code = await (
     await fetch(new URL("./render.wgsl", import.meta.url))
   ).text();
-  const mipBias = Math.log2(devicePixelRatio);
 
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -56,6 +58,11 @@ export const createRenderPipeline = async ({
         visibility: GPUShaderStage.FRAGMENT,
         buffer: { type: "uniform" },
       },
+      {
+        binding: 5,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+      },
     ],
   });
 
@@ -63,6 +70,11 @@ export const createRenderPipeline = async ({
     device,
     GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     new Uint32Array([0]),
+  );
+  const outlineBuffer = createDataBuffer(
+    device,
+    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    new Float32Array([0, 0, 0, 0]),
   );
 
   const resolution = 21;
@@ -126,6 +138,7 @@ export const createRenderPipeline = async ({
         },
         { binding: 3, resource: sampler },
         { binding: 4, resource: { buffer: pickBuffer } },
+        { binding: 5, resource: { buffer: outlineBuffer } },
       ],
     }),
   );
@@ -155,6 +168,7 @@ export const createRenderPipeline = async ({
   const update = (encoder: GPUCommandEncoder) => {
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
     device.queue.writeBuffer(pickBuffer, 0, new Uint32Array([pickId()]));
+    device.queue.writeBuffer(outlineBuffer, 0, new Float32Array(outline));
   };
 
   return {

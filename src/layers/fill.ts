@@ -21,10 +21,11 @@ const vertexStruct = struct({
   position: position(),
   color: vec4f(),
   pickId: u32(),
+  outline: vec4f(),
 });
 
 export const fill = createLayerType<FillProps>(async (context, props) => {
-  const { vertices, indices, depth, polygonOffset } = props;
+  const { vertices, indices, depth, polygonOffset, outline } = props;
   const { device, pickRegistry } = context;
 
   const storage = structArray(vertexStruct, device, {
@@ -78,6 +79,7 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
   effect(() => {
     const _vertices = resolve(vertices);
     const _indices = resolve(indices);
+    const _outline = resolve(outline) ?? [0, 0, 0, 0];
     indexCount = _indices.length;
 
     storage.resize(_vertices.length);
@@ -87,6 +89,7 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
       item.position = v.position;
       item.color = v.color;
       item.pickId = pickId();
+      item.outline = _outline;
     });
 
     indexStorage.resize(_indices.length);

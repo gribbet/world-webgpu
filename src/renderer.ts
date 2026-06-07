@@ -1,11 +1,12 @@
 import { derived } from "signals.ts";
 
 import type { Context } from "./context";
+import { createOutliner } from "./outliner";
 import { createTexture } from "./texture";
 
 type Renderer = (pass: GPURenderPassEncoder) => void;
 
-export const createRenderer = (context: Context) => {
+export const createRenderer = async (context: Context) => {
   const { device, size, devicePixelRatio, format, sampleCount } = context;
 
   const textureSize = derived(() => {
@@ -22,6 +23,15 @@ export const createRenderer = (context: Context) => {
     }),
   );
 
+  const sceneTexture = derived(() =>
+    createTexture(device, {
+      size: [...textureSize()],
+      format,
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    }),
+  );
+
   const depthTexture = derived(() =>
     createTexture(device, {
       size: [...textureSize()],
@@ -32,17 +42,21 @@ export const createRenderer = (context: Context) => {
   );
 
   const renderView = () => renderTexture().createView();
+  const sceneView = () => sceneTexture().createView();
   const depthView = () => depthTexture().createView();
+
+  const outliner = await createOutliner({ context, textureSize, sceneTexture });
 
   const render = (encoder: GPUCommandEncoder, draw: Renderer) => {
     const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
           view: renderView(),
-          resolveTarget: context.context.getCurrentTexture().createView(),
+          resolveTarget: sceneView(),
           loadOp: "clear",
           storeOp: "discard",
         },
+        outliner.attachment(),
       ],
       depthStencilAttachment: {
         view: depthView(),
@@ -54,6 +68,8 @@ export const createRenderer = (context: Context) => {
 
     draw(pass);
     pass.end();
+
+    outliner.render(encoder);
   };
 
   return {

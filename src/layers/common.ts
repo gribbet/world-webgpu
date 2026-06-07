@@ -79,6 +79,7 @@ export const createLayerRenderer = async ({
               alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
             },
           },
+          { format: "rgba8unorm" },
         ],
       },
       multisample: { count: sampleCount },

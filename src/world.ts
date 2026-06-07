@@ -23,7 +23,7 @@ export const createWorld = async (
 ) => {
   const { device, size, textureLoader, element, pickRegistry } = context;
 
-  const renderer = createRenderer(context);
+  const renderer = await createRenderer(context);
   const picker = createPicker(context);
 
   const viewUniform = buffer(

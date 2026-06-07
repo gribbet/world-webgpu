@@ -34,6 +34,7 @@ const billboardStruct = struct({
   minScale: f32(),
   maxScale: f32(),
   pickId: u32(),
+  outline: vec4f(),
 });
 
 export type Billboard = PickHandlers & {
@@ -137,7 +138,8 @@ export const billboard = createLayerType<BillboardProps>(
       const [item, release] = slots.allocate();
       onCleanup(release);
 
-      const { position, color, image, size, minScale, maxScale } = billboard;
+      const { position, color, image, size, minScale, maxScale, outline } =
+        billboard;
       const metadata = derived(() => imageMetadata()[resolve(image)]);
       const pickId = pickRegistry.allocate(billboard);
 
@@ -162,6 +164,9 @@ export const billboard = createLayerType<BillboardProps>(
       effect(() => {
         item.minScale = resolve(minScale) ?? -Infinity;
         item.maxScale = resolve(maxScale) ?? Infinity;
+      });
+      effect(() => {
+        item.outline = resolve(outline) ?? [0, 0, 0, 0];
       });
     });
 

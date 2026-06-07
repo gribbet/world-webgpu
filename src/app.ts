@@ -110,6 +110,7 @@ const imageryUrl = "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}";
 const mapboxToken =
   "pk.eyJ1IjoiZ3JhaGFtZ2liYm9uc2tyYXVzIiwiYSI6ImNsOWhjcXl4dDEyNWwzb295MjZhdWh6ejkifQ.1o2-p9zy03ahonJJD1SSow";
 const elevationUrl = `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.png?access_token=${mapboxToken}`;
+const outline: Vec4 = [0, 0, 0, 1];
 
 export const createApp = () =>
   root(async dispose => {
@@ -120,7 +121,7 @@ export const createApp = () =>
 
     const [view, setView] = signal<View>({
       center: [-122.4194, 37.7749, 0],
-      distance: 10000000,
+      distance: 100000,
       orientation: [0, 0, 0],
       fieldOfView: 45,
     });
@@ -249,6 +250,7 @@ export const createApp = () =>
           font: "sans-serif",
           fontSize: 128,
           color,
+          outline,
           minScale: 0.25,
           maxScale: 1.0,
           onDrag: (event: PickEvent) => updatePosition(event.position),
@@ -260,8 +262,8 @@ export const createApp = () =>
     const layers = derived(() => [
       terrain({ imageryUrl, elevationUrl, onClick: onTerrainClick }),
       text({ entries: textEntries }),
-      line({ vertices: staticLineExamples }),
-      line({ vertices: lineExamples }),
+      line({ vertices: staticLineExamples, outline }),
+      line({ vertices: lineExamples, outline }),
       fill({
         vertices: [
           { position: [-122.5, 37.7, 10000], color: [1, 0, 0, 0.5] },
@@ -281,6 +283,7 @@ export const createApp = () =>
             minScalePixels: 24,
             maxScalePixels: 96,
             orientation: spin,
+            outline,
           },
         ],
       }),

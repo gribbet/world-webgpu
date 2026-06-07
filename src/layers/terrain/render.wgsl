@@ -3,6 +3,7 @@
 @group(1) @binding(2) var elevationTextures: texture_2d_array<f32>;
 @group(1) @binding(3) var sample: sampler;
 @group(1) @binding(4) var<uniform> pickId: u32;
+@group(1) @binding(5) var<uniform> outline: vec4<f32>;
 
 override devicePixelRatio: f32 = 1.0;
 
@@ -44,7 +45,7 @@ fn vertex(input: VertexInput) -> VertexOutput {
 
 
 @fragment
-fn render(input: VertexOutput) -> @location(0) vec4<f32> {
+fn render(input: VertexOutput) -> RenderOutput {
     let i = input.instanceIndex;
     let tile = tiles[i].tile;
     let index = tiles[i].imageryTexture;
@@ -53,7 +54,8 @@ fn render(input: VertexOutput) -> @location(0) vec4<f32> {
     }
     let k = 1u << index.y;
     let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
-    return textureSampleBias(imageryTextures, sample, uv, index.x, log2(devicePixelRatio) + 0.5);
+    let color = textureSampleBias(imageryTextures, sample, uv, index.x, log2(devicePixelRatio) + 0.5);
+    return RenderOutput(color, outline);
 }
 
 @fragment
