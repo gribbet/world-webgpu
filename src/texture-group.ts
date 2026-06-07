@@ -42,7 +42,11 @@ export const createTextureGroup = ({
 
   const available = new Array(layers).fill(0).map((_, i) => i);
 
-  type Entry = { index?: number; cancel: (() => void) | undefined };
+  type Entry = {
+    index?: number;
+    cancel: (() => void) | undefined;
+    failed?: boolean;
+  };
   const mapping = createLru<string, Entry>({
     maxSize: layers,
     onEvict: (key, { index, cancel }) => {
@@ -89,7 +93,7 @@ export const createTextureGroup = ({
       const images = await normalizeImages(await load(key, signal));
 
       const [first] = images;
-      if (!first) return;
+      if (!first) throw new Error(`Texture loader returned no images: ${key}`);
 
       const { width, height } = first;
 
@@ -108,12 +112,14 @@ export const createTextureGroup = ({
 
       onLoad?.(key, index, width, height);
     } catch (error) {
+      available.push(index);
       if (error instanceof Error && error.name === "AbortError") {
-        available.push(index);
         mapping.delete(key);
         return;
       }
-      throw error;
+
+      mapping.set(key, { failed: true, cancel: undefined });
+      console.warn("Failed to load texture", key, error);
     }
   };
 
@@ -128,6 +134,7 @@ export const createTextureGroup = ({
 
   const ensureOne = (key: string) => {
     const current = mapping.get(key);
+    if (current?.failed) return;
     if (current?.index !== undefined) return mapping.set(key, current);
 
     const index = available.shift();
