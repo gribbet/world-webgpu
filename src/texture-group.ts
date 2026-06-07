@@ -40,11 +40,20 @@ export const createTextureGroup = ({
 
   const [texture, setTexture] = signal<GPUTexture>(createGroupTexture(8, 8));
 
-  const available = new Array(layers).fill(0).map((_, i) => i);
+  const available = new Set(new Array(layers).fill(0).map((_, i) => i));
+
+  const acquire = () => {
+    const { done, value } = available.values().next();
+    if (done) return undefined;
+    available.delete(value);
+    return value;
+  };
+
+  const release = (index: number) => available.add(index);
 
   type Entry = {
     index?: number;
-    cancel: (() => void) | undefined;
+    cancel?: () => void;
     failed?: boolean;
   };
   const mapping = createLru<string, Entry>({
@@ -52,7 +61,7 @@ export const createTextureGroup = ({
     onEvict: (key, { index, cancel }) => {
       cancel?.();
       if (index === undefined) return;
-      if (!cancel) available.push(index);
+      if (!cancel) release(index);
       onEvict?.(key, index);
     },
   });
@@ -91,6 +100,7 @@ export const createTextureGroup = ({
   const doLoad = async (key: string, index: number, signal: AbortSignal) => {
     try {
       const images = await normalizeImages(await load(key, signal));
+      signal.throwIfAborted();
 
       const [first] = images;
       if (!first) throw new Error(`Texture loader returned no images: ${key}`);
@@ -98,7 +108,7 @@ export const createTextureGroup = ({
       const { width, height } = first;
 
       if (ensureSize(width, height)) {
-        available.push(index);
+        release(index);
         return;
       }
 
@@ -107,23 +117,22 @@ export const createTextureGroup = ({
           textureLoader.load(texture(), _, mip, index, signal),
         ),
       );
+      signal.throwIfAborted();
 
-      mapping.set(key, { index, cancel: undefined });
+      mapping.set(key, { index });
 
       onLoad?.(key, index, width, height);
     } catch (error) {
-      available.push(index);
-      if (error instanceof Error && error.name === "AbortError") {
-        mapping.delete(key);
-        return;
-      }
+      release(index);
+      if (signal.aborted) return;
 
-      mapping.set(key, { failed: true, cancel: undefined });
+      mapping.set(key, { failed: true });
       console.warn("Failed to load texture", error);
     }
   };
 
   const ensure = (keys: string[]) => {
+    keys = keys.slice(0, layers);
     const current = new Set(keys);
     mapping
       .entries()
@@ -137,16 +146,20 @@ export const createTextureGroup = ({
     if (current?.failed) return;
     if (current?.index !== undefined) return mapping.set(key, current);
 
-    const index = available.shift();
+    const index = acquire();
+    if (index === undefined) {
+      mapping.set(key, { index });
+      return;
+    }
 
     const abortController = new AbortController();
     const { signal } = abortController;
-    const cancel =
-      index !== undefined ? () => abortController.abort() : undefined;
+    const cancel = () => {
+      abortController.abort();
+      mapping.delete(key);
+    };
 
     mapping.set(key, { index, cancel });
-
-    if (index === undefined) return;
 
     void doLoad(key, index, signal);
   };
