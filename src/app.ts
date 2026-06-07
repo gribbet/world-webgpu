@@ -10,7 +10,7 @@ import { terrain } from "./layers/terrain";
 import { text } from "./layers/text";
 import type { Vec2, Vec3, Vec4, View } from "./model";
 import type { PickEvent } from "./pick-registry";
-import { createViewTransition, vec4Transition } from "./transition";
+import { vec4Transition } from "./transition";
 import { createWorld } from "./world";
 
 const createCubeMesh = (): Mesh => {
@@ -118,15 +118,12 @@ export const createApp = () =>
 
     const context = await createContext(element);
 
-    const [targetView, setTargetView] = signal<View>({
+    const [view, setView] = signal<View>({
       center: [-122.4194, 37.7749, 0],
       distance: 10000000,
       orientation: [0, 0, 0],
       fieldOfView: 45,
     });
-
-    const view = createViewTransition(targetView);
-    const setView = (_: View) => setTargetView(_);
 
     const [time, setTime] = signal(0);
     const animate = (t: number) => {
@@ -294,7 +291,7 @@ export const createApp = () =>
       layers,
     });
 
-    createControl({ element, world, view: targetView, setView });
+    createControl({ element, world, view, setView });
 
     return {
       dispose,
