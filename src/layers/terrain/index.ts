@@ -2,7 +2,7 @@ import { derived, resolve } from "signals.ts";
 
 import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";
-import { terrainDownsample } from "../../configuration";
+import { terrainDownsample, tileTextureLayers } from "../../configuration";
 import type { PickHandlers } from "../../pick-registry";
 import { type CommonLayerProps } from "../common";
 import { createComputePipeline } from "./compute";
@@ -23,7 +23,7 @@ export const terrain = createLayerType<TerrainProps>(async (context, props) => {
   const tilesBuffer = createDataBuffer(
     device,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    new Uint32Array(new Array(1024 * 8).fill(0)),
+    new Uint32Array(new Array(tileTextureLayers * 8).fill(0)),
   );
 
   const countBuffer = createDataBuffer(
