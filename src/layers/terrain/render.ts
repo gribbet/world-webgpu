@@ -3,6 +3,7 @@ import { derived } from "signals.ts";
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";
 import type { Vec4 } from "../../model";
+import { buffer, u32, vec4f } from "../../storage";
 import { type CommonLayerProps, createLayerRenderer } from "../common";
 
 export const createRenderPipeline = async ({
@@ -66,16 +67,10 @@ export const createRenderPipeline = async ({
     ],
   });
 
-  const pickBuffer = createDataBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Uint32Array([0]),
-  );
-  const outlineBuffer = createDataBuffer(
-    device,
-    GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    new Float32Array([0, 0, 0, 0]),
-  );
+  const pickStorage = buffer(u32(), device, { usage: GPUBufferUsage.UNIFORM });
+  const outlineStorage = buffer(vec4f(), device, {
+    usage: GPUBufferUsage.UNIFORM,
+  });
 
   const resolution = 21;
   const count = resolution + 2;
@@ -137,8 +132,8 @@ export const createRenderPipeline = async ({
           resource: elevationTextures().createView({ dimension: "2d-array" }),
         },
         { binding: 3, resource: sampler },
-        { binding: 4, resource: { buffer: pickBuffer } },
-        { binding: 5, resource: { buffer: outlineBuffer } },
+        { binding: 4, resource: { buffer: pickStorage.buffer() } },
+        { binding: 5, resource: { buffer: outlineStorage.buffer() } },
       ],
     }),
   );
@@ -167,8 +162,10 @@ export const createRenderPipeline = async ({
 
   const update = (encoder: GPUCommandEncoder) => {
     encoder.copyBufferToBuffer(countBuffer, 0, indirectBuffer, 4, 4);
-    device.queue.writeBuffer(pickBuffer, 0, new Uint32Array([pickId()]));
-    device.queue.writeBuffer(outlineBuffer, 0, new Float32Array(outline));
+    pickStorage.value = pickId();
+    outlineStorage.value = outline;
+    pickStorage.flush();
+    outlineStorage.flush();
   };
 
   return {

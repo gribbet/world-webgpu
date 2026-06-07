@@ -8,7 +8,7 @@ import type { Vec2, View } from "./model";
 import { createMouse } from "./mouse";
 import { createPicker } from "./picker";
 import { createRenderer } from "./renderer";
-import { buffer, f32, mat4f, position, vec2f } from "./storage";
+import { buffer, f32, mat4f, position, struct, vec2f } from "./storage";
 
 export type World = Awaited<ReturnType<typeof createWorld>>;
 
@@ -27,12 +27,12 @@ export const createWorld = async (
   const picker = createPicker(context);
 
   const viewUniform = buffer(
-    {
+    struct({
       center: position(),
       projection: mat4f(),
       screenSize: vec2f(),
       distance: f32(),
-    },
+    }),
     device,
     { usage: GPUBufferUsage.UNIFORM },
   );
@@ -64,10 +64,10 @@ export const createWorld = async (
     mat4.rotateX(projection, pitch, projection);
     mat4.rotateZ(projection, -yaw, projection);
 
-    viewUniform.item.center = center;
-    viewUniform.item.projection = projection;
-    viewUniform.item.screenSize = [width, height];
-    viewUniform.item.distance = distance;
+    viewUniform.value.center = center;
+    viewUniform.value.projection = projection;
+    viewUniform.value.screenSize = [width, height];
+    viewUniform.value.distance = distance;
   });
 
   const root = await createLayer(context, container({ layers }));

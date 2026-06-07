@@ -21,19 +21,6 @@ import {
   vec4f,
 } from "../storage";
 import { type CommonLayerProps, createLayerRenderer } from "./common";
-
-const instanceStruct = struct({
-  position: position(),
-  orientation: vec4f(),
-  scale: f32(),
-  minScalePixels: f32(),
-  maxScalePixels: f32(),
-  color: vec4f(),
-  pickId: u32(),
-  diffuse: vec4f(),
-  outline: vec4f(),
-});
-
 export type Vertex = {
   position: Vec3;
   color?: Vec4;
@@ -65,10 +52,24 @@ export const object = createLayerType<ObjectProps>(
   async (context, { mesh, instances, depth, polygonOffset }) => {
     const { device, pickRegistry } = context;
 
-    const slots = createSlotAllocator(instanceStruct, device, {
-      usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 16,
-    });
+    const slots = createSlotAllocator(
+      struct({
+        position: position(),
+        orientation: vec4f(),
+        scale: f32(),
+        minScalePixels: f32(),
+        maxScalePixels: f32(),
+        color: vec4f(),
+        pickId: u32(),
+        diffuse: vec4f(),
+        outline: vec4f(),
+      }),
+      device,
+      {
+        usage: GPUBufferUsage.STORAGE,
+        initialCapacity: 16,
+      },
+    );
 
     const code = await (
       await fetch(new URL("./object.wgsl", import.meta.url))

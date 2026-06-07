@@ -23,20 +23,6 @@ import {
 } from "../storage";
 import { createTextureGroup } from "../texture-group";
 import { type CommonLayerProps, createLayerRenderer } from "./common";
-
-const billboardStruct = struct({
-  position: position(),
-  size: f32(),
-  color: vec4f(),
-  texture: i32(),
-  width: u32(),
-  height: u32(),
-  minScale: f32(),
-  maxScale: f32(),
-  pickId: u32(),
-  outline: vec4f(),
-});
-
 export type Billboard = PickHandlers & {
   image: string;
   size: number;
@@ -54,10 +40,25 @@ export const billboard = createLayerType<BillboardProps>(
   async (context, { billboards, depth, polygonOffset }) => {
     const { device, pickRegistry } = context;
 
-    const slots = createSlotAllocator(billboardStruct, device, {
-      usage: GPUBufferUsage.STORAGE,
-      initialCapacity: 16,
-    });
+    const slots = createSlotAllocator(
+      struct({
+        position: position(),
+        size: f32(),
+        color: vec4f(),
+        texture: i32(),
+        width: u32(),
+        height: u32(),
+        minScale: f32(),
+        maxScale: f32(),
+        pickId: u32(),
+        outline: vec4f(),
+      }),
+      device,
+      {
+        usage: GPUBufferUsage.STORAGE,
+        initialCapacity: 16,
+      },
+    );
 
     const [imageMetadata, setImageMetadata] = signal<{
       [url: string]:

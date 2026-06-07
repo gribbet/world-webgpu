@@ -3,7 +3,7 @@ import { derived, effect, resolve } from "signals.ts";
 import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";
 import type { PickHandlers } from "../pick-registry";
-import { array, position, struct, structArray, u32, vec4f } from "../storage";
+import { array, buffer, position, struct, u32, vec4f } from "../storage";
 import { type CommonLayerProps, createLayerRenderer } from "./common";
 
 export type Vertex = {
@@ -17,22 +17,26 @@ export type FillProps = PickHandlers &
     indices: number[];
   };
 
-const vertexStruct = struct({
-  position: position(),
-  color: vec4f(),
-  pickId: u32(),
-  outline: vec4f(),
-});
-
 export const fill = createLayerType<FillProps>(async (context, props) => {
   const { vertices, indices, depth, polygonOffset, outline } = props;
   const { device, pickRegistry } = context;
 
-  const storage = structArray(vertexStruct, device, {
-    usage: GPUBufferUsage.STORAGE,
-    initialCapacity: 1024,
-  });
-  const indexStorage = array(u32(), device, {
+  const storage = buffer(
+    array(
+      struct({
+        position: position(),
+        color: vec4f(),
+        pickId: u32(),
+        outline: vec4f(),
+      }),
+    ),
+    device,
+    {
+      usage: GPUBufferUsage.STORAGE,
+      initialCapacity: 1024,
+    },
+  );
+  const indexStorage = buffer(array(u32()), device, {
     usage: GPUBufferUsage.INDEX,
     initialCapacity: 1024,
   });
@@ -82,8 +86,8 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
     const _outline = resolve(outline) ?? [0, 0, 0, 0];
     indexCount = _indices.length;
 
-    storage.resize(_vertices.length);
-    storage.items.forEach((item, i) => {
+    storage.value.resize(_vertices.length);
+    storage.value.items.forEach((item, i) => {
       const v = _vertices[i];
       if (!v) return;
       item.position = v.position;
@@ -92,9 +96,9 @@ export const fill = createLayerType<FillProps>(async (context, props) => {
       item.outline = _outline;
     });
 
-    indexStorage.resize(_indices.length);
+    indexStorage.value.resize(_indices.length);
     _indices.forEach((v, i) => {
-      indexStorage.items[i] = v;
+      indexStorage.value.items[i] = v;
     });
   });
 

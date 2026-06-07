@@ -3,7 +3,15 @@ import { derived, effect, resolve } from "signals.ts";
 import { createLayerType } from "../../common";
 import type { Vec3, Vec4 } from "../../model";
 import type { PickHandlers } from "../../pick-registry";
-import { f32, position, struct, structArray, u32, vec4f } from "../../storage";
+import {
+  array,
+  buffer,
+  f32,
+  position,
+  struct,
+  u32,
+  vec4f,
+} from "../../storage";
 import { type CommonLayerProps, createLayerRenderer } from "../common";
 
 export type Vertex = {
@@ -19,25 +27,29 @@ export type LineProps = PickHandlers &
     vertices: Vertex[][];
   };
 
-const vertexStruct = struct({
-  position: position(),
-  width: f32(),
-  color: vec4f(),
-  minWidthPixels: f32(),
-  maxWidthPixels: f32(),
-  flags: u32(), // bit 0 = isFirst, bit 1 = isLast
-  pickId: u32(),
-  outline: vec4f(),
-});
-
 export const line = createLayerType<LineProps>(async (context, props) => {
   const { vertices, depth, polygonOffset } = props;
   const { device, pickRegistry } = context;
 
-  const storage = structArray(vertexStruct, device, {
-    usage: GPUBufferUsage.STORAGE,
-    initialCapacity: 1024,
-  });
+  const storage = buffer(
+    array(
+      struct({
+        position: position(),
+        width: f32(),
+        color: vec4f(),
+        minWidthPixels: f32(),
+        maxWidthPixels: f32(),
+        flags: u32(), // bit 0 = isFirst, bit 1 = isLast
+        pickId: u32(),
+        outline: vec4f(),
+      }),
+    ),
+    device,
+    {
+      usage: GPUBufferUsage.STORAGE,
+      initialCapacity: 1024,
+    },
+  );
 
   const code = await (
     await fetch(new URL("./render.wgsl", import.meta.url))
@@ -83,14 +95,14 @@ export const line = createLayerType<LineProps>(async (context, props) => {
 
     let count = 0;
     for (const polyline of polylines) count += polyline.length;
-    storage.resize(count);
+    storage.value.resize(count);
 
     let vi = 0;
     for (const polyline of polylines) {
       const len = polyline.length;
       for (let k = 0; k < len; k++) {
         const v = polyline[k]!;
-        const item = storage.items[vi];
+        const item = storage.value.items[vi];
         if (item) {
           item.position = v.position;
           item.width = v.width;
