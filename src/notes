@@ -46,7 +46,6 @@ casing in wgsl
 Rename VertexOutput
 textureSampleBias?
 
-mipmap transition
 Load transition
 Pick to mouse events
 
@@ -70,3 +69,6 @@ Release packages
 
 curved tiles
 mouse issue
+
+
+reduce compute const
