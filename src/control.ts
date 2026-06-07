@@ -126,8 +126,5 @@ export const createControl = ({
     signal,
   });
 
-  onCleanup(() => {
-    resetWheeling.cancel();
-    abortController.abort();
-  });
+  onCleanup(() => abortController.abort());
 };
