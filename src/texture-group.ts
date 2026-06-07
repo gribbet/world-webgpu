@@ -119,7 +119,7 @@ export const createTextureGroup = ({
       }
 
       mapping.set(key, { failed: true, cancel: undefined });
-      console.warn("Failed to load texture", key, error);
+      console.warn("Failed to load texture", error);
     }
   };
 

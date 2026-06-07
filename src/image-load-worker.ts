@@ -21,7 +21,7 @@ addEventListener("message", async event => {
   const release = await acquire();
 
   try {
-    if (signal.aborted) return postMessage({ url });
+    if (signal.aborted) return;
 
     const response = await fetch(url, { mode: "cors", signal });
     if (!response.ok) {
