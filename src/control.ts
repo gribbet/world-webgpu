@@ -1,5 +1,6 @@
 import { onCleanup, type Signal } from "signals.ts";
 
+import { debounce } from "./common";
 import { enuFromPosition, move, wrapDegDelta } from "./math";
 import type { View } from "./model";
 import type { World } from "./world";
@@ -96,11 +97,20 @@ export const createControl = ({
     { signal },
   );
 
+  let wheeling = false;
+  const resetWheeling = debounce(() => {
+    wheeling = false;
+  }, 200);
+
   element.addEventListener(
     "wheel",
     event => {
       if (world.isDragging()) return;
       event.preventDefault();
+      resetWheeling();
+      if (!wheeling) void recenter();
+      wheeling = true;
+
       const { center, distance, orientation, fieldOfView } = view();
       setView({
         center,
@@ -116,5 +126,8 @@ export const createControl = ({
     signal,
   });
 
-  onCleanup(() => abortController.abort());
+  onCleanup(() => {
+    resetWheeling.cancel();
+    abortController.abort();
+  });
 };

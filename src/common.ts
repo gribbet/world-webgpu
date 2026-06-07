@@ -58,6 +58,17 @@ export const limit = (n: number) => {
   };
 };
 
+export const debounce = (callback: () => void, delay: number) => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  return () => {
+    if (timeout !== undefined) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = undefined;
+      callback();
+    }, delay);
+  };
+};
+
 export const createLock = () => {
   let pending = Promise.resolve();
   return async () => {
