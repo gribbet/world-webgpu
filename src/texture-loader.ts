@@ -29,7 +29,9 @@ export const createTextureLoader = ({ device }: { device: GPUDevice }) => {
     signal?.addEventListener(
       "abort",
       () => {
-        loads.splice(loads.indexOf(load), 1);
+        const index = loads.indexOf(load);
+        if (index === -1) return;
+        loads.splice(index, 1);
         reject(signal.reason);
       },
       { once: true },
