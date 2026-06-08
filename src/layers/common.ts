@@ -50,6 +50,14 @@ export const createLayerRenderer = async ({
     primitive: { topology },
   };
 
+  const alphaBlend: GPUBlendState = {
+    color: {
+      srcFactor: "src-alpha",
+      dstFactor: "one-minus-src-alpha",
+    },
+    alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
+  };
+
   const depthStencil = derived(() => {
     const depthEnabled = resolve(depth) ?? true;
     return {
@@ -71,15 +79,12 @@ export const createLayerRenderer = async ({
         targets: [
           {
             format,
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
-            },
+            blend: alphaBlend,
           },
-          { format: "rgba8unorm" },
+          {
+            format: "rgba8unorm",
+            blend: alphaBlend,
+          },
         ],
       },
       multisample: { count: sampleCount },
