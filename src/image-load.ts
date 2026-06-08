@@ -1,6 +1,6 @@
-import createImageLoadWorker from "./image-load-worker?worker&inline";
-
-const worker = createImageLoadWorker();
+const worker = new Worker(new URL("./image-load-worker.js", import.meta.url), {
+  type: "module",
+});
 
 type ImageLoad = ReturnType<typeof createImageLoad>;
 const loads = new Map<string, ImageLoad>();
