@@ -1,4 +1,4 @@
-import { onCleanup, signal } from "signals.ts";
+import { onCleanup, signal } from "@gribbet/signal.ts";
 
 import { mipLevelCount, tileTextureLayers } from "./configuration";
 import type { Context } from "./context";

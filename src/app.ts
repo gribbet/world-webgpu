@@ -1,4 +1,4 @@
-import { derived, map, root, signal } from "signals.ts";
+import { derived, map, root, signal } from "@gribbet/signal.ts";
 
 import { createContext } from "./context";
 import { createControl } from "./control";

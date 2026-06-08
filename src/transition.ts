@@ -1,4 +1,4 @@
-import { derived, type Signal, signal, untrack } from "signals.ts";
+import { derived, type Signal, signal, untrack } from "@gribbet/signal.ts";
 
 import {
   lerp,

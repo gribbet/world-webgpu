@@ -1,4 +1,4 @@
-import { derived, resolve } from "signals.ts";
+import { derived, resolve } from "@gribbet/signal.ts";
 
 import { createDataBuffer } from "../../buffer";
 import { createLayerType } from "../../common";

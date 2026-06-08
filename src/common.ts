@@ -1,4 +1,4 @@
-import type { Properties } from "signals.ts";
+import type { Properties } from "@gribbet/signal.ts";
 
 import type { Context } from "./context";
 

@@ -10,7 +10,7 @@
     "types": ["@webgpu/types"],
     "skipLibCheck": true,
     "paths": {
-      "signals.ts": ["../signals.ts/src"]
+      "@gribbet/signal.ts": ["../signal.ts/src"]
     }
   }
 }

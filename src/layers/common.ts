@@ -1,5 +1,5 @@
-import type { Signal } from "signals.ts";
-import { derived, type Properties, resolve } from "signals.ts";
+import type { Signal } from "@gribbet/signal.ts";
+import { derived, type Properties, resolve } from "@gribbet/signal.ts";
 
 import { viewLayout } from "../common";
 import type { Context } from "../context";

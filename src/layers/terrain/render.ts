@@ -1,4 +1,4 @@
-import { derived } from "signals.ts";
+import { derived } from "@gribbet/signal.ts";
 
 import { createDataBuffer } from "../../buffer";
 import type { Context } from "../../context";

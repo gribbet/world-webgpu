@@ -4,7 +4,7 @@ import {
   type Properties,
   resolve,
   signal,
-} from "signals.ts";
+} from "@gribbet/signal.ts";
 
 import type { Vec3, Vec4 } from "./model";
 

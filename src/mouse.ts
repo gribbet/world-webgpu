@@ -1,5 +1,5 @@
-import type { MaybeSignal } from "signals.ts";
-import { onCleanup, resolve } from "signals.ts";
+import type { MaybeSignal } from "@gribbet/signal.ts";
+import { onCleanup, resolve } from "@gribbet/signal.ts";
 
 import { pickFlat } from "./math";
 import type { Vec2, Vec3, View } from "./model";

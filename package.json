@@ -19,6 +19,6 @@
     "wgpu-matrix": "^3.4.2"
   },
   "peerDependencies": {
-    "signals.ts": "../signals.ts"
+    "@gribbet/signal.ts": "^1.0.0"
   }
 }

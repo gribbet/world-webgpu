@@ -6,7 +6,7 @@ import {
   type Properties,
   resolve,
   signal,
-} from "signals.ts";
+} from "@gribbet/signal.ts";
 
 import { createLayerType } from "../common";
 import { loadImage } from "../image-load";

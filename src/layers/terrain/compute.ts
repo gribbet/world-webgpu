@@ -1,5 +1,5 @@
-import type { Signal } from "signals.ts";
-import { derived } from "signals.ts";
+import type { Signal } from "@gribbet/signal.ts";
+import { derived } from "@gribbet/signal.ts";
 
 import { createBuffer, createDataBuffer } from "../../buffer";
 import { viewLayout } from "../../common";

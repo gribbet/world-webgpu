@@ -1,4 +1,4 @@
-import { derived, effect, resolve } from "signals.ts";
+import { derived, effect, resolve } from "@gribbet/signal.ts";
 
 import { createLayerType } from "../common";
 import type { Vec3, Vec4 } from "../model";

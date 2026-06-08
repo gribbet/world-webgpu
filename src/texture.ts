@@ -1,4 +1,4 @@
-import { onCleanup } from "signals.ts";
+import { onCleanup } from "@gribbet/signal.ts";
 
 export const createTexture = (
   device: GPUDevice,

@@ -1,4 +1,4 @@
-import { onCleanup, type Signal } from "signals.ts";
+import { onCleanup, type Signal } from "@gribbet/signal.ts";
 
 import { debounce } from "./common";
 import { enuFromPosition, move, wrapDegDelta } from "./math";

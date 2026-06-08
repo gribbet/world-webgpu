@@ -1,4 +1,9 @@
-import { effect, onCleanup, type Properties, resolve } from "signals.ts";
+import {
+  effect,
+  onCleanup,
+  type Properties,
+  resolve,
+} from "@gribbet/signal.ts";
 import { mat4 } from "wgpu-matrix";
 
 import { createLayer, type LayerDescriptor, viewLayout } from "./common";
