@@ -1,12 +1,14 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  root: "src",
+  root: ".",
   base: "./",
   resolve: {
     tsconfigPaths: true,
   },
-  build: {
-    outDir: "../dist",
+  server: {
+    fs: {
+      allow: [".."],
+    },
   },
 });

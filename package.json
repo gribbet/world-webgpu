@@ -1,16 +1,28 @@
 {
-  "name": "webgpu-world",
-  "private": true,
+  "name": "eutopia.ts",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build": "npm run clean && tsc --project tsconfig.json && npm run copy:assets",
+    "clean": "rm -rf dist",
+    "copy:assets": "cpy '**/*.wgsl' '../dist' --cwd=src",
     "lint": "eslint --max-warnings 0 --cache --cache-strategy content ."
   },
   "devDependencies": {
     "@gribbet/eslint-config": "github:gribbet/eslint-config",
     "@webgpu/types": "^0.1.70",
+    "cpy-cli": "^7.0.0",
     "eslint": "^10.4.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.14"

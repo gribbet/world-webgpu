@@ -1,17 +1,25 @@
-import { derived, map, root, signal } from "@gribbet/signal.ts";
-
-import { createContext } from "./context";
-import { createControl } from "./control";
-import { fill } from "./layers/fill";
-import { type Vertex as LineVertex } from "./layers/line";
-import { line } from "./layers/line";
-import { type Mesh, object, type Vertex as MeshVertex } from "./layers/object";
-import { terrain } from "./layers/terrain";
-import { text } from "./layers/text";
-import type { Vec2, Vec3, Vec4, View } from "./model";
-import type { PickEvent } from "./pick-registry";
-import { vec4Transition } from "./transition";
-import { createWorld } from "./world";
+import {
+  createContext,
+  createControl,
+  createWorld,
+  derived,
+  fill,
+  line,
+  map,
+  type Mesh,
+  object,
+  type PickEvent,
+  root,
+  signal,
+  terrain,
+  text,
+  type Vec2,
+  type Vec3,
+  type Vec4,
+  vec4Transition,
+  type Vertex as MeshVertex,
+  type View,
+} from "eutopia.ts";
 
 const createCubeMesh = (): Mesh => {
   const faces: {
@@ -163,13 +171,13 @@ export const createApp = () =>
       const b = t < 0.5 ? 0.2 : 0.2 + (t - 0.5) * 1.6;
       const w = 600 + Math.sin(t * Math.PI * 6) * 600 + 600;
       return {
-        position: [lon, lat, alt],
-        color: [r, g, b, 0.95],
+        position: [lon, lat, alt] as const,
+        color: [r, g, b, 0.95] as const,
         width: w,
-      } satisfies LineVertex;
+      };
     });
 
-    const waypointsLine = [
+    const waypointsLine: { position: Vec3; color: Vec4; width: number }[] = [
       {
         position: [-122.52, 37.92, 2000],
         color: [0.3, 0.9, 1.0, 0.85],
@@ -195,7 +203,7 @@ export const createApp = () =>
         color: [0.1, 0.5, 1.0, 0.85],
         width: 1800,
       },
-    ] satisfies LineVertex[];
+    ];
 
     // Animated ring line that depends on time
     const animatedRingLine = derived(() => {
@@ -211,10 +219,10 @@ export const createApp = () =>
             centerLon + Math.cos(t) * ringRadius,
             centerLat + Math.sin(t) * ringRadius,
             3000 + Math.sin(t * 3 + time() * 0.0015) * 1200,
-          ],
-          color: [0.2, 0.9, 1.0, 0.9],
+          ] as const,
+          color: [0.2, 0.9, 1.0, 0.9] as const,
           width: pulse,
-        } satisfies LineVertex;
+        };
       });
       return ringPoints;
     });

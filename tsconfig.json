@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
-    "lib": ["DOM", "ESNext"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
     "target": "esnext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "sourceMap": true,
     "types": ["@webgpu/types"],
-    "skipLibCheck": true,
-    "paths": {
-      "@gribbet/signal.ts": ["../signal.ts/src"]
-    }
-  }
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
 }
