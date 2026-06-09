@@ -16,7 +16,7 @@ export const createOutliner = async ({
   textureSize: TextureSize;
   sceneTexture: () => GPUTexture;
 }) => {
-  const { device, format, sampleCount } = context;
+  const { device, devicePixelRatio, format, sampleCount } = context;
   const code = await (
     await fetch(new URL("./outliner.wgsl", import.meta.url))
   ).text();
@@ -63,6 +63,7 @@ export const createOutliner = async ({
     fragment: {
       module,
       entryPoint: "fragment",
+      constants: { devicePixelRatio },
       targets: [{ format }],
     },
   });

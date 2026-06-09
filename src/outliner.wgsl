@@ -1,6 +1,8 @@
 @group(0) @binding(0) var sceneTexture: texture_2d<f32>;
 @group(0) @binding(1) var outlineTexture: texture_2d<f32>;
 
+override devicePixelRatio: f32 = 1.0;
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
 };
@@ -28,33 +30,22 @@ fn fragment(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     let xy = vec2<i32>(position.xy);
     let scene = textureLoad(sceneTexture, xy, 0);
     let center = outlineSample(xy);
+    let radius = i32(round(1.5 * devicePixelRatio));
     let offsets = array(
-        vec2<i32>(-1, 0),
-        vec2<i32>(1, 0),
-        vec2<i32>(0, -1),
-        vec2<i32>(0, 1),
-        vec2<i32>(-3, 0),
-        vec2<i32>(3, 0),
-        vec2<i32>(0, -3),
-        vec2<i32>(0, 3)
-    );
-    let weights = array(
-        1.0, 1.0, 1.0, 1.0,
-        0.75, 0.75, 0.75, 0.75
+        vec2<i32>(-radius, 0),
+        vec2<i32>(radius, 0),
+        vec2<i32>(0, -radius),
+        vec2<i32>(0, radius)
     );
     var outline = vec4<f32>(0.0);
     var alpha = 0.0;
 
-    for (var i = 0u; i < 8u; i++) {
+    for (var i = 0u; i < 4u; i++) {
         let sample = outlineSample(xy + offsets[i]);
         let diff = center.rgb - sample.rgb;
         let outsideEdge = sample.a * (1.0 - center.a);
         let colorEdge = min(center.a, sample.a) * smoothstep(0.0001, 0.0025, dot(diff, diff));
-        var colorWeight = 0.0;
-        if i < 4u {
-            colorWeight = weights[i] * 0.35;
-        }
-        let sampleAlpha = max(outsideEdge * weights[i], colorEdge * colorWeight);
+        let sampleAlpha = max(outsideEdge, colorEdge * 0.35);
         if sampleAlpha > alpha {
             outline = sample;
             alpha = sampleAlpha;
