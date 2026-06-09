@@ -54,7 +54,11 @@ fn render(input: VertexOutput) -> RenderOutput {
     }
     let k = 1u << index.y;
     let uv = (vec2<f32>(tile.xy % k) + input.uv) / f32(k);
-    let color = textureSampleBias(imageryTextures, sample, uv, index.x, log2(devicePixelRatio) + 0.5);
+    let size = vec2<f32>(textureDimensions(imageryTextures).xy);
+    let dx = dpdx(uv * size);
+    let dy = dpdy(uv * size);
+    let lod = max(log2(max(length(dx), length(dy))) + log2(devicePixelRatio) + 0.5, 0.0);
+    let color = textureSampleLevel(imageryTextures, sample, uv, index.x, lod);
     return RenderOutput(color, outline);
 }
 
